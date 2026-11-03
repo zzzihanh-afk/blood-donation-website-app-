@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useLanguage } from '@/components/LanguageContext';
 import { 
   Search, 
@@ -16,15 +16,117 @@ import {
   ShieldCheck, 
   CreditCard, 
   LogOut,
-  Droplet
+  Droplet,
+  Award,
+  CheckCircle,
+  Clock,
+  ExternalLink,
+  Check
 } from 'lucide-react';
+
+interface NotificationItem {
+  id: string;
+  type: 'emergency' | 'achievement' | 'verification' | 'id_card';
+  titleEn: string;
+  titleBn: string;
+  messageEn: string;
+  messageBn: string;
+  timeEn: string;
+  timeBn: string;
+  link: string;
+  isRead: boolean;
+}
+
+const INITIAL_NOTIFICATIONS: NotificationItem[] = [
+  {
+    id: 'notif-1',
+    type: 'emergency',
+    titleEn: 'Critical Emergency: O+ Blood Needed',
+    titleBn: 'সংকটাপন্ন জরুরি: O+ রক্তের আবেদন',
+    messageEn: 'Open-heart surgery at NICVD. Matches your O+ blood group and location.',
+    messageBn: 'এনআইসিভিডিতে উন্মুক্ত হার্ট সার্জারি। আপনার রক্তের গ্রুপ ও এলাকার সাথে ম্যাচ করেছে।',
+    timeEn: '15m ago',
+    timeBn: '১৫ মিনিট আগে',
+    link: '/blood-requests',
+    isRead: false
+  },
+  {
+    id: 'notif-2',
+    type: 'achievement',
+    titleEn: 'Achievement Unlocked: Life Saver!',
+    titleBn: 'অর্জন আনলক: জীবন রক্ষক!',
+    messageEn: 'Congratulations! You have completed 5 verified donations.',
+    messageBn: 'অভিনন্দন! আপনি সফলভাবে ৫টি যাচাইকৃত রক্তদান সম্পন্ন করেছেন।',
+    timeEn: '2h ago',
+    timeBn: '২ ঘণ্টা আগে',
+    link: '/achievements',
+    isRead: false
+  },
+  {
+    id: 'notif-3',
+    type: 'verification',
+    titleEn: 'Donation Record Verified by Hospital',
+    titleBn: 'হাসপাতাল কর্তৃক রক্তদান রেকর্ড যাচাই সম্পন্ন',
+    messageEn: 'Dhaka Medical College has approved your whole blood donation from Aug 10.',
+    messageBn: 'ঢাকা মেডিকেল কলেজ হাসপাতাল আপনার ১০ আগস্টের রক্তদান অনুমোদন করেছে।',
+    timeEn: '1d ago',
+    timeBn: '১ দিন আগে',
+    link: '/dashboard/donor',
+    isRead: false
+  },
+  {
+    id: 'notif-4',
+    type: 'id_card',
+    titleEn: 'LalBindu Digital ID Card Active',
+    titleBn: 'লালবিন্দু ডিজিটাল পরিচয়পত্র সক্রিয়',
+    messageEn: 'Your cryptographic QR ID is active and ready for verification.',
+    messageBn: 'আপনার কিউআর সমৃদ্ধ ডিজিটাল কার্ড প্রস্তুত ও সক্রিয় রয়েছে।',
+    timeEn: '3d ago',
+    timeBn: '৩ দিন আগে',
+    link: '/dashboard/donor#id-card',
+    isRead: true
+  }
+];
 
 export const Navbar: React.FC = () => {
   const { lang, setLang, t } = useLanguage();
   const pathname = usePathname();
+  const router = useRouter();
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
+  const [notifications, setNotifications] = useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);
   const [searchQuery, setSearchQuery] = useState('');
+
+  const notifRef = useRef<HTMLDivElement>(null);
+  const userRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdowns on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setNotifDropdownOpen(false);
+      }
+      if (userRef.current && !userRef.current.contains(e.target as Node)) {
+        setUserDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const unreadCount = notifications.filter(n => !n.isRead).length;
+
+  const handleMarkAllAsRead = () => {
+    setNotifications(notifications.map(n => ({ ...n, isRead: true })));
+  };
+
+  const handleNotificationClick = (item: NotificationItem) => {
+    setNotifications(notifications.map(n => n.id === item.id ? { ...n, isRead: true } : n));
+    setNotifDropdownOpen(false);
+    router.push(item.link);
+  };
 
   const navLinks = [
     { href: '/', label: t.nav.home },
@@ -99,24 +201,133 @@ export const Navbar: React.FC = () => {
               <span>{lang === 'bn' ? 'English' : 'বাংলা'}</span>
             </button>
 
-            {/* Notification Bell */}
-            <div className="relative">
+            {/* Notification Bell & Dropdown */}
+            <div className="relative" ref={notifRef}>
               <button 
-                className="p-2 text-gray-600 hover:text-brand-red rounded-full hover:bg-brand-light transition-colors relative"
+                onClick={() => {
+                  setNotifDropdownOpen(!notifDropdownOpen);
+                  setUserDropdownOpen(false);
+                }}
+                className={`p-2 rounded-full transition-all relative ${
+                  notifDropdownOpen 
+                    ? 'bg-brand-light text-brand-red ring-2 ring-brand-red/30' 
+                    : 'text-gray-600 hover:text-brand-red hover:bg-brand-light'
+                }`}
                 aria-label="Notifications"
+                title={lang === 'bn' ? 'বিজ্ঞপ্তি দেখুন' : 'View Notifications'}
               >
                 <Bell className="w-5 h-5" />
-                <span className="absolute top-1 right-1 w-4 h-4 bg-brand-red text-white text-[10px] font-bold rounded-full flex items-center justify-center animate-pulse">
-                  3
-                </span>
+                {unreadCount > 0 && (
+                  <span className="absolute top-1 right-1 w-4 h-4 bg-brand-red text-white text-[10px] font-bold rounded-full flex items-center justify-center animate-pulse">
+                    {lang === 'bn' ? '৩' : unreadCount}
+                  </span>
+                )}
               </button>
+
+              {/* Notification Popover Drawer */}
+              {notifDropdownOpen && (
+                <div className="absolute right-0 mt-3 w-80 sm:w-96 bg-white rounded-3xl shadow-2xl border border-gray-100 py-3 z-50 animate-in fade-in slide-in-from-top-2 duration-150 overflow-hidden">
+                  
+                  {/* Top Bar */}
+                  <div className="px-5 py-2.5 border-b border-gray-100 flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Bell className="w-4 h-4 text-brand-red" />
+                      <h4 className="text-sm font-black text-gray-900">
+                        {lang === 'bn' ? 'বিজ্ঞপ্তি ও অ্যালার্ট' : 'Notifications & Alerts'}
+                      </h4>
+                      {unreadCount > 0 && (
+                        <span className="px-2 py-0.5 text-[10px] font-bold bg-brand-light text-brand-red rounded-full">
+                          {lang === 'bn' ? `${unreadCount}টি নতুন` : `${unreadCount} New`}
+                        </span>
+                      )}
+                    </div>
+
+                    {unreadCount > 0 && (
+                      <button
+                        onClick={handleMarkAllAsRead}
+                        className="text-[11px] font-bold text-brand-green hover:underline flex items-center"
+                      >
+                        <Check className="w-3 h-3 mr-0.5" />
+                        {lang === 'bn' ? 'সব পঠিত করুন' : 'Mark all read'}
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Notification List */}
+                  <div className="max-h-[380px] overflow-y-auto divide-y divide-gray-50">
+                    {notifications.map((item) => (
+                      <div
+                        key={item.id}
+                        onClick={() => handleNotificationClick(item)}
+                        className={`p-4 flex items-start space-x-3 cursor-pointer transition-colors ${
+                          !item.isRead ? 'bg-red-50/40 hover:bg-red-50/70' : 'hover:bg-gray-50'
+                        }`}
+                      >
+                        {/* Icon based on notification type */}
+                        <div className={`w-9 h-9 rounded-2xl flex items-center justify-center shrink-0 mt-0.5 ${
+                          item.type === 'emergency' 
+                            ? 'bg-red-100 text-brand-red' 
+                            : item.type === 'achievement'
+                            ? 'bg-amber-100 text-amber-600'
+                            : item.type === 'verification'
+                            ? 'bg-green-100 text-brand-green'
+                            : 'bg-blue-100 text-blue-600'
+                        }`}>
+                          {item.type === 'emergency' && <Droplet className="w-4 h-4 fill-brand-red" />}
+                          {item.type === 'achievement' && <Award className="w-4 h-4" />}
+                          {item.type === 'verification' && <ShieldCheck className="w-4 h-4" />}
+                          {item.type === 'id_card' && <CreditCard className="w-4 h-4" />}
+                        </div>
+
+                        {/* Text */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <h5 className={`text-xs truncate ${!item.isRead ? 'font-black text-gray-900' : 'font-semibold text-gray-700'}`}>
+                              {lang === 'bn' ? item.titleBn : item.titleEn}
+                            </h5>
+                            {!item.isRead && (
+                              <span className="w-2 h-2 rounded-full bg-brand-red shrink-0 ml-1.5" />
+                            )}
+                          </div>
+                          <p className="text-[11px] text-gray-600 line-clamp-2 mt-0.5 leading-snug">
+                            {lang === 'bn' ? item.messageBn : item.messageEn}
+                          </p>
+                          <span className="text-[10px] text-gray-400 mt-1 block">
+                            {lang === 'bn' ? item.timeBn : item.timeEn}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Bottom Footer Link */}
+                  <div className="px-5 py-2.5 bg-gray-50 border-t border-gray-100 text-center">
+                    <Link
+                      href="/dashboard/donor"
+                      onClick={() => setNotifDropdownOpen(false)}
+                      className="text-xs font-bold text-brand-red hover:underline inline-flex items-center space-x-1"
+                    >
+                      <span>{lang === 'bn' ? 'সকল বিজ্ঞপ্তি ড্যাশবোর্ডে দেখুন' : 'View all activity in Donor Dashboard'}</span>
+                      <ExternalLink className="w-3 h-3 ml-0.5" />
+                    </Link>
+                  </div>
+
+                </div>
+              )}
             </div>
 
             {/* User Profile Pill / Dropdown */}
-            <div className="relative">
+            <div className="relative" ref={userRef}>
               <button
-                onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-                className="flex items-center space-x-2 pl-1 pr-3 py-1 rounded-full border border-gray-200 hover:border-brand-red bg-white hover:bg-gray-50 transition-all"
+                onClick={() => {
+                  setUserDropdownOpen(!userDropdownOpen);
+                  setNotifDropdownOpen(false);
+                }}
+                className={`flex items-center space-x-2 pl-1 pr-3 py-1 rounded-full border transition-all ${
+                  userDropdownOpen 
+                    ? 'border-brand-red bg-brand-light/30 ring-2 ring-brand-red/20' 
+                    : 'border-gray-200 hover:border-brand-red bg-white hover:bg-gray-50'
+                }`}
               >
                 <div className="relative w-8 h-8 rounded-full overflow-hidden bg-brand-light border border-brand-red/30 flex items-center justify-center">
                   <Image
@@ -137,11 +348,13 @@ export const Navbar: React.FC = () => {
               </button>
 
               {userDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                <div className="absolute right-0 mt-3 w-56 bg-white rounded-3xl shadow-xl border border-gray-100 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
                   <div className="px-4 py-2 border-b border-gray-100">
-                    <p className="text-xs text-gray-500">Signed in as</p>
+                    <p className="text-xs text-gray-500">{lang === 'bn' ? 'লগইন আছেন' : 'Signed in as'}</p>
                     <p className="text-xs font-bold text-gray-900">ahmed.rahman@lalbindu.bd</p>
-                    <p className="text-[10px] text-brand-green font-semibold">Verified Donor ID: LB-0004278</p>
+                    <p className="text-[10px] text-brand-green font-semibold">
+                      {lang === 'bn' ? 'যাচাইকৃত দাতা আইডি: LB-0004278' : 'Verified Donor ID: LB-0004278'}
+                    </p>
                   </div>
 
                   <Link
@@ -236,7 +449,7 @@ export const Navbar: React.FC = () => {
               href="/auth/login"
               className="px-3 py-1.5 text-xs font-bold text-brand-red border border-brand-red rounded-full"
             >
-              Sign In
+              {lang === 'bn' ? 'লগইন' : 'Sign In'}
             </Link>
           </div>
         </div>
