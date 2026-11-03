@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLanguage } from '@/components/LanguageContext';
 import { 
   SAMPLE_BLOOD_REQUESTS, 
@@ -18,7 +18,8 @@ import {
   Droplet,
   Send,
   Building2,
-  Heart
+  Heart,
+  Trash2
 } from 'lucide-react';
 
 export default function BloodRequestsPage() {
@@ -28,6 +29,23 @@ export default function BloodRequestsPage() {
   const [newRequestModalOpen, setNewRequestModalOpen] = useState(false);
   const [donateModalRequest, setDonateModalRequest] = useState<BloodRequestItem | null>(null);
   const [formSubmitted, setFormSubmitted] = useState(false);
+
+  // Load custom persisted requests from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('lalbindu_custom_blood_requests');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const customIds = new Set(parsed.map((p: any) => p.id));
+          const base = SAMPLE_BLOOD_REQUESTS.filter(r => !customIds.has(r.id));
+          setRequests([...parsed, ...base]);
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load blood requests from localStorage', e);
+    }
+  }, []);
 
   // New Request Form State
   const [formData, setFormData] = useState({
@@ -58,7 +76,7 @@ export default function BloodRequestsPage() {
   const handleCreateRequest = (e: React.FormEvent) => {
     e.preventDefault();
     const newReq: BloodRequestItem = {
-      id: `req-${Date.now()}`,
+      id: `req-custom-${Date.now()}`,
       request_code: `REQ-2026-${Math.floor(1000 + Math.random() * 9000)}`,
       patient_name_initials: formData.patientInitials,
       blood_group: formData.bloodGroup as any,
@@ -78,12 +96,48 @@ export default function BloodRequestsPage() {
       created_at: new Date().toISOString()
     };
 
-    setRequests([newReq, ...requests]);
+    // Persist to localStorage so it never disappears on refresh/HMR
+    try {
+      const existing = JSON.parse(localStorage.getItem('lalbindu_custom_blood_requests') || '[]');
+      const updated = [newReq, ...existing.filter((r: any) => r.id !== newReq.id)];
+      localStorage.setItem('lalbindu_custom_blood_requests', JSON.stringify(updated));
+      setRequests(prev => [newReq, ...prev.filter(r => r.id !== newReq.id)]);
+    } catch (err) {
+      setRequests(prev => [newReq, ...prev]);
+    }
+
+    setFilterUrgency('All'); // Reset filter to 'All' so newly added request is immediately visible!
     setFormSubmitted(true);
     setTimeout(() => {
       setFormSubmitted(false);
       setNewRequestModalOpen(false);
+      setFormData({
+        patientInitials: '',
+        bloodGroup: 'O+',
+        component: 'Whole Blood',
+        unitsNeeded: 1,
+        hospitalName: '',
+        districtName: 'Dhaka',
+        hospitalAddress: '',
+        requesterPhone: '',
+        urgency: 'urgent',
+        description: ''
+      });
     }, 1500);
+  };
+
+  const handleDeleteRequest = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (confirm(lang === 'bn' ? 'আপনি কি এই রক্তের আবেদনটি মুছে ফেলতে চান?' : 'Delete this blood request?')) {
+      try {
+        const existing = JSON.parse(localStorage.getItem('lalbindu_custom_blood_requests') || '[]');
+        const updated = existing.filter((r: any) => r.id !== id);
+        localStorage.setItem('lalbindu_custom_blood_requests', JSON.stringify(updated));
+        setRequests(prev => prev.filter(r => r.id !== id));
+      } catch (err) {
+        setRequests(prev => prev.filter(r => r.id !== id));
+      }
+    }
   };
 
   return (
@@ -140,6 +194,24 @@ export default function BloodRequestsPage() {
             >
               {/* Header with Urgency & Blood Group */}
               <div>
+                {/* User Posted Indicator */}
+                {req.id.startsWith('req-custom-') && (
+                  <div className="flex items-center justify-between mb-2.5 pb-2 border-b border-gray-100">
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-brand-green text-[10px] font-black flex items-center">
+                      <CheckCircle2 className="w-3 h-3 mr-1" />
+                      {lang === 'bn' ? 'আপনার পোস্টকৃত আবেদন' : 'Your Posted Request'}
+                    </span>
+                    <button
+                      onClick={(e) => handleDeleteRequest(req.id, e)}
+                      className="text-gray-400 hover:text-brand-red transition-colors p-1 rounded-lg hover:bg-red-50 flex items-center space-x-1 text-[10px]"
+                      title={lang === 'bn' ? 'আবেদন মুছুন' : 'Delete Request'}
+                    >
+                      <Trash2 className="w-3 h-3 text-red-500" />
+                      <span className="text-red-500 font-bold">{lang === 'bn' ? 'মুছুন' : 'Delete'}</span>
+                    </button>
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between mb-3">
                   <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wide ${
                     req.urgency === 'critical_emergency'
