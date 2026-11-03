@@ -300,8 +300,20 @@ export const RoleBadgeEmblem: React.FC<{ roleId: string; badgeIcon?: string; pri
   primaryColor = '#580F1A',
   className = 'w-9 h-9'
 }) => {
-  // Super Admin: Gold Rosette Award Star with ribbon
-  if (roleId === 'super_admin' || badgeIcon === 'gold_star') {
+  // If a specific badgeIcon is explicitly requested, prioritize it over role defaults!
+  const effectiveIcon = badgeIcon || (
+    roleId === 'super_admin' ? 'gold_star' :
+    roleId === 'division_admin' ? 'blue_star' :
+    roleId === 'district_admin' ? 'fort' :
+    roleId === 'upazila_admin' ? 'arch' :
+    roleId === 'thana_admin' ? 'building' :
+    roleId === 'union_admin' ? 'purple_star' :
+    roleId === 'volunteer' ? 'user' :
+    'community'
+  );
+
+  // 1. Gold Rosette Award Star with ribbons
+  if (effectiveIcon === 'gold_star') {
     return (
       <div className={`${className} rounded-full bg-gradient-to-tr from-amber-400 via-amber-300 to-yellow-100 flex items-center justify-center shadow-md border-2 border-amber-200 relative`}>
         <svg viewBox="0 0 24 24" className="w-5 h-5 fill-amber-700 text-amber-900 drop-shadow-sm">
@@ -316,8 +328,8 @@ export const RoleBadgeEmblem: React.FC<{ roleId: string; badgeIcon?: string; pri
     );
   }
 
-  // Division Admin: Royal Blue Star Badge
-  if (roleId === 'division_admin' || badgeIcon === 'blue_star') {
+  // 2. Royal Blue Star Badge
+  if (effectiveIcon === 'blue_star' || effectiveIcon === 'star') {
     return (
       <div className={`${className} rounded-full bg-gradient-to-tr from-blue-600 via-blue-500 to-sky-300 flex items-center justify-center shadow-md border-2 border-blue-200 relative`}>
         <svg viewBox="0 0 24 24" className="w-5 h-5 fill-white text-blue-900 drop-shadow-sm">
@@ -331,8 +343,8 @@ export const RoleBadgeEmblem: React.FC<{ roleId: string; badgeIcon?: string; pri
     );
   }
 
-  // District Admin: Emerald Fort / Heritage Crest
-  if (roleId === 'district_admin' || badgeIcon === 'fort') {
+  // 3. District Admin: Emerald Fort / Heritage Crest
+  if (effectiveIcon === 'fort') {
     return (
       <div className={`${className} rounded-full bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center shadow-md border-2 border-emerald-200`}>
         <svg viewBox="0 0 24 24" className="w-5 h-5 fill-white text-emerald-900">
@@ -342,8 +354,8 @@ export const RoleBadgeEmblem: React.FC<{ roleId: string; badgeIcon?: string; pri
     );
   }
 
-  // Upazila Admin: Terracotta Heritage Dome / Arch Crest
-  if (roleId === 'upazila_admin' || badgeIcon === 'arch') {
+  // 4. Terracotta Heritage Dome / Arch Crest
+  if (effectiveIcon === 'arch' || effectiveIcon === 'mosque') {
     return (
       <div className={`${className} rounded-full bg-gradient-to-tr from-orange-600 to-amber-400 flex items-center justify-center shadow-md border-2 border-orange-200`}>
         <svg viewBox="0 0 24 24" className="w-5 h-5 fill-white text-orange-950">
@@ -353,8 +365,8 @@ export const RoleBadgeEmblem: React.FC<{ roleId: string; badgeIcon?: string; pri
     );
   }
 
-  // Metropolitan Thana Admin: Teal Civic Tower Crest
-  if (roleId === 'thana_admin' || badgeIcon === 'building') {
+  // 5. Metropolitan Thana Admin: Teal Civic Tower Crest
+  if (effectiveIcon === 'building') {
     return (
       <div className={`${className} rounded-full bg-gradient-to-tr from-teal-600 to-cyan-400 flex items-center justify-center shadow-md border-2 border-teal-200`}>
         <svg viewBox="0 0 24 24" className="w-5 h-5 fill-white text-teal-950">
@@ -364,8 +376,8 @@ export const RoleBadgeEmblem: React.FC<{ roleId: string; badgeIcon?: string; pri
     );
   }
 
-  // Union Admin: Purple Star Crest
-  if (roleId === 'union_admin' || badgeIcon === 'purple_star') {
+  // 6. Union Admin: Purple Star Crest
+  if (effectiveIcon === 'purple_star') {
     return (
       <div className={`${className} rounded-full bg-gradient-to-tr from-purple-700 via-purple-600 to-fuchsia-400 flex items-center justify-center shadow-md border-2 border-purple-200`}>
         <svg viewBox="0 0 24 24" className="w-5 h-5 fill-white text-purple-950">
@@ -375,8 +387,8 @@ export const RoleBadgeEmblem: React.FC<{ roleId: string; badgeIcon?: string; pri
     );
   }
 
-  // Volunteer: Green Volunteer Shield / Silhouette
-  if (roleId === 'volunteer') {
+  // 7. Volunteer: Green Volunteer Shield / Silhouette
+  if (effectiveIcon === 'user' || effectiveIcon === 'shield') {
     return (
       <div className={`${className} rounded-full bg-gradient-to-tr from-emerald-800 to-emerald-600 flex items-center justify-center shadow-md border-2 border-emerald-300`}>
         <svg viewBox="0 0 24 24" className="w-5 h-5 fill-white">
@@ -386,7 +398,7 @@ export const RoleBadgeEmblem: React.FC<{ roleId: string; badgeIcon?: string; pri
     );
   }
 
-  // Donor / Default: Green Community / Droplet Badge
+  // 8. Donor / Default: Green Community / Droplet Badge
   return (
     <div className={`${className} rounded-full bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center shadow-md border-2 border-emerald-200`}>
       <svg viewBox="0 0 24 24" className="w-5 h-5 fill-white">

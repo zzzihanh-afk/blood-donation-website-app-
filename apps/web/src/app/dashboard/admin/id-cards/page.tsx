@@ -377,6 +377,22 @@ export default function IdCardTemplateDesignerPage() {
   const currentProfile = REFERENCE_SAMPLE_PROFILES.find((p: any) => p.id === selectedProfileId) || REFERENCE_SAMPLE_PROFILES[0];
 
   // Keep profile synchronized with selected role
+  const handleSelectRole = (rId: string) => {
+    setSelectedRoleId(rId);
+    const matched = REFERENCE_SAMPLE_PROFILES.find((p: any) => p.role_id === rId);
+    if (matched) {
+      setSelectedProfileId(matched.id);
+    }
+  };
+
+  const handleSelectProfile = (pId: string) => {
+    setSelectedProfileId(pId);
+    const prof = REFERENCE_SAMPLE_PROFILES.find((p: any) => p.id === pId);
+    if (prof && templates[prof.role_id]) {
+      setSelectedRoleId(prof.role_id);
+    }
+  };
+
   useEffect(() => {
     const matchedProfile = REFERENCE_SAMPLE_PROFILES.find((p: any) => p.role_id === selectedRoleId);
     if (matchedProfile) {
@@ -552,7 +568,7 @@ export default function IdCardTemplateDesignerPage() {
             return (
               <button
                 key={tpl.roleId}
-                onClick={() => setSelectedRoleId(tpl.roleId)}
+                onClick={() => handleSelectRole(tpl.roleId)}
                 className={`px-3.5 py-2 rounded-xl text-xs font-bold shrink-0 transition-all flex items-center space-x-2 ${
                   isSelected
                     ? 'bg-brand-red text-white shadow-md'
@@ -799,7 +815,7 @@ export default function IdCardTemplateDesignerPage() {
                 </span>
                 <select
                   value={selectedProfileId}
-                  onChange={(e) => setSelectedProfileId(e.target.value)}
+                  onChange={(e) => handleSelectProfile(e.target.value)}
                   className="text-xs p-1.5 rounded-xl border border-gray-200 bg-gray-50 font-semibold focus:outline-none"
                 >
                   {REFERENCE_SAMPLE_PROFILES.map((prof: any) => (

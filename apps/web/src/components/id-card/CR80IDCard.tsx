@@ -97,6 +97,10 @@ export const CR80IDCard: React.FC<CR80IDCardProps> = ({
     setActiveLayout(layoutMode);
   }, [layoutMode]);
 
+  useEffect(() => {
+    setCurrentSide(initialSide);
+  }, [initialSide]);
+
   const targetVerifyUrl = verificationUrl || (typeof window !== 'undefined' 
     ? `${window.location.origin}/verify/${verificationToken}`
     : `https://lalbindu.bd/verify/${verificationToken}`);
@@ -294,7 +298,7 @@ export const CR80IDCard: React.FC<CR80IDCardProps> = ({
               {fullName}
             </h3>
             <p 
-              style={{ color: roleId === 'donor' ? '#006A4E' : primaryColor }}
+              style={{ color: primaryColor }}
               className="text-xs font-black mt-0.5 leading-snug truncate"
             >
               {designation}
