@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '@/components/LanguageContext';
 import { CR80IDCard } from '@/components/id-card/CR80IDCard';
@@ -23,8 +23,104 @@ import {
   UserCheck, 
   AlertTriangle,
   Award,
-  ChevronRight
+  ChevronRight,
+  UserPlus,
+  Plus,
+  X,
+  Phone,
+  Mail,
+  FileText,
+  Lock,
+  Edit,
+  Sparkles,
+  CheckCircle,
+  Download,
+  Share2,
+  Trash2
 } from 'lucide-react';
+
+export interface SubordinateAppointment {
+  id: string;
+  name: string;
+  nameBn?: string;
+  roleId: string;
+  role: string;
+  roleBn: string;
+  jurisdiction: string;
+  jurisdictionBn: string;
+  division: string;
+  district?: string;
+  phone?: string;
+  email?: string;
+  cardId: string;
+  color: string;
+  status: 'Active' | 'Suspended' | 'Revoked';
+  appointedDate: string;
+  validUntil: string;
+  avatarUrl: string;
+}
+
+const INITIAL_SUBORDINATE_APPOINTMENTS: SubordinateAppointment[] = [
+  {
+    id: 'adm-01',
+    name: 'Kazi Mahbubur Rahman',
+    nameBn: 'কাজী মাহবুবুর রহমান',
+    roleId: 'district_admin',
+    role: 'District Administrator',
+    roleBn: 'জেলা প্রশাসক ও সমন্বয়ক',
+    jurisdiction: 'Dhaka District',
+    jurisdictionBn: 'ঢাকা জেলা',
+    division: 'Dhaka',
+    district: 'Dhaka',
+    cardId: 'LB-CARD-ADM-DHAKA-01',
+    color: '#006A4E',
+    status: 'Active',
+    appointedDate: '01 Jan 2025',
+    validUntil: '31 Dec 2026',
+    avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80',
+    phone: '+880 1711-234567',
+    email: 'mahbubur.dhaka@lalbindu.bd'
+  },
+  {
+    id: 'adm-02',
+    name: 'Dr. Shah Alam',
+    nameBn: 'ড. শাহ আলম',
+    roleId: 'division_admin',
+    role: 'Division Administrator',
+    roleBn: 'বিভাগীয় প্রশাসক',
+    jurisdiction: 'Chattogram Division',
+    jurisdictionBn: 'চট্টগ্রাম বিভাগ',
+    division: 'Chattogram',
+    cardId: 'LB-CARD-ADM-CTG-01',
+    color: '#0D3B66',
+    status: 'Active',
+    appointedDate: '15 Feb 2025',
+    validUntil: '31 Dec 2026',
+    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+    phone: '+880 1819-876543',
+    email: 'shah.alam.ctg@lalbindu.bd'
+  },
+  {
+    id: 'adm-03',
+    name: 'Tahmina Begum',
+    nameBn: 'তাহমিনা বেগম',
+    roleId: 'thana_admin',
+    role: 'Thana Administrator',
+    roleBn: 'মেট্রোপলিটন থানা প্রশাসক',
+    jurisdiction: 'Mirpur Metropolitan Thana',
+    jurisdictionBn: 'মিরপুর মেট্রোপলিটন থানা',
+    division: 'Dhaka',
+    district: 'Dhaka',
+    cardId: 'LB-CARD-ADM-MIRPUR-02',
+    color: '#008080',
+    status: 'Active',
+    appointedDate: '01 Mar 2025',
+    validUntil: '31 Dec 2026',
+    avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80',
+    phone: '+880 1912-349876',
+    email: 'tahmina.mirpur@lalbindu.bd'
+  }
+];
 
 export default function AdminDashboardPage() {
   const { t, lang } = useLanguage();
@@ -32,6 +128,41 @@ export default function AdminDashboardPage() {
   const [selectedDivision, setSelectedDivision] = useState('div-dha');
   const [selectedDistrict, setSelectedDistrict] = useState('dist-dhaka');
   const [activeTab, setActiveTab] = useState<'overview' | 'verifications' | 'admins' | 'id-cards'>('overview');
+
+  // Subordinate appointments state with localStorage persistence
+  const [appointments, setAppointments] = useState<SubordinateAppointment[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('lalbindu_subordinate_appointments');
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }
+    return INITIAL_SUBORDINATE_APPOINTMENTS;
+  });
+
+  // Modal & Toast States
+  const [isAppointModalOpen, setIsAppointModalOpen] = useState(false);
+  const [viewCardModalData, setViewCardModalData] = useState<SubordinateAppointment | null>(null);
+  const [manageAccessModalData, setManageAccessModalData] = useState<SubordinateAppointment | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // New Appointment Form State
+  const [newAppointForm, setNewAppointForm] = useState({
+    name: '',
+    nameBn: '',
+    roleId: 'district_admin',
+    division: 'Dhaka',
+    district: 'Dhaka',
+    specificArea: '',
+    phone: '',
+    email: '',
+    nid: '',
+    charterAgreed: true
+  });
 
   // Sample donation verification requests
   const [pendingVerifications, setPendingVerifications] = useState([
@@ -61,18 +192,137 @@ export default function AdminDashboardPage() {
 
   const handleApprove = (id: string) => {
     setPendingVerifications(pendingVerifications.filter(v => v.id !== id));
-    alert(lang === 'bn' ? 'রক্তদান যাচাই সফল! দাতার মোট সংখ্যা হালনাগাদ হয়েছে এবং ৩ মাসের বিশ্রাম পর্ব শুরু হয়েছে।' : 'Donation verified! Donor count updated and 3-calendar-month resting interval initiated.');
+    setToastMessage(lang === 'bn' 
+      ? 'রক্তদান যাচাই সফল! দাতার মোট সংখ্যা হালনাগাদ হয়েছে এবং ৩ মাসের বিশ্রাম পর্ব শুরু হয়েছে।' 
+      : 'Donation verified! Donor count updated and 3-calendar-month resting interval initiated.');
+    setTimeout(() => setToastMessage(null), 4000);
   };
 
   const handleReject = (id: string) => {
     setPendingVerifications(pendingVerifications.filter(v => v.id !== id));
-    alert(lang === 'bn' ? 'রেকর্ডটি বাতিল করা হয়েছে।' : 'Donation rejected with feedback.');
+    setToastMessage(lang === 'bn' 
+      ? 'রেকর্ডটি বাতিল করা হয়েছে।' 
+      : 'Donation record rejected with reviewer remarks.');
+    setTimeout(() => setToastMessage(null), 4000);
+  };
+
+  // Submit new appointment
+  const handleCreateAppointment = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newAppointForm.name.trim() || !newAppointForm.phone.trim()) {
+      alert(lang === 'bn' ? 'দয়া করে নাম এবং মোবাইল নম্বর প্রদান করুন।' : 'Please provide full name and phone number.');
+      return;
+    }
+
+    const roleMap: Record<string, { role: string; roleBn: string; color: string }> = {
+      division_admin: { role: 'Division Administrator', roleBn: 'বিভাগীয় প্রশাসক', color: '#0D3B66' },
+      district_admin: { role: 'District Administrator', roleBn: 'জেলা প্রশাসক ও সমন্বয়ক', color: '#006A4E' },
+      upazila_admin: { role: 'Upazila Administrator', roleBn: 'উপজেলা প্রশাসক', color: '#D84A1B' },
+      thana_admin: { role: 'Thana Administrator', roleBn: 'মেট্রোপলিটন থানা প্রশাসক', color: '#008080' },
+      union_admin: { role: 'Union Administrator', roleBn: 'ইউনিয়ন প্রশাসক', color: '#4A154B' }
+    };
+
+    const roleInfo = roleMap[newAppointForm.roleId] || roleMap['district_admin'];
+    const jurisdictionLabel = newAppointForm.specificArea 
+      ? `${newAppointForm.specificArea}, ${newAppointForm.district || newAppointForm.division}`
+      : `${newAppointForm.district || newAppointForm.division} District`;
+    const jurisdictionLabelBn = newAppointForm.specificArea
+      ? `${newAppointForm.specificArea}, ${newAppointForm.district || newAppointForm.division}`
+      : `${newAppointForm.district || newAppointForm.division} জেলা`;
+
+    const randomSuffix = Math.floor(100 + Math.random() * 900);
+    const cardId = `LB-CARD-ADM-${(newAppointForm.district || newAppointForm.division).substring(0, 3).toUpperCase()}-${randomSuffix}`;
+
+    const newAppointment: SubordinateAppointment = {
+      id: `adm-${Date.now()}`,
+      name: newAppointForm.name.trim(),
+      nameBn: newAppointForm.nameBn.trim() || newAppointForm.name.trim(),
+      roleId: newAppointForm.roleId,
+      role: roleInfo.role,
+      roleBn: roleInfo.roleBn,
+      jurisdiction: jurisdictionLabel,
+      jurisdictionBn: jurisdictionLabelBn,
+      division: newAppointForm.division,
+      district: newAppointForm.district,
+      phone: newAppointForm.phone.trim(),
+      email: newAppointForm.email.trim() || `${newAppointForm.name.toLowerCase().replace(/\s+/g, '.')}${randomSuffix}@lalbindu.bd`,
+      cardId,
+      color: roleInfo.color,
+      status: 'Active',
+      appointedDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+      validUntil: '31 Dec 2026',
+      avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=300&q=80'
+    };
+
+    const updated = [newAppointment, ...appointments];
+    setAppointments(updated);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('lalbindu_subordinate_appointments', JSON.stringify(updated));
+    }
+
+    setIsAppointModalOpen(false);
+    setToastMessage(lang === 'bn' 
+      ? `"${newAppointment.name}" এর জন্য নতুন ${newAppointment.roleBn} পদে নিয়োগ ও আইডি কার্ড (${newAppointment.cardId}) সফলভাবে ইস্যু করা হয়েছে!`
+      : `New appointment successfully issued for "${newAppointment.name}" (${newAppointment.role}) with Card ID ${newAppointment.cardId}!`);
+    setTimeout(() => setToastMessage(null), 5000);
+
+    // Reset Form
+    setNewAppointForm({
+      name: '',
+      nameBn: '',
+      roleId: 'district_admin',
+      division: 'Dhaka',
+      district: 'Dhaka',
+      specificArea: '',
+      phone: '',
+      email: '',
+      nid: '',
+      charterAgreed: true
+    });
+  };
+
+  // Update Access status (Active / Suspended / Revoked)
+  const handleUpdateAccessStatus = (status: 'Active' | 'Suspended' | 'Revoked') => {
+    if (!manageAccessModalData) return;
+    const updated = appointments.map(adm => 
+      adm.id === manageAccessModalData.id ? { ...adm, status } : adm
+    );
+    setAppointments(updated);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('lalbindu_subordinate_appointments', JSON.stringify(updated));
+    }
+    setManageAccessModalData({ ...manageAccessModalData, status });
+    setToastMessage(lang === 'bn' 
+      ? `প্রশাসক "${manageAccessModalData.name}" এর স্ট্যাটাস "${status === 'Active' ? 'সক্রিয়' : status === 'Suspended' ? 'স্থগিত' : 'প্রত্যাহারকৃত'}" এ পরিবর্তন করা হয়েছে।`
+      : `Access status for "${manageAccessModalData.name}" updated to "${status}".`);
+    setTimeout(() => setToastMessage(null), 4000);
+  };
+
+  // Delete / Revoke Appointment completely
+  const handleDeleteAppointment = (id: string) => {
+    if (!confirm(lang === 'bn' ? 'আপনি কি নিশ্চিত যে এই নিয়োগটি পুরোপুরি প্রত্যাহার করতে চান?' : 'Are you sure you want to revoke this appointment permanently?')) return;
+    const updated = appointments.filter(a => a.id !== id);
+    setAppointments(updated);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('lalbindu_subordinate_appointments', JSON.stringify(updated));
+    }
+    setManageAccessModalData(null);
+    setToastMessage(lang === 'bn' ? 'নিয়োগ সফলভাবে বাতিল ও কার্ড প্রত্যাহার করা হয়েছে।' : 'Appointment revoked and card record deleted.');
+    setTimeout(() => setToastMessage(null), 3000);
   };
 
   return (
     <div className="bg-[#FFF8F8] min-h-screen py-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
         
+        {/* Global Action Toast Notification */}
+        {toastMessage && (
+          <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-brand-green font-bold text-xs flex items-center space-x-2 animate-in fade-in duration-200 shadow-sm">
+            <CheckCircle className="w-4 h-4 text-brand-green shrink-0" />
+            <span>{toastMessage}</span>
+          </div>
+        )}
+
         {/* Header with Jurisdiction Selector */}
         <div className="bg-white rounded-3xl p-6 sm:p-8 card-shadow border border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
@@ -120,24 +370,41 @@ export default function AdminDashboardPage() {
                 </select>
               </div>
             )}
+
+            {(selectedJurisdiction === 'district' || selectedJurisdiction === 'upazila') && (
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">{lang === 'bn' ? 'জেলা' : 'District'}</label>
+                <select
+                  value={selectedDistrict}
+                  onChange={(e) => setSelectedDistrict(e.target.value)}
+                  className="text-xs font-bold px-3 py-2 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white"
+                >
+                  {BANGLADESH_KEY_DISTRICTS.map(d => (
+                    <option key={d.id} value={d.id}>
+                      {lang === 'bn' ? d.name_bn : d.name_en}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="flex items-center space-x-2 border-b border-gray-200 pb-2 overflow-x-auto">
+        {/* Navigation Tabs */}
+        <div className="flex border-b border-gray-200 space-x-8 overflow-x-auto">
           {[
             { id: 'overview', label: t.adminDashboard.tabOverview },
             { id: 'verifications', label: `${t.adminDashboard.tabVerifications} (${pendingVerifications.length})` },
             { id: 'admins', label: t.adminDashboard.tabAdmins },
-            { id: 'id-cards', label: t.adminDashboard.tabIdCards },
+            { id: 'id-cards', label: lang === 'bn' ? 'প্রশাসনিক আইডি কার্ড টেমপ্লেট' : 'Administrative ID Card Templates' }
           ].map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`px-4 py-2 rounded-full text-xs font-bold transition-all shrink-0 ${
+              className={`pb-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all border-b-2 ${
                 activeTab === tab.id
-                  ? 'bg-brand-burgundy text-white shadow-sm'
-                  : 'text-gray-600 hover:text-brand-burgundy hover:bg-gray-100'
+                  ? 'border-brand-burgundy text-brand-burgundy font-black'
+                  : 'border-transparent text-gray-500 hover:text-gray-900'
               }`}
             >
               {tab.label}
@@ -149,160 +416,153 @@ export default function AdminDashboardPage() {
             TAB 1: JURISDICTION OVERVIEW
            ========================================================================= */}
         {activeTab === 'overview' && (
-          <div className="space-y-6">
-            
-            {/* Stat Cards Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
-              <div className="bg-white p-5 rounded-3xl card-shadow border border-gray-100">
-                <span className="text-[10px] font-bold text-gray-500 uppercase">{t.adminDashboard.registeredDonors}</span>
-                <p className="text-2xl font-black text-gray-900 mt-1">
-                  {selectedJurisdiction === 'national' 
-                    ? (lang === 'bn' ? '১২,৪৫,৩২০' : '1,245,320')
-                    : (lang === 'bn' ? '৩,১২,৪০০' : '312,400')}
-                </p>
-                <p className="text-[11px] text-brand-green font-bold mt-1">
-                  {lang === 'bn' ? '+১,২৪০ জন এই সপ্তাহে' : '+1,240 this week'}
-                </p>
-              </div>
-
-              <div className="bg-white p-5 rounded-3xl card-shadow border border-gray-100">
-                <span className="text-[10px] font-bold text-gray-500 uppercase">{t.adminDashboard.availableDonors}</span>
-                <p className="text-2xl font-black text-brand-green mt-1">
-                  {selectedJurisdiction === 'national' 
-                    ? (lang === 'bn' ? '৭,৪৫,১৮০' : '745,180')
-                    : (lang === 'bn' ? '১,৮২,৩০০' : '182,300')}
-                </p>
-                <p className="text-[11px] text-gray-500 mt-1">
-                  {lang === 'bn' ? 'সম্মতিপ্রাপ্ত ও সক্রিয়' : 'Consented & Ready'}
-                </p>
-              </div>
-
-              <div className="bg-white p-5 rounded-3xl card-shadow border border-gray-100">
-                <span className="text-[10px] font-bold text-gray-500 uppercase">{t.adminDashboard.restingCooldown}</span>
-                <p className="text-2xl font-black text-brand-red mt-1">
-                  {selectedJurisdiction === 'national' 
-                    ? (lang === 'bn' ? '৯৮,৪৫০' : '98,450')
-                    : (lang === 'bn' ? '২৪,৬০০' : '24,600')}
-                </p>
-                <p className="text-[11px] text-gray-500 mt-1">
-                  {lang === 'bn' ? '৩ মাসের বিরতিকাল' : '3-Month Waiting Window'}
-                </p>
-              </div>
-
-              <div className="bg-white p-5 rounded-3xl card-shadow border border-gray-100">
-                <span className="text-[10px] font-bold text-gray-500 uppercase">{t.adminDashboard.activeEmergencies}</span>
-                <p className="text-2xl font-black text-amber-600 mt-1">
-                  {selectedJurisdiction === 'national' 
-                    ? (lang === 'bn' ? '৪২টি কেস' : '42 Cases')
-                    : (lang === 'bn' ? '৮টি কেস' : '8 Cases')}
-                </p>
-                <p className="text-[11px] text-gray-500 mt-1">
-                  {lang === 'bn' ? 'অংশীদার হাসপাতালে' : 'Across partner hospitals'}
-                </p>
-              </div>
+          <div className="space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              {[
+                { label: t.adminDashboard.registeredDonors, value: '1,420', change: '+12% this week', icon: Users, color: 'text-brand-green' },
+                { label: t.adminDashboard.casesPending, value: pendingVerifications.length.toString(), change: 'Requires Hospital Signoff', icon: Clock, color: 'text-brand-orange' },
+                { label: t.adminDashboard.activeEmergencies, value: '412', change: 'Across 64 Districts', icon: Droplet, color: 'text-brand-red' },
+                { label: lang === 'bn' ? 'নিবন্ধিত ব্লাড ব্যাংক' : 'Registered Blood Banks', value: '68', change: 'Verified Facilities', icon: Building2, color: 'text-brand-burgundy' }
+              ].map((stat, idx) => {
+                const Icon = stat.icon;
+                return (
+                  <div key={idx} className="bg-white rounded-3xl p-6 card-shadow border border-gray-100 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-gray-500 uppercase">{stat.label}</p>
+                      <h3 className="text-3xl font-black text-gray-900 mt-1">{stat.value}</h3>
+                      <p className="text-[10px] text-gray-500 font-medium mt-1">{stat.change}</p>
+                    </div>
+                    <div className={`p-4 rounded-2xl bg-gray-50 ${stat.color}`}>
+                      <Icon className="w-6 h-6" />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
-            {/* Subordinate Hierarchy Tree */}
-            <div className="bg-white rounded-3xl p-6 sm:p-8 card-shadow border border-gray-100">
-              <h2 className="text-lg font-black text-gray-900 mb-4">
-                {t.adminDashboard.hierarchyTitle}
-              </h2>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
-                <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                  <p className="font-bold text-gray-900">{t.adminDashboard.divisionalSec}</p>
-                  <p className="text-2xl font-black text-brand-burgundy mt-1">{lang === 'bn' ? '৮ বিভাগ' : '8 Divisions'}</p>
-                  <p className="text-[11px] text-gray-500">{lang === 'bn' ? 'সকল বিভাগ সক্রিয়' : 'All 8 active & staffed'}</p>
-                </div>
-
-                <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                  <p className="font-bold text-gray-900">{t.adminDashboard.districtUnits}</p>
-                  <p className="text-2xl font-black text-brand-green mt-1">{lang === 'bn' ? '৬৪ জেলা' : '64 Zillas'}</p>
-                  <p className="text-[11px] text-gray-500">{lang === 'bn' ? '১০০% দেশব্যাপী কভারেজ' : '100% Nationwide coverage'}</p>
-                </div>
-
-                <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                  <p className="font-bold text-gray-900">{t.adminDashboard.upazilaUnits}</p>
-                  <p className="text-2xl font-black text-amber-600 mt-1">{lang === 'bn' ? '৪৯৫ উপজেলা' : '495 Units'}</p>
-                  <p className="text-[11px] text-gray-500">{lang === 'bn' ? 'স্থানীয় জরুরি নেটওয়ার্ক' : 'Local emergency hubs'}</p>
-                </div>
-
-                <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                  <p className="font-bold text-gray-900">{t.adminDashboard.urbanCouncils}</p>
-                  <p className="text-2xl font-black text-blue-600 mt-1">{lang === 'bn' ? '৩৪২ নগর ইউনিট' : '342 Urban Councils'}</p>
-                  <p className="text-[11px] text-gray-500">{lang === 'bn' ? 'মহানগর ও পৌর এলাকা' : 'Metropolitan wards'}</p>
+            {/* Nationwide Regional Summary */}
+            <div className="bg-white rounded-3xl p-6 sm:p-8 card-shadow border border-gray-100 space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-black text-gray-900">
+                    {lang === 'bn' ? 'বাংলাদেশ ৮ বিভাগীয় রক্তদান ও প্রশাসনিক অবস্থা' : 'Bangladesh 8 Divisions Operational Status'}
+                  </h3>
+                  <p className="text-xs text-gray-500">
+                    {lang === 'bn' ? 'সকল বিভাগ এবং ৬৪ জেলায় সমন্বয়ক নিয়োগ এবং রক্তের চাহিদা কভারেজ' : 'Coordinator appointments and blood demand coverage across divisions.'}
+                  </p>
                 </div>
               </div>
-            </div>
 
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {[
+                  { name: 'Dhaka (ঢাকা)', donors: 540, admins: 12, hospitals: 28, status: 'Optimal' },
+                  { name: 'Chattogram (চট্টগ্রাম)', donors: 310, admins: 8, hospitals: 14, status: 'Optimal' },
+                  { name: 'Rajshahi (রাজশাহী)', donors: 185, admins: 6, hospitals: 8, status: 'Active' },
+                  { name: 'Khulna (খুলনা)', donors: 140, admins: 5, hospitals: 7, status: 'Active' },
+                  { name: 'Barishal (বরিশাল)', donors: 90, admins: 4, hospitals: 4, status: 'Review Needed' },
+                  { name: 'Sylhet (সিলেট)', donors: 110, admins: 4, hospitals: 5, status: 'Active' },
+                  { name: 'Rangpur (রংপুর)', donors: 95, admins: 3, hospitals: 4, status: 'Active' },
+                  { name: 'Mymensingh (ময়মনসিংহ)', donors: 80, admins: 3, hospitals: 3, status: 'Active' }
+                ].map((div, i) => (
+                  <div key={i} className="p-4 rounded-2xl border border-gray-100 bg-[#FCFDFE] hover:border-brand-red/30 transition-all">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-xs font-black text-gray-900">{div.name}</h4>
+                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                        div.status === 'Optimal' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+                      }`}>
+                        {div.status}
+                      </span>
+                    </div>
+                    <div className="space-y-1 text-[11px] text-gray-600">
+                      <div className="flex justify-between">
+                        <span>Active Donors:</span>
+                        <span className="font-bold text-gray-900">{div.donors}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Coordinators:</span>
+                        <span className="font-bold text-gray-900">{div.admins}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Verified Hospitals:</span>
+                        <span className="font-bold text-gray-900">{div.hospitals}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         )}
 
         {/* =========================================================================
-            TAB 2: DONATION VERIFICATIONS QUEUE
+            TAB 2: DONATION VERIFICATION QUEUE
            ========================================================================= */}
         {activeTab === 'verifications' && (
-          <div className="bg-white rounded-3xl p-6 sm:p-8 card-shadow border border-gray-100">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="text-lg font-black text-gray-900">{t.adminDashboard.verificationQueueTitle}</h2>
-                <p className="text-xs text-gray-500">
-                  {t.adminDashboard.verificationQueueSub}
-                </p>
-              </div>
-              <span className="px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-bold">
-                {pendingVerifications.length} {t.adminDashboard.casesPending}
-              </span>
+          <div className="bg-white rounded-3xl p-6 sm:p-8 card-shadow border border-gray-100 space-y-6">
+            <div>
+              <h2 className="text-lg font-black text-gray-900">{t.adminDashboard.tabVerifications}</h2>
+              <p className="text-xs text-gray-500">
+                {lang === 'bn' 
+                  ? 'হাসপাতাল বা ভেরিফিকেশন অফিসারের স্বাক্ষরযুক্ত রক্তদানের প্রমাণাদি যাচাই করুন।' 
+                  : 'Verify hospital-authorized blood donation proof logs to unlock milestones and donor availability cooldowns.'}
+              </p>
             </div>
 
-            {pendingVerifications.length > 0 ? (
+            {pendingVerifications.length === 0 ? (
+              <div className="text-center py-12 text-gray-500">
+                <CheckCircle2 className="w-12 h-12 text-brand-green mx-auto mb-2 opacity-50" />
+                <p className="font-bold text-sm">
+                  {lang === 'bn' ? 'সব রক্তদান যাচাই সম্পন্ন হয়েছে!' : 'All pending verifications processed!'}
+                </p>
+              </div>
+            ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-gray-50 text-gray-500 uppercase tracking-wider font-bold border-b border-gray-100">
+                  <thead className="bg-gray-50 text-gray-500 uppercase tracking-wider font-bold">
                     <tr>
-                      <th className="py-3 px-4">{t.adminDashboard.colDonor}</th>
-                      <th className="py-3 px-4">{t.adminDashboard.colBloodGroup}</th>
-                      <th className="py-3 px-4">{t.adminDashboard.colHospital}</th>
-                      <th className="py-3 px-4">{t.adminDashboard.colDate}</th>
-                      <th className="py-3 px-4">{t.adminDashboard.colBag}</th>
-                      <th className="py-3 px-4 text-right">{t.adminDashboard.colActions}</th>
+                      <th className="p-3">{t.adminDashboard.colDonor}</th>
+                      <th className="p-3">{t.adminDashboard.colBloodGroup}</th>
+                      <th className="p-3">{t.adminDashboard.colHospital}</th>
+                      <th className="p-3">{t.adminDashboard.colDate}</th>
+                      <th className="p-3">{t.adminDashboard.colBag}</th>
+                      <th className="p-3 text-right">{t.adminDashboard.colActions}</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100 text-gray-700">
+                  <tbody className="divide-y divide-gray-100">
                     {pendingVerifications.map((item) => (
                       <tr key={item.id} className="hover:bg-gray-50/50">
-                        <td className="py-3 px-4">
+                        <td className="p-3">
                           <p className="font-bold text-gray-900">{item.donorName}</p>
-                          <p className="text-[11px] font-mono text-brand-red">{item.donorId}</p>
+                          <p className="text-[10px] text-gray-500 font-mono">{item.donorId}</p>
                         </td>
-                        <td className="py-3 px-4 font-black text-brand-red">{item.bloodGroup}</td>
-                        <td className="py-3 px-4">{item.hospitalName}</td>
-                        <td className="py-3 px-4 font-semibold">{item.donationDate}</td>
-                        <td className="py-3 px-4 font-mono text-gray-500">{item.bagNumber}</td>
-                        <td className="py-3 px-4 text-right space-x-2">
+                        <td className="p-3">
+                          <span className="font-bold px-2 py-0.5 rounded bg-brand-light text-brand-red">
+                            {item.bloodGroup}
+                          </span>
+                        </td>
+                        <td className="p-3 font-medium text-gray-700">{item.hospitalName}</td>
+                        <td className="p-3 text-gray-600">{item.donationDate}</td>
+                        <td className="p-3 font-mono text-gray-500">{item.bagNumber}</td>
+                        <td className="p-3 text-right space-x-2">
                           <button
                             onClick={() => handleApprove(item.id)}
-                            className="px-3 py-1.5 bg-brand-green hover:bg-emerald-700 text-white font-bold rounded-lg text-xs"
+                            className="px-3 py-1.5 bg-brand-green text-white font-bold rounded-lg hover:bg-emerald-700 transition-all inline-flex items-center space-x-1"
                           >
-                            {t.adminDashboard.approveBtn}
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>{t.adminDashboard.approveBtn}</span>
                           </button>
                           <button
                             onClick={() => handleReject(item.id)}
-                            className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-lg text-xs"
+                            className="px-3 py-1.5 bg-gray-100 text-gray-700 font-bold rounded-lg hover:bg-gray-200 transition-all inline-flex items-center space-x-1"
                           >
-                            {t.adminDashboard.rejectBtn}
+                            <XCircle className="w-3.5 h-3.5" />
+                            <span>{t.adminDashboard.rejectBtn}</span>
                           </button>
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
-              </div>
-            ) : (
-              <div className="text-center py-12 text-gray-400">
-                <CheckCircle2 className="w-12 h-12 mx-auto text-brand-green mb-2" />
-                <p className="font-bold text-gray-700">{t.adminDashboard.allVerified}</p>
-                <p className="text-xs">{t.adminDashboard.noPending}</p>
               </div>
             )}
           </div>
@@ -313,7 +573,7 @@ export default function AdminDashboardPage() {
            ========================================================================= */}
         {activeTab === 'admins' && (
           <div className="bg-white rounded-3xl p-6 sm:p-8 card-shadow border border-gray-100 space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h2 className="text-lg font-black text-gray-900">{t.adminDashboard.tabAdmins}</h2>
                 <p className="text-xs text-gray-500">
@@ -323,66 +583,54 @@ export default function AdminDashboardPage() {
                 </p>
               </div>
               <button
-                onClick={() => alert("Appointment nomination workflow modal")}
-                className="px-4 py-2 bg-brand-burgundy hover:bg-[#400B13] text-white font-bold text-xs rounded-xl shadow-md"
+                onClick={() => setIsAppointModalOpen(true)}
+                className="px-4 py-2.5 bg-brand-burgundy hover:bg-[#400B13] text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center space-x-1.5 self-start sm:self-auto"
               >
-                {t.adminDashboard.appointNewBtn}
+                <UserPlus className="w-4 h-4" />
+                <span>{t.adminDashboard.appointNewBtn}</span>
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {[
-                {
-                  name: 'Kazi Mahbubur Rahman',
-                  role: lang === 'bn' ? 'জেলা সমন্বয়ক ও প্রশাসক' : 'District Administrator',
-                  jurisdiction: lang === 'bn' ? 'ঢাকা জেলা' : 'Dhaka District',
-                  cardId: 'LB-CARD-ADM-DHAKA-01',
-                  color: '#006A4E',
-                  status: lang === 'bn' ? 'সক্রিয়' : 'Active'
-                },
-                {
-                  name: 'Dr. Shah Alam',
-                  role: lang === 'bn' ? 'বিভাগীয় প্রশাসক' : 'Division Administrator',
-                  jurisdiction: lang === 'bn' ? 'চট্টগ্রাম বিভাগ' : 'Chattogram Division',
-                  cardId: 'LB-CARD-ADM-CTG-01',
-                  color: '#0D3B66',
-                  status: lang === 'bn' ? 'সক্রিয়' : 'Active'
-                },
-                {
-                  name: 'Tahmina Begum',
-                  role: lang === 'bn' ? 'উপজেলা প্রশাসক' : 'Upazila Administrator',
-                  jurisdiction: lang === 'bn' ? 'মিরপুর মেট্রোপলিটন থানা' : 'Mirpur Metropolitan Thana',
-                  cardId: 'LB-CARD-ADM-MIRPUR-02',
-                  color: '#008080',
-                  status: lang === 'bn' ? 'সক্রিয়' : 'Active'
-                }
-              ].map((adm, idx) => (
-                <div key={idx} className="p-5 rounded-2xl border border-gray-200/80 bg-gray-50 flex flex-col justify-between">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {appointments.map((adm) => (
+                <div key={adm.id} className="p-5 rounded-2xl border border-gray-200/80 bg-gray-50 hover:bg-white hover:border-brand-burgundy/30 hover:shadow-md transition-all flex flex-col justify-between">
                   <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full text-white" style={{ backgroundColor: adm.color }}>
-                        {adm.role}
+                    <div className="flex items-center justify-between mb-2.5">
+                      <span className="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full text-white shadow-xs" style={{ backgroundColor: adm.color }}>
+                        {lang === 'bn' ? adm.roleBn : adm.role}
                       </span>
-                      <span className="text-[10px] font-bold text-brand-green">{adm.status}</span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        adm.status === 'Active' 
+                          ? 'bg-green-100 text-brand-green' 
+                          : adm.status === 'Suspended' 
+                          ? 'bg-amber-100 text-amber-800' 
+                          : 'bg-red-100 text-red-700'
+                      }`}>
+                        {adm.status === 'Active' ? (lang === 'bn' ? 'সক্রিয়' : 'Active') : adm.status}
+                      </span>
                     </div>
 
-                    <h4 className="text-sm font-bold text-gray-900">{adm.name}</h4>
-                    <p className="text-xs text-gray-700 mt-2">
-                      {lang === 'bn' ? 'অধিক্ষেত্র:' : 'Jurisdiction:'} <strong>{adm.jurisdiction}</strong>
+                    <h4 className="text-sm font-black text-gray-900">{adm.name}</h4>
+                    <p className="text-xs text-gray-700 mt-1">
+                      {lang === 'bn' ? 'অধিক্ষেত্র:' : 'Jurisdiction:'} <strong>{lang === 'bn' ? adm.jurisdictionBn : adm.jurisdiction}</strong>
                     </p>
-                    <p className="text-[10px] font-mono text-gray-400 mt-0.5">{adm.cardId}</p>
+                    <p className="text-[10px] font-mono text-gray-400 mt-1 flex items-center space-x-1">
+                      <CreditCard className="w-3 h-3 inline mr-1 text-gray-400" />
+                      <span>{adm.cardId}</span>
+                    </p>
                   </div>
 
-                  <div className="pt-3 mt-3 border-t border-gray-200 flex items-center justify-between">
+                  <div className="pt-3.5 mt-3.5 border-t border-gray-200 flex items-center justify-between">
                     <button
-                      onClick={() => alert(`Reviewing credentials for ${adm.name}`)}
-                      className="text-xs font-bold text-brand-burgundy hover:underline"
+                      onClick={() => setViewCardModalData(adm)}
+                      className="text-xs font-bold text-brand-burgundy hover:underline flex items-center space-x-1"
                     >
-                      {t.adminDashboard.viewIdCard}
+                      <span>{t.adminDashboard.viewIdCard}</span>
+                      <ChevronRight className="w-3 h-3" />
                     </button>
                     <button
-                      onClick={() => alert(`Jurisdiction settings for ${adm.name}`)}
-                      className="text-xs text-gray-500 hover:text-gray-900"
+                      onClick={() => setManageAccessModalData(adm)}
+                      className="text-xs font-semibold text-gray-600 hover:text-gray-900 px-2.5 py-1 rounded-lg hover:bg-gray-200 transition-all"
                     >
                       {t.adminDashboard.manageAccess}
                     </button>
@@ -410,54 +658,30 @@ export default function AdminDashboardPage() {
                 </h2>
                 <p className="text-xs text-white/90 leading-relaxed">
                   {lang === 'bn'
-                    ? 'কোড পরিবর্তন ছাড়াই প্রতিটি পদের সিআর৮০ কার্ডের রং, স্থাপত্যের ওয়াটারমার্ক, ফিল্ডসমূহ পরিবর্তন করুন, প্রিভিউ দেখুন এবং লাইভ প্রকাশ করুন।'
-                    : 'Customize CR80 card colors, landmark watermarks, dynamic fields, and security elements across all 16 roles without touching source code.'}
+                    ? 'প্রতিটি প্রশাসনিক পদ এবং রক্তদাতা ভূমিকার জন্য রিয়েল-টাইমে অনুভূমিক সিআর৮০ পরিচয়পত্র (CR80 ID Card) কাস্টমাইজ করুন, প্রিভিউ দেখুন এবং কোড পরিবর্তন ছাড়াই সংস্করণ প্রকাশ করুন।'
+                    : 'Design, customize, preview in dual side-by-side view, and publish live CR80 identity cards across all roles with dynamic vector landmarks.'}
                 </p>
-              </div>
-
-              <Link
-                href="/dashboard/admin/id-cards"
-                className="px-6 py-3.5 rounded-2xl bg-white text-brand-red hover:bg-brand-light font-black text-xs shadow-xl transition-all shrink-0 flex items-center space-x-2 z-10 group"
-              >
-                <span>{lang === 'bn' ? 'টেমপ্লেট ডিজাইনার স্টুডিও খুলুন' : 'Open Template Designer Studio'}</span>
-                <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </Link>
-
-              {/* Decorative Background Droplet & Smriti Soudho */}
-              <div className="absolute -right-8 -bottom-8 w-48 h-48 rounded-full bg-white/10 pointer-events-none" />
-            </div>
-
-            {/* Live Featured CR80 Card Showcase (Super Admin Sample) */}
-            <div className="bg-white rounded-3xl p-6 sm:p-8 card-shadow border border-gray-100 flex flex-col lg:flex-row lg:items-center justify-between gap-8">
-              <div className="space-y-3 max-w-md">
-                <div className="flex items-center space-x-2 text-brand-burgundy">
-                  <CreditCard className="w-5 h-5" />
-                  <span className="text-xs font-bold uppercase tracking-wider">
-                    {lang === 'bn' ? 'সুপার অ্যাডমিন কার্ড প্রিভিউ' : 'Super Admin Card Preview'}
-                  </span>
-                </div>
-                <h3 className="text-xl font-black text-gray-900 tracking-tight">
-                  {lang === 'bn' ? 'মানসম্মত প্রাতিষ্ঠানিক সিআর৮০ ফরম্যাট' : 'Standard CR80 Institutional Identity Card'}
-                </h3>
-                <p className="text-xs text-gray-600 leading-relaxed">
-                  {lang === 'bn'
-                    ? '৮৫.৬ মিমি × ৫৪ মিমি আন্তর্জাতিক কার্ড ডাইমেনশন। প্রতিটি কার্ডে থাকে অফিশিয়াল লোগো, সদস্যের ছবি, রোল রিবন, বাংলাদেশের ঐতিহাসিক স্থাপত্যের জলছাপ এবং সুরক্ষিত কিউআর যাচাইকরণ।'
-                    : '85.6mm × 54mm international card dimensions with official logo, profile photo, role ribbon, Bangladesh architectural watermark, and secure cryptographic QR.'}
-                </p>
-                
-                <div className="flex items-center space-x-3 pt-2">
+                <div className="pt-2 flex flex-wrap gap-3">
                   <Link
                     href="/dashboard/admin/id-cards"
-                    className="text-xs font-bold text-brand-red hover:underline flex items-center space-x-1"
+                    className="px-5 py-2.5 rounded-xl bg-white text-brand-burgundy font-black text-xs shadow-lg hover:bg-gray-100 transition-all flex items-center space-x-2"
                   >
-                    <span>{lang === 'bn' ? 'সকল পদের টেমপ্লেট সম্পাদনা করুন' : 'Edit all role templates'}</span>
-                    <ChevronRight className="w-3.5 h-3.5" />
+                    <CreditCard className="w-4 h-4" />
+                    <span>{lang === 'bn' ? 'টেমপ্লেট ডিজাইনার খুলুন' : 'Open Template Designer Studio'}</span>
+                  </Link>
+
+                  <Link
+                    href="/dashboard/admin/id-cards"
+                    className="px-4 py-2.5 rounded-xl bg-black/25 hover:bg-black/40 text-white font-bold text-xs backdrop-blur-sm border border-white/20 transition-all flex items-center space-x-1.5"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>{lang === 'bn' ? '৮-রোল মাস্টার বোর্ড' : 'All 8 Roles Master Board'}</span>
                   </Link>
                 </div>
               </div>
 
               {/* Live Rendered CR80 Card with Flip Toggle */}
-              <div className="shrink-0 flex justify-center">
+              <div className="shrink-0 flex justify-center z-10">
                 <CR80IDCard
                   roleId="super_admin"
                   fullName="Md. Rahman Hossain"
@@ -531,6 +755,371 @@ export default function AdminDashboardPage() {
         )}
 
       </div>
+
+      {/* =========================================================================
+          MODAL 1: APPOINT NEW COORDINATOR / NOMINATION WORKFLOW
+         ========================================================================= */}
+      {isAppointModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 card-shadow border border-gray-100 relative my-8">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-4 mb-5">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-2xl bg-brand-light flex items-center justify-center text-brand-burgundy font-black">
+                  <UserPlus className="w-5 h-5 text-brand-burgundy" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-gray-900">
+                    {lang === 'bn' ? 'নতুন প্রশাসনিক সমন্বয়ক নিয়োগপত্র' : 'Nominate & Appoint Subordinate Administrator'}
+                  </h3>
+                  <p className="text-xs text-gray-500">
+                    {lang === 'bn' ? 'অফিশিয়াল প্রশাসনিক দায়িত্ব অর্পণ এবং সিআর৮০ ডিজিটাল আইডি কার্ড ইস্যু করুন।' : 'Assign official administrative jurisdiction & generate authorized CR80 ID Card.'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsAppointModalOpen(false)}
+                className="w-8 h-8 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center font-bold"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateAppointment} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">
+                    {lang === 'bn' ? 'পূর্ণ নাম (ইংরেজি)' : 'Full Name (English)'} <span className="text-brand-red">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Md. Anisur Rahman"
+                    value={newAppointForm.name}
+                    onChange={(e) => setNewAppointForm({ ...newAppointForm, name: e.target.value })}
+                    className="w-full text-xs p-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-brand-burgundy/20 font-medium"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">
+                    {lang === 'bn' ? 'পূর্ণ নাম (বাংলা)' : 'Full Name (Bangla)'}
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="উদাঃ মো. আনিসুর রহমান"
+                    value={newAppointForm.nameBn}
+                    onChange={(e) => setNewAppointForm({ ...newAppointForm, nameBn: e.target.value })}
+                    className="w-full text-xs p-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-brand-burgundy/20 font-medium"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">
+                    {lang === 'bn' ? 'প্রশাসনিক পদবি / ভূমিকা' : 'Administrative Role / Designation'} <span className="text-brand-red">*</span>
+                  </label>
+                  <select
+                    value={newAppointForm.roleId}
+                    onChange={(e) => setNewAppointForm({ ...newAppointForm, roleId: e.target.value })}
+                    className="w-full text-xs p-2.5 rounded-xl border border-gray-200 bg-gray-50 font-bold"
+                  >
+                    <option value="division_admin">বিভাগীয় প্রশাসক (Division Administrator)</option>
+                    <option value="district_admin">জেলা প্রশাসক ও সমন্বয়ক (District Administrator)</option>
+                    <option value="upazila_admin">উপজেলা প্রশাসক (Upazila Administrator)</option>
+                    <option value="thana_admin">মেট্রোপলিটন থানা প্রশাসক (Thana Administrator)</option>
+                    <option value="union_admin">ইউনিয়ন প্রশাসক (Union Administrator)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">
+                    {lang === 'bn' ? 'দায়িত্বপ্রাপ্ত বিভাগ' : 'Assigned Division'} <span className="text-brand-red">*</span>
+                  </label>
+                  <select
+                    value={newAppointForm.division}
+                    onChange={(e) => setNewAppointForm({ ...newAppointForm, division: e.target.value })}
+                    className="w-full text-xs p-2.5 rounded-xl border border-gray-200 bg-gray-50 font-medium"
+                  >
+                    <option value="Dhaka">Dhaka (ঢাকা)</option>
+                    <option value="Chattogram">Chattogram (চট্টগ্রাম)</option>
+                    <option value="Rajshahi">Rajshahi (রাজশাহী)</option>
+                    <option value="Khulna">Khulna (খুলনা)</option>
+                    <option value="Barishal">Barishal (বরিশাল)</option>
+                    <option value="Sylhet">Sylhet (সিলেট)</option>
+                    <option value="Rangpur">Rangpur (রংপুর)</option>
+                    <option value="Mymensingh">Mymensingh (ময়মনসিংহ)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">
+                    {lang === 'bn' ? 'দায়িত্বপ্রাপ্ত জেলা / জিলা' : 'Assigned District'}
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Dhaka, Gazipur, Chattogram"
+                    value={newAppointForm.district}
+                    onChange={(e) => setNewAppointForm({ ...newAppointForm, district: e.target.value })}
+                    className="w-full text-xs p-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white font-medium"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">
+                    {lang === 'bn' ? 'নির্দিষ্ট এলাকা / থানা / উপজেলা' : 'Specific Area / Thana / Upazila'}
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Gulshan Thana, Savar Upazila"
+                    value={newAppointForm.specificArea}
+                    onChange={(e) => setNewAppointForm({ ...newAppointForm, specificArea: e.target.value })}
+                    className="w-full text-xs p-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white font-medium"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">
+                    {lang === 'bn' ? 'মোবাইল নম্বর' : 'Official Phone Number'} <span className="text-brand-red">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="+880 17XX-XXXXXX"
+                    value={newAppointForm.phone}
+                    onChange={(e) => setNewAppointForm({ ...newAppointForm, phone: e.target.value })}
+                    className="w-full text-xs p-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white font-medium"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">
+                    {lang === 'bn' ? 'অফিশিয়াল ইমেইল' : 'Official Email Address'}
+                  </label>
+                  <input
+                    type="email"
+                    placeholder="e.g. coordinator@lalbindu.bd"
+                    value={newAppointForm.email}
+                    onChange={(e) => setNewAppointForm({ ...newAppointForm, email: e.target.value })}
+                    className="w-full text-xs p-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white font-medium"
+                  />
+                </div>
+              </div>
+
+              <div className="p-3.5 bg-gray-50 rounded-2xl border border-gray-200 flex items-start space-x-2">
+                <input
+                  type="checkbox"
+                  required
+                  id="charterAgreed"
+                  checked={newAppointForm.charterAgreed}
+                  onChange={(e) => setNewAppointForm({ ...newAppointForm, charterAgreed: e.target.checked })}
+                  className="rounded text-brand-burgundy mt-0.5"
+                />
+                <label htmlFor="charterAgreed" className="text-[11px] text-gray-600 cursor-pointer">
+                  {lang === 'bn' 
+                    ? 'আমি নিশ্চিত করছি যে এই মনোনয়ন লালবিন্দু জাতীয় সংবিধান এবং স্বাস্থ্যসেবা সমন্বয় নীতিমালা অনুযায়ী যাচাইপূর্বক অনুমোদন করা হলো।' 
+                    : 'I certify that this administrative nomination is authorized under the LalBindu National Healthcare Charter.'}
+                </label>
+              </div>
+
+              <div className="flex items-center justify-end space-x-3 pt-3 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setIsAppointModalOpen(false)}
+                  className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold"
+                >
+                  {lang === 'bn' ? 'বাতিল' : 'Cancel'}
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl bg-brand-burgundy hover:bg-[#400B13] text-white text-xs font-black shadow-md flex items-center space-x-1.5"
+                >
+                  <CheckCircle className="w-4 h-4" />
+                  <span>{lang === 'bn' ? 'নিয়োগ নিশ্চিত করুন ও কার্ড ইস্যু করুন' : 'Confirm & Issue ID Card'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          MODAL 2: VIEW APPOINTED COORDINATOR ID CARD (Dual CR80 Presentation)
+         ========================================================================= */}
+      {viewCardModalData && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-[#FFF8F8] rounded-3xl max-w-4xl w-full p-6 sm:p-8 card-shadow border border-gray-200 relative my-auto max-h-[95vh] overflow-y-auto">
+            
+            <div className="flex items-center justify-between border-b border-gray-200 pb-4 mb-6">
+              <div>
+                <div className="inline-flex items-center space-x-1.5 px-3 py-0.5 rounded-full bg-brand-light text-brand-burgundy text-[11px] font-bold mb-1">
+                  <ShieldCheck className="w-3.5 h-3.5 text-brand-burgundy" />
+                  <span>{lang === 'bn' ? 'অনুমোদিত প্রশাসনিক পরিচয়পত্র' : 'Authorized Administrative Digital ID Card'}</span>
+                </div>
+                <h3 className="text-xl font-black text-gray-900">
+                  {viewCardModalData.name} ({viewCardModalData.role})
+                </h3>
+                <p className="text-xs text-gray-500">
+                  {viewCardModalData.jurisdiction} • {viewCardModalData.cardId}
+                </p>
+              </div>
+
+              <button
+                onClick={() => setViewCardModalData(null)}
+                className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center font-bold"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Live Dual Side-by-Side CR80 Card */}
+            <div className="py-4 flex justify-center">
+              <CR80IDCard
+                roleId={viewCardModalData.roleId}
+                fullName={viewCardModalData.name}
+                fullNameBn={viewCardModalData.nameBn}
+                designation={lang === 'bn' ? viewCardModalData.roleBn : viewCardModalData.role}
+                uniqueId={viewCardModalData.cardId}
+                avatarUrl={viewCardModalData.avatarUrl}
+                jurisdictionName={lang === 'bn' ? viewCardModalData.jurisdictionBn : viewCardModalData.jurisdiction}
+                validUntil={viewCardModalData.validUntil}
+                verificationToken={viewCardModalData.cardId}
+                layoutMode="side-by-side"
+                showActions={true}
+                isDemo={false}
+              />
+            </div>
+
+            {/* Appointment Record Footer */}
+            <div className="mt-6 pt-4 border-t border-gray-200 flex flex-wrap items-center justify-between gap-3 text-xs text-gray-600">
+              <div className="flex items-center space-x-4">
+                <span>Appointed: <strong>{viewCardModalData.appointedDate}</strong></span>
+                <span>Status: <strong className="text-brand-green">{viewCardModalData.status}</strong></span>
+                <span>Phone: <strong>{viewCardModalData.phone}</strong></span>
+              </div>
+
+              <button
+                onClick={() => setViewCardModalData(null)}
+                className="px-5 py-2 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold"
+              >
+                {lang === 'bn' ? 'বন্ধ করুন' : 'Close'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          MODAL 3: MANAGE ACCESS & STATUS WORKFLOW
+         ========================================================================= */}
+      {manageAccessModalData && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 card-shadow border border-gray-100 relative">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3 mb-4">
+              <div className="flex items-center space-x-2">
+                <Lock className="w-5 h-5 text-brand-burgundy" />
+                <h3 className="text-base font-black text-gray-900">
+                  {lang === 'bn' ? 'প্রশাসনিক প্রবেশাধিকার ও অনুমোদন' : 'Manage Access & Permissions'}
+                </h3>
+              </div>
+              <button
+                onClick={() => setManageAccessModalData(null)}
+                className="text-gray-400 hover:text-gray-600 text-xs font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="p-3 bg-gray-50 rounded-2xl border border-gray-100">
+                <p className="text-xs font-bold text-gray-900">{manageAccessModalData.name}</p>
+                <p className="text-[11px] text-gray-500">{manageAccessModalData.role} • {manageAccessModalData.jurisdiction}</p>
+                <p className="text-[10px] font-mono text-gray-400 mt-1">{manageAccessModalData.cardId}</p>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-700 block mb-2">
+                  {lang === 'bn' ? 'অনুমোদনের বর্তমান অবস্থা' : 'Authorization Status'}
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleUpdateAccessStatus('Active')}
+                    className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all ${
+                      manageAccessModalData.status === 'Active'
+                        ? 'bg-green-600 text-white border-green-600 shadow-sm'
+                        : 'bg-white hover:bg-green-50 text-green-700 border-green-200'
+                    }`}
+                  >
+                    Active (সক্রিয়)
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleUpdateAccessStatus('Suspended')}
+                    className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all ${
+                      manageAccessModalData.status === 'Suspended'
+                        ? 'bg-amber-600 text-white border-amber-600 shadow-sm'
+                        : 'bg-white hover:bg-amber-50 text-amber-700 border-amber-200'
+                    }`}
+                  >
+                    Suspend (স্থগিত)
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleUpdateAccessStatus('Revoked')}
+                    className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all ${
+                      manageAccessModalData.status === 'Revoked'
+                        ? 'bg-red-600 text-white border-red-600 shadow-sm'
+                        : 'bg-white hover:bg-red-50 text-red-700 border-red-200'
+                    }`}
+                  >
+                    Revoke (বাতিল)
+                  </button>
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-gray-100 space-y-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setViewCardModalData(manageAccessModalData);
+                    setManageAccessModalData(null);
+                  }}
+                  className="w-full py-2.5 px-4 rounded-xl bg-brand-light hover:bg-red-100 text-brand-burgundy text-xs font-bold transition-all flex items-center justify-center space-x-1.5"
+                >
+                  <CreditCard className="w-4 h-4" />
+                  <span>{lang === 'bn' ? 'ডিজিটাল আইডি কার্ড পর্যালোচনা' : 'Inspect Digital ID Card'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleDeleteAppointment(manageAccessModalData.id)}
+                  className="w-full py-2 px-4 rounded-xl bg-white hover:bg-red-50 text-red-600 text-xs font-bold border border-red-200 transition-all flex items-center justify-center space-x-1.5"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>{lang === 'bn' ? 'নিয়োগ সম্পূর্ণ প্রত্যাহার করুন' : 'Permanently Revoke Appointment'}</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-5 pt-3 border-t border-gray-100 text-right">
+              <button
+                onClick={() => setManageAccessModalData(null)}
+                className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold"
+              >
+                {lang === 'bn' ? 'সম্পন্ন' : 'Done'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
