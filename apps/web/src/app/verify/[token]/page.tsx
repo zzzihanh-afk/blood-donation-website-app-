@@ -4,6 +4,7 @@ import React, { use } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useLanguage } from '@/components/LanguageContext';
+import { CR80IDCard } from '@/components/id-card/CR80IDCard';
 import { SAMPLE_ID_CARDS } from '@lalbindu/api-client';
 import { 
   ShieldCheck, 
@@ -28,28 +29,57 @@ export default function VerifyIdCardPage({
   // Look up card details by token
   const card = SAMPLE_ID_CARDS[token] || SAMPLE_ID_CARDS['LB-TOKEN-DNR-0004278'];
 
+  // Determine roleId from card number or token
+  const getRoleId = () => {
+    if (token.includes('LA001') || card.card_number.includes('LA001')) return 'super_admin';
+    if (token.includes('LA01') || card.card_number.includes('LA01')) return 'division_admin';
+    if (token.includes('LA02') || card.card_number.includes('LA02') || token.includes('ADM-DHAKA')) return 'district_admin';
+    if (token.includes('LA03') || card.card_number.includes('LA03')) return 'upazila_admin';
+    if (token.includes('LA04') || card.card_number.includes('LA04')) return 'thana_admin';
+    if (token.includes('LA05') || card.card_number.includes('LA05')) return 'union_admin';
+    if (token.includes('VL') || card.card_number.includes('VL')) return 'volunteer';
+    return 'donor';
+  };
+
+  const detectedRoleId = getRoleId();
+
   return (
-    <div className="bg-[#FFF8F8] min-h-screen py-12 flex flex-col justify-center items-center px-4">
-      <div className="max-w-lg w-full">
+    <div className="bg-[#FFF8F8] min-h-screen py-10 flex flex-col justify-center items-center px-4">
+      <div className="max-w-xl w-full space-y-6">
         
         {/* Back Link */}
         <Link
           href="/"
-          className="inline-flex items-center space-x-2 text-xs font-bold text-gray-500 hover:text-brand-red mb-4"
+          className="inline-flex items-center space-x-2 text-xs font-bold text-gray-500 hover:text-brand-red"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           <span>{t.verifyPage.backHome}</span>
         </Link>
 
+        {/* Live Rendered CR80 Digital ID Card */}
+        <div className="flex justify-center">
+          <CR80IDCard
+            roleId={detectedRoleId}
+            fullName={card.full_name}
+            designation={lang === 'bn' ? (card.designation_bn || card.role_title_bn) : (card.designation_en || card.role_title_en)}
+            uniqueId={card.card_number}
+            avatarUrl={card.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=300&q=80'}
+            jurisdictionName={lang === 'bn' ? card.jurisdiction_bn || undefined : card.jurisdiction_en || undefined}
+            bloodGroup={detectedRoleId === 'donor' ? 'O+' : undefined}
+            donationCount={detectedRoleId === 'donor' ? 5 : undefined}
+            validUntil={card.expires_at ? new Date(card.expires_at).toLocaleDateString() : '31 Dec 2026'}
+            verificationToken={token}
+            interactiveFlip={true}
+            showActions={true}
+            isDemo={false}
+          />
+        </div>
+
         {/* Verification Certificate Card */}
         <div className="bg-white rounded-3xl card-shadow border border-gray-100 overflow-hidden">
           
           {/* Header Banner */}
-          <div className="bg-gradient-to-r from-brand-red via-brand-crimson to-[#8E0B20] text-white p-6 text-center relative">
-            <div className="w-16 h-16 rounded-full bg-white/10 backdrop-blur-md border border-white/30 flex items-center justify-center mx-auto mb-3 shadow-inner">
-              <ShieldCheck className="w-9 h-9 text-brand-gold" />
-            </div>
-
+          <div className="bg-gradient-to-r from-brand-red via-brand-crimson to-[#8E0B20] text-white p-5 text-center relative">
             <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-sm text-xs font-bold tracking-wider uppercase mb-1">
               <CheckCircle2 className="w-3.5 h-3.5 text-brand-gold" />
               <span>{t.verifyPage.officialVerification}</span>
@@ -63,30 +93,6 @@ export default function VerifyIdCardPage({
           {/* Body */}
           <div className="p-6 space-y-6">
             
-            {/* Identity Summary */}
-            <div className="flex items-center space-x-4 bg-gray-50 p-4 rounded-2xl border border-gray-100">
-              <div className="relative w-16 h-16 rounded-2xl overflow-hidden bg-brand-light border-2 border-brand-red/30 shrink-0">
-                <Image
-                  src={card.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=300&q=80"}
-                  alt={card.full_name}
-                  fill
-                  className="object-cover"
-                />
-              </div>
-
-              <div>
-                <h2 className="text-lg font-black text-gray-900 leading-tight">
-                  {card.full_name}
-                </h2>
-                <p className="text-xs font-bold text-brand-red mt-0.5">
-                  {lang === 'bn' ? card.role_title_bn : card.role_title_en}
-                </p>
-                <p className="text-[11px] text-gray-500 font-mono mt-0.5">
-                  ID: <strong>{card.card_number}</strong>
-                </p>
-              </div>
-            </div>
-
             {/* Status & Validity Grid */}
             <div className="grid grid-cols-2 gap-3 text-xs">
               <div className="p-3 bg-green-50 rounded-2xl border border-green-100">

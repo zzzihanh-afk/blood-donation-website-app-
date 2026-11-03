@@ -114,3 +114,31 @@ test('Seed Data: Complete Bangladesh divisions and districts present', () => {
     assert.match(sql, new RegExp(`'${role}'`, 'i'), `Role ${role} must be defined in seed`);
   }
 });
+
+test('Migration 000002 Audit: ID Card Template Management System & Version Control', () => {
+  const migrationPath = path.join(__dirname, '..', 'migrations', '20261103000002_id_card_template_system.sql');
+  assert.ok(fs.existsSync(migrationPath), 'Migration 000002 file must exist');
+
+  const sql = fs.readFileSync(migrationPath, 'utf8');
+
+  // Verify tables created
+  const templateTables = [
+    'id_card_template_versions',
+    'id_card_template_assets',
+    'id_card_template_audit_logs'
+  ];
+
+  for (const table of templateTables) {
+    const tableRegex = new RegExp(`CREATE TABLE IF NOT EXISTS public\\.${table}\\b`, 'i');
+    assert.match(sql, tableRegex, `Table ${table} must be defined in Migration 000002`);
+    assert.match(sql, new RegExp(`ALTER TABLE public\\.${table} ENABLE ROW LEVEL SECURITY;`, 'i'), `RLS must be enabled on ${table}`);
+  }
+
+  // Verify Super Admin RBAC policy enforcement
+  assert.match(sql, /ura\.role_id = 'super_admin'/i, 'Super Admin RBAC policy must protect template management');
+
+  // Verify Seeded Template Versions
+  assert.match(sql, /'tpl-super-admin'/i, 'Super admin template must be seeded');
+  assert.match(sql, /'tpl-donor'/i, 'Donor template must be seeded');
+  assert.match(sql, /'tpl-district-admin'/i, 'District admin template must be seeded');
+});

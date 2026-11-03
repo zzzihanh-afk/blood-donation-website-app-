@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import QRCode from 'qrcode';
 import { useLanguage } from '@/components/LanguageContext';
+import { CR80IDCard } from '@/components/id-card/CR80IDCard';
 import { 
   SAMPLE_DONORS, 
   SAMPLE_BLOOD_REQUESTS 
@@ -244,75 +245,25 @@ export default function DonorDashboardPage() {
             </div>
           </div>
 
-          {/* Visual Digital Card Preview */}
-          <div className="max-w-md mx-auto bg-gradient-to-br from-[#C8102E] via-[#E31E36] to-[#8E0B20] text-white rounded-3xl p-6 shadow-2xl relative overflow-hidden border-2 border-white/20">
-            
-            {/* Top Brand Stripe */}
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/20">
-              <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-brand-red">
-                  <Droplet className="w-5 h-5 fill-brand-red" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-black tracking-tight leading-none">{t.donorDashboard.cardTitle}</h3>
-                  <span className="text-[9px] text-white/80 uppercase tracking-wider">{t.donorDashboard.cardSub}</span>
-                </div>
-              </div>
-
-              <span className="px-2.5 py-0.5 rounded-full bg-white/20 text-[10px] font-bold text-white uppercase backdrop-blur-sm">
-                {t.donorDashboard.activeMember}
-              </span>
-            </div>
-
-            {/* Cardholder Body */}
-            <div className="flex items-center space-x-4 mb-4">
-              <div className="relative w-16 h-16 rounded-2xl overflow-hidden bg-white/10 border-2 border-white/40 shrink-0">
-                <Image
-                  src={donor.avatar_url || ''}
-                  alt={donor.full_name}
-                  fill
-                  className="object-cover"
-                />
-              </div>
-
-              <div>
-                <h4 className="text-lg font-black leading-tight">{donor.full_name}</h4>
-                <p className="text-xs font-bold text-brand-gold mt-0.5 font-mono">
-                  {donor.donor_id_number}
-                </p>
-                <div className="flex items-center space-x-2 mt-1">
-                  <span className="px-2 py-0.5 bg-white text-brand-red font-black text-xs rounded-md shadow-sm">
-                    {donor.blood_group}
-                  </span>
-                  <span className="text-[11px] text-white/90 font-medium">
-                    {lang === 'bn' ? 'ঢাকা জেলা' : `${donor.district_name_en} District`}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* QR Code and Validity Footer */}
-            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3 border border-white/20 flex items-center justify-between">
-              <div className="text-[10px] text-white/80 space-y-0.5">
-                <p>{lang === 'bn' ? 'অবস্থা:' : 'Status:'} <strong className="text-white">{t.donorDashboard.statusVerifiedDonor}</strong></p>
-                <p>{lang === 'bn' ? 'যাচাইকৃত রক্তদান:' : 'Verified Donations:'} <strong className="text-white">{lang === 'bn' ? '৫ বার' : `${donor.verified_donation_count} Times`}</strong></p>
-                <p>{t.donorDashboard.issueDateLabel}</p>
-              </div>
-
-              {/* Dynamic QR Code */}
-              <div className="w-16 h-16 bg-white p-1 rounded-xl shadow-md shrink-0 flex items-center justify-center">
-                {qrCodeDataUrl ? (
-                  <img src={qrCodeDataUrl} alt="Verification QR Code" className="w-full h-full object-contain" />
-                ) : (
-                  <QrCode className="w-10 h-10 text-gray-800" />
-                )}
-              </div>
-            </div>
-
-            <p className="text-[8px] text-center text-white/60 mt-3">
-              {t.donorDashboard.scanNotice}
-            </p>
-
+          {/* Professional CR80 Digital ID Card with Interactive 3D/Side Flip */}
+          <div className="py-6 px-4 bg-[#F9FBFC] rounded-3xl border border-gray-100 flex flex-col items-center justify-center">
+            <CR80IDCard
+              roleId="donor"
+              fullName={donor.full_name}
+              fullNameBn="আহমেদ রহমান"
+              designation={lang === 'bn' ? 'স্বেচ্ছাসেবী রক্তদাতা সদস্য' : 'Donor Member'}
+              uniqueId={donor.donor_id_number}
+              avatarUrl={donor.avatar_url || ''}
+              jurisdictionName={lang === 'bn' ? 'ঢাকা জেলা, ঢাকা বিভাগ' : `${donor.district_name_en} District`}
+              bloodGroup={donor.blood_group}
+              donationCount={donor.verified_donation_count}
+              validUntil="31 Dec 2026"
+              verificationToken="LB-TOKEN-DNR-0004278"
+              verificationUrl={verificationUrl}
+              interactiveFlip={true}
+              showActions={true}
+              isDemo={false}
+            />
           </div>
         </div>
 

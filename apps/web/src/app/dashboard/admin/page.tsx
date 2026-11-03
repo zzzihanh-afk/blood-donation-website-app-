@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { useLanguage } from '@/components/LanguageContext';
+import { CR80IDCard } from '@/components/id-card/CR80IDCard';
 import { 
   BANGLADESH_DIVISIONS, 
   BANGLADESH_KEY_DISTRICTS 
@@ -392,51 +394,138 @@ export default function AdminDashboardPage() {
         )}
 
         {/* =========================================================================
-            TAB 4: ADMINISTRATIVE ID CARD TEMPLATES & DISTINCT PALETTES
+            TAB 4: ADMINISTRATIVE ID CARD TEMPLATES & TEMPLATE DESIGNER STUDIO
            ========================================================================= */}
         {activeTab === 'id-cards' && (
-          <div className="bg-white rounded-3xl p-6 sm:p-8 card-shadow border border-gray-100 space-y-6">
-            <div>
-              <h2 className="text-lg font-black text-gray-900">
-                {t.adminDashboard.templatesTitle}
-              </h2>
-              <p className="text-xs text-gray-500 mt-1">
-                {t.adminDashboard.templatesSub}
-              </p>
+          <div className="space-y-6">
+            
+            {/* Template Studio Launcher Banner */}
+            <div className="bg-gradient-to-r from-[#580F1A] via-brand-red to-brand-crimson text-white rounded-3xl p-6 sm:p-8 card-shadow relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="space-y-2 max-w-xl z-10">
+                <span className="px-3 py-1 rounded-full bg-white/20 text-white text-[10px] font-mono font-bold uppercase tracking-wider backdrop-blur-sm">
+                  Super Admin Exclusive System
+                </span>
+                <h2 className="text-2xl sm:text-3xl font-black tracking-tight">
+                  {lang === 'bn' ? 'আইডি কার্ড টেমপ্লেট ডিজাইনার স্টুডিও' : 'ID Card Template Designer Studio'}
+                </h2>
+                <p className="text-xs text-white/90 leading-relaxed">
+                  {lang === 'bn'
+                    ? 'কোড পরিবর্তন ছাড়াই প্রতিটি পদের সিআর৮০ কার্ডের রং, স্থাপত্যের ওয়াটারমার্ক, ফিল্ডসমূহ পরিবর্তন করুন, প্রিভিউ দেখুন এবং লাইভ প্রকাশ করুন।'
+                    : 'Customize CR80 card colors, landmark watermarks, dynamic fields, and security elements across all 16 roles without touching source code.'}
+                </p>
+              </div>
+
+              <Link
+                href="/dashboard/admin/id-cards"
+                className="px-6 py-3.5 rounded-2xl bg-white text-brand-red hover:bg-brand-light font-black text-xs shadow-xl transition-all shrink-0 flex items-center space-x-2 z-10 group"
+              >
+                <span>{lang === 'bn' ? 'টেমপ্লেট ডিজাইনার স্টুডিও খুলুন' : 'Open Template Designer Studio'}</span>
+                <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </Link>
+
+              {/* Decorative Background Droplet & Smriti Soudho */}
+              <div className="absolute -right-8 -bottom-8 w-48 h-48 rounded-full bg-white/10 pointer-events-none" />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {Object.entries(roleCardThemes).map(([roleKey, theme]) => (
-                <div
-                  key={roleKey}
-                  className="rounded-2xl p-5 border text-white shadow-md flex flex-col justify-between"
-                  style={{ backgroundColor: theme.primaryColor }}
-                >
-                  <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-white/20">
-                        {roleKey.replace('_', ' ')}
-                      </span>
-                      <span className="w-3 h-3 rounded-full" style={{ backgroundColor: theme.accentColor }} />
+            {/* Live Featured CR80 Card Showcase (Super Admin Sample) */}
+            <div className="bg-white rounded-3xl p-6 sm:p-8 card-shadow border border-gray-100 flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+              <div className="space-y-3 max-w-md">
+                <div className="flex items-center space-x-2 text-brand-burgundy">
+                  <CreditCard className="w-5 h-5" />
+                  <span className="text-xs font-bold uppercase tracking-wider">
+                    {lang === 'bn' ? 'সুপার অ্যাডমিন কার্ড প্রিভিউ' : 'Super Admin Card Preview'}
+                  </span>
+                </div>
+                <h3 className="text-xl font-black text-gray-900 tracking-tight">
+                  {lang === 'bn' ? 'মানসম্মত প্রাতিষ্ঠানিক সিআর৮০ ফরম্যাট' : 'Standard CR80 Institutional Identity Card'}
+                </h3>
+                <p className="text-xs text-gray-600 leading-relaxed">
+                  {lang === 'bn'
+                    ? '৮৫.৬ মিমি × ৫৪ মিমি আন্তর্জাতিক কার্ড ডাইমেনশন। প্রতিটি কার্ডে থাকে অফিশিয়াল লোগো, সদস্যের ছবি, রোল রিবন, বাংলাদেশের ঐতিহাসিক স্থাপত্যের জলছাপ এবং সুরক্ষিত কিউআর যাচাইকরণ।'
+                    : '85.6mm × 54mm international card dimensions with official logo, profile photo, role ribbon, Bangladesh architectural watermark, and secure cryptographic QR.'}
+                </p>
+                
+                <div className="flex items-center space-x-3 pt-2">
+                  <Link
+                    href="/dashboard/admin/id-cards"
+                    className="text-xs font-bold text-brand-red hover:underline flex items-center space-x-1"
+                  >
+                    <span>{lang === 'bn' ? 'সকল পদের টেমপ্লেট সম্পাদনা করুন' : 'Edit all role templates'}</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
+              </div>
+
+              {/* Live Rendered CR80 Card with Flip Toggle */}
+              <div className="shrink-0 flex justify-center">
+                <CR80IDCard
+                  roleId="super_admin"
+                  fullName="Md. Rahman Hossain"
+                  fullNameBn="মো. রহমান হোসেন"
+                  designation="Super Administrator"
+                  designationBn="প্রধান প্রশাসক"
+                  uniqueId="LA0010001"
+                  avatarUrl="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80"
+                  organizationName="LalBindu Foundation"
+                  validUntil="31 Dec 2026"
+                  verificationToken="LA0010001"
+                  verificationUrl="https://lalbindu.bd/verify/LA0010001"
+                  interactiveFlip={true}
+                  showActions={true}
+                  isDemo={true}
+                />
+              </div>
+            </div>
+
+            {/* All Roles Color Theme Grid */}
+            <div className="bg-white rounded-3xl p-6 sm:p-8 card-shadow border border-gray-100 space-y-6">
+              <div>
+                <h3 className="text-lg font-black text-gray-900">
+                  {t.adminDashboard.templatesTitle}
+                </h3>
+                <p className="text-xs text-gray-500 mt-1">
+                  {t.adminDashboard.templatesSub}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {Object.entries(roleCardThemes).map(([roleKey, theme]) => (
+                  <div
+                    key={roleKey}
+                    className="rounded-2xl p-5 border text-white shadow-md flex flex-col justify-between"
+                    style={{ backgroundColor: theme.primaryColor }}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-white/20">
+                          {roleKey.replace('_', ' ')}
+                        </span>
+                        <span className="w-3 h-3 rounded-full" style={{ backgroundColor: theme.accentColor }} />
+                      </div>
+
+                      <h4 className="text-base font-black">
+                        {lang === 'bn' ? theme.labelBn : theme.labelEn}
+                      </h4>
+                      <p className="text-xs font-bold text-white/80">
+                        {lang === 'bn' ? theme.labelEn : theme.labelBn}
+                      </p>
                     </div>
 
-                    <h4 className="text-base font-black">
-                      {lang === 'bn' ? theme.labelBn : theme.labelEn}
-                    </h4>
-                    <p className="text-xs font-bold text-white/80">
-                      {lang === 'bn' ? theme.labelEn : theme.labelBn}
-                    </p>
+                    <div className="mt-4 pt-3 border-t border-white/20 flex items-center justify-between text-xs text-white/70">
+                      <span>Hex: {theme.primaryColor}</span>
+                      <Link
+                        href={`/dashboard/admin/id-cards`}
+                        className="font-bold text-white hover:underline flex items-center space-x-0.5"
+                      >
+                        <span>{lang === 'bn' ? 'ডিজাইন কাস্টমাইজ' : 'Customize'}</span>
+                        <ChevronRight className="w-3 h-3" />
+                      </Link>
+                    </div>
                   </div>
-
-                  <div className="mt-4 pt-3 border-t border-white/20 flex items-center justify-between text-xs text-white/70">
-                    <span>Hex: {theme.primaryColor}</span>
-                    <span className="font-bold text-white">
-                      {lang === 'bn' ? 'কিউআর প্রস্তুত' : 'Cryptographic QR Ready'}
-                    </span>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
+
           </div>
         )}
 
