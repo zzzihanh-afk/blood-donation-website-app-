@@ -1,14 +1,52 @@
 'use client';
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import { useLanguage } from '@/components/LanguageContext';
 import { DEFAULT_ACHIEVEMENTS } from '@lalbindu/business-rules';
-import { Award, CheckCircle2, Lock, Download, Share2, Droplet, Sparkles, Heart } from 'lucide-react';
+import { Award, CheckCircle2, Lock, Download, Share2, Droplet, Sparkles, Heart, ShieldCheck, Printer, Check } from 'lucide-react';
 
 export default function AchievementsPage() {
   const { t, lang } = useLanguage();
   const verifiedDonations = 5; // Sample user has 5 verified donations (Life Saver unlocked)
   const [selectedCertificate, setSelectedCertificate] = useState<typeof DEFAULT_ACHIEVEMENTS[0] | null>(null);
+
+  // Helper to get medal badge styling matching reference image
+  const getBadgeStyle = (id: string, isUnlocked: boolean) => {
+    if (!isUnlocked) {
+      return {
+        bg: 'bg-gray-100 text-gray-400 border border-gray-200',
+        dropColor: 'text-gray-300'
+      };
+    }
+    switch (id) {
+      case 'ach-first-drop':
+        return {
+          bg: 'bg-gradient-to-br from-amber-400 via-amber-500 to-amber-600 text-white shadow-amber-500/30 border-2 border-amber-200',
+          dropColor: 'text-brand-red'
+        };
+      case 'ach-life-saver':
+        return {
+          bg: 'bg-gradient-to-br from-slate-200 via-gray-300 to-slate-400 text-gray-900 shadow-slate-400/30 border-2 border-white',
+          dropColor: 'text-brand-red'
+        };
+      case 'ach-hero-donor':
+        return {
+          bg: 'bg-gradient-to-br from-yellow-300 via-amber-400 to-yellow-600 text-white shadow-amber-500/40 border-2 border-yellow-200',
+          dropColor: 'text-brand-crimson'
+        };
+      case 'ach-guardian-life':
+        return {
+          bg: 'bg-gradient-to-br from-purple-600 via-indigo-600 to-amber-500 text-white shadow-purple-500/30 border-2 border-purple-200',
+          dropColor: 'text-white'
+        };
+      default:
+        return {
+          bg: 'bg-gradient-to-br from-brand-crimson to-brand-red text-white shadow-brand-red/30',
+          dropColor: 'text-white'
+        };
+    }
+  };
 
   return (
     <div className="bg-[#FFF8F8] min-h-screen py-10">
@@ -30,7 +68,7 @@ export default function AchievementsPage() {
           {/* User Progress Bar Summary */}
           <div className="mt-6 bg-white p-4 rounded-3xl card-shadow border border-gray-100 flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 rounded-2xl bg-brand-light flex items-center justify-center text-brand-red font-black text-xl">
+              <div className="w-12 h-12 rounded-2xl bg-brand-light flex items-center justify-center text-brand-red font-black text-xl border border-brand-red/20">
                 {lang === 'bn' ? '৫' : verifiedDonations}
               </div>
               <div className="text-left">
@@ -52,6 +90,7 @@ export default function AchievementsPage() {
             const isUnlocked = verifiedDonations >= ach.required_count;
             const progress = Math.min(verifiedDonations, ach.required_count);
             const percentage = Math.round((progress / ach.required_count) * 100);
+            const badgeStyle = getBadgeStyle(ach.id, isUnlocked);
 
             return (
               <div
@@ -62,16 +101,15 @@ export default function AchievementsPage() {
               >
                 {/* Badge Crest */}
                 <div className="text-center mb-4">
-                  <div className={`w-20 h-20 mx-auto rounded-3xl flex items-center justify-center shadow-lg relative ${
-                    isUnlocked
-                      ? 'bg-gradient-to-br from-brand-crimson to-brand-red text-white shadow-brand-red/30'
-                      : 'bg-gray-100 text-gray-400'
-                  }`}>
-                    <Award className="w-10 h-10" />
+                  <div className={`w-20 h-20 mx-auto rounded-3xl flex items-center justify-center shadow-lg relative ${badgeStyle.bg}`}>
+                    <div className="relative flex items-center justify-center">
+                      <Droplet className={`w-10 h-10 fill-current ${badgeStyle.dropColor}`} />
+                      <Heart className="w-4 h-4 text-white fill-white absolute top-4" />
+                    </div>
                     {isUnlocked ? (
-                      <CheckCircle2 className="w-6 h-6 text-white bg-brand-green rounded-full absolute -top-1 -right-1" />
+                      <CheckCircle2 className="w-6 h-6 text-white bg-brand-green rounded-full absolute -top-1 -right-1 shadow-md" />
                     ) : (
-                      <Lock className="w-5 h-5 text-gray-500 absolute -top-1 -right-1" />
+                      <Lock className="w-5 h-5 text-gray-500 bg-white rounded-full p-0.5 absolute -top-1 -right-1 shadow-md" />
                     )}
                   </div>
 
@@ -116,7 +154,7 @@ export default function AchievementsPage() {
                   {isUnlocked && (
                     <button
                       onClick={() => setSelectedCertificate(ach)}
-                      className="w-full mt-3 py-2 px-3 rounded-xl bg-brand-light text-brand-red hover:bg-brand-red hover:text-white font-bold text-xs border border-brand-red/20 transition-all flex items-center justify-center space-x-1.5"
+                      className="w-full mt-3 py-2 px-3 rounded-xl bg-brand-light text-brand-red hover:bg-brand-red hover:text-white font-bold text-xs border border-brand-red/20 transition-all flex items-center justify-center space-x-1.5 shadow-sm"
                     >
                       <Download className="w-3.5 h-3.5" />
                       <span>{t.achievementsPage.viewCertificateBtn}</span>
@@ -131,56 +169,145 @@ export default function AchievementsPage() {
 
       </div>
 
-      {/* Certificate Modal */}
+      {/* Official Certificate Modal */}
       {selectedCertificate && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-xl w-full p-8 card-shadow border-4 border-brand-gold relative text-center">
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 card-shadow border-4 border-amber-400/80 relative text-center shadow-2xl">
             
-            <div className="border-2 border-brand-red/30 p-6 rounded-2xl relative bg-gradient-to-b from-white via-red-50/30 to-white">
+            {/* Ornate Certificate Frame */}
+            <div className="border-2 border-brand-red/40 p-6 sm:p-8 rounded-2xl relative bg-gradient-to-b from-[#FFFDF9] via-white to-[#FFF9F9] shadow-inner">
               
-              <div className="flex justify-center mb-3">
-                <div className="w-16 h-16 rounded-full bg-brand-red text-white flex items-center justify-center shadow-lg">
-                  <Award className="w-8 h-8" />
+              {/* Corner Ornaments */}
+              <div className="absolute top-2 left-2 w-6 h-6 border-t-2 border-l-2 border-brand-red" />
+              <div className="absolute top-2 right-2 w-6 h-6 border-t-2 border-r-2 border-brand-red" />
+              <div className="absolute bottom-2 left-2 w-6 h-6 border-b-2 border-l-2 border-brand-red" />
+              <div className="absolute bottom-2 right-2 w-6 h-6 border-b-2 border-r-2 border-brand-red" />
+
+              {/* Official LalBindu Logo in Certificate Header (Replacing the symbol) */}
+              <div className="flex justify-center mb-4">
+                <div className="relative w-56 sm:w-64 h-14 sm:h-16">
+                  <Image
+                    src="/branding/lalbindu-logo.png"
+                    alt="LalBindu Official Logo"
+                    fill
+                    className="object-contain"
+                    priority
+                  />
                 </div>
               </div>
 
-              <p className="text-[10px] uppercase tracking-widest text-brand-red font-extrabold">
-                {t.achievementsPage.certTitle}
-              </p>
-              
-              <h2 className="text-2xl font-black text-gray-900 mt-2">
-                {lang === 'bn' ? selectedCertificate.title_bn : selectedCertificate.title_en}
-              </h2>
-              <p className="text-xs font-bold text-brand-green">
-                {lang === 'bn' ? selectedCertificate.title_en : selectedCertificate.title_bn}
-              </p>
+              {/* Certificate Sub-Header */}
+              <div className="space-y-0.5 mb-4">
+                <p className="text-[10px] sm:text-[11px] uppercase tracking-[0.2em] text-brand-red font-black">
+                  {lang === 'bn' 
+                    ? 'গণপ্রজাতন্ত্রী বাংলাদেশ | জাতীয় স্বেচ্ছায় রক্তদান নেটওয়ার্ক' 
+                    : 'People’s Republic of Bangladesh • National Blood Donation Network'}
+                </p>
+                <h2 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">
+                  {lang === 'bn' ? 'মানবিক অবদানের স্বীকৃতি ও সম্মাননা সনদ' : 'Certificate of Humanitarian Citation'}
+                </h2>
+              </div>
 
-              <p className="text-xs text-gray-600 mt-4 leading-relaxed max-w-md mx-auto">
-                {lang === 'bn' 
-                  ? `আহমেদ রহমান (দাতা আইডি: LB-0004278) কে ${selectedCertificate.required_count} বার সফল ও যাচাইকৃত রক্তদানের মাধ্যমে দেশব্যাপী মানুষের মূল্যবান জীবন রক্ষায় অসামান্য অবদানের স্বীকৃতিস্বরূপ এই সম্মাননা সনদ প্রদান করা হলো।`
-                  : `Presented to Ahmed Rahman (Donor ID: LB-0004278) in grateful recognition of ${selectedCertificate.required_count} verified whole-blood donations contributing directly to saving human lives across Bangladesh.`}
-              </p>
+              {/* Awarded To Recipient */}
+              <div className="my-5 py-3 border-y border-amber-200/60 bg-amber-50/30 rounded-xl">
+                <p className="text-[11px] text-gray-500 uppercase tracking-wider font-semibold">
+                  {lang === 'bn' ? 'গর্বের সাথে সম্মাননা প্রদান করা হচ্ছে' : 'Proudly Presented To'}
+                </p>
+                <h3 className="text-2xl sm:text-3xl font-black text-brand-red tracking-tight mt-0.5">
+                  Ahmed Rahman
+                </h3>
+                <div className="flex items-center justify-center space-x-3 text-xs mt-1">
+                  <span className="font-mono font-bold text-gray-700 bg-white px-2.5 py-0.5 rounded-full border border-gray-200">
+                    ID: LB-0004278
+                  </span>
+                  <span className="font-extrabold text-brand-red bg-red-100 px-2 py-0.5 rounded-full">
+                    O+ POSITIVE
+                  </span>
+                  <span className="text-gray-600 font-medium">
+                    {lang === 'bn' ? 'ঢাকা জেলা' : 'Dhaka District'}
+                  </span>
+                </div>
+              </div>
 
-              <div className="mt-6 pt-4 border-t border-gray-200 flex items-center justify-between text-[10px] text-gray-500">
-                <div>
-                  <p className="font-bold text-gray-800">{t.achievementsPage.centralBoard}</p>
-                  <p>{t.achievementsPage.secretariatDhaka}</p>
+              {/* Milestone Details */}
+              <div className="my-3">
+                <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-brand-light border border-brand-red/30 mb-2">
+                  <Sparkles className="w-3.5 h-3.5 text-brand-red" />
+                  <span className="text-xs font-black text-brand-red">
+                    {lang === 'bn' ? selectedCertificate.title_bn : selectedCertificate.title_en}
+                    {' '}({lang === 'bn' ? `${selectedCertificate.required_count} বার রক্তদান` : `${selectedCertificate.required_count} Donations`})
+                  </span>
                 </div>
-                <div>
-                  <p className="font-bold text-brand-green">{t.achievementsPage.cryptoVerified}</p>
-                  <p>{lang === 'bn' ? 'তারিখ: ৩ নভেম্বর, ২০২৬' : 'Date: Nov 3, 2026'}</p>
+
+                <p className="text-xs text-gray-600 leading-relaxed max-w-lg mx-auto">
+                  {lang === 'bn' 
+                    ? `সফল ও যাচাইকৃত ${selectedCertificate.required_count} বার রক্তদানের মাধ্যমে বাংলাদেশের বিভিন্ন হাসপাতালে চিকিৎসাধীন সংকটাপন্ন মানুষের জীবন রক্ষায় নিঃস্বার্থ মানবিক অবদানের জন্য এই সনদপত্র প্রদান করা হলো।`
+                    : `In grateful recognition of ${selectedCertificate.required_count} verified whole-blood donations contributing directly to saving human lives across hospitals in Bangladesh.`}
+                </p>
+              </div>
+
+              {/* Signatures & Seal Footer */}
+              <div className="mt-8 pt-4 border-t border-gray-200 grid grid-cols-3 items-center text-center">
+                
+                {/* Left Signature */}
+                <div className="text-[10px] text-gray-600 space-y-0.5">
+                  <div className="h-8 flex items-end justify-center font-serif italic text-sm text-gray-800 font-bold">
+                    Prof. Dr. A. K. Azad
+                  </div>
+                  <div className="w-24 mx-auto border-t border-gray-400" />
+                  <p className="font-bold text-gray-800 mt-1">{t.achievementsPage.centralBoard}</p>
+                  <p className="text-gray-400">{t.achievementsPage.secretariatDhaka}</p>
                 </div>
+
+                {/* Center Gold Seal */}
+                <div className="flex flex-col items-center justify-center">
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-amber-400 via-amber-500 to-amber-600 p-0.5 shadow-md flex items-center justify-center">
+                    <div className="w-full h-full rounded-full border-2 border-dashed border-white/80 flex flex-col items-center justify-center text-white">
+                      <Droplet className="w-5 h-5 fill-white text-white" />
+                      <span className="text-[7px] font-black uppercase tracking-wider mt-0.5">OFFICIAL SEAL</span>
+                    </div>
+                  </div>
+                  <span className="text-[9px] font-mono font-bold text-amber-700 mt-1">
+                    LB-CERT-0004278
+                  </span>
+                </div>
+
+                {/* Right Verification Authority */}
+                <div className="text-[10px] text-gray-600 space-y-0.5">
+                  <div className="h-8 flex items-end justify-center text-xs text-brand-green font-bold">
+                    <ShieldCheck className="w-4 h-4 mr-1 inline" />
+                    <span>VERIFIED</span>
+                  </div>
+                  <div className="w-24 mx-auto border-t border-gray-400" />
+                  <p className="font-bold text-brand-green mt-1">{t.achievementsPage.cryptoVerified}</p>
+                  <p className="text-gray-400">{lang === 'bn' ? 'তারিখ: ৩ নভেম্বর, ২০২৬' : 'Date: Nov 3, 2026'}</p>
+                </div>
+
               </div>
 
             </div>
 
+            {/* Modal Action Buttons */}
             <div className="mt-6 flex items-center justify-center space-x-3">
               <button
-                onClick={() => alert("Downloading official LalBindu PDF Certificate...")}
+                onClick={() => {
+                  window.print();
+                }}
                 className="py-2.5 px-5 rounded-full bg-brand-red hover:bg-brand-crimson text-white font-bold text-xs shadow-md transition-all flex items-center space-x-2"
               >
-                <Download className="w-4 h-4" />
-                <span>{t.achievementsPage.downloadPdfBtn}</span>
+                <Printer className="w-4 h-4" />
+                <span>{lang === 'bn' ? 'সনদ প্রিন্ট / পিডিএফ ডাউনলোড' : 'Print / Download Certificate PDF'}</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(typeof window !== 'undefined' ? `${window.location.origin}/verify/LB-TOKEN-DNR-0004278` : '');
+                  alert(lang === 'bn' ? 'সনদের অনলাইন ভেরিফিকেশন লিংক কপি হয়েছে!' : 'Online certificate verification link copied!');
+                }}
+                className="py-2.5 px-4 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-xs transition-all flex items-center space-x-1.5"
+              >
+                <Share2 className="w-3.5 h-3.5" />
+                <span>{lang === 'bn' ? 'লিংক শেয়ার' : 'Share Link'}</span>
               </button>
 
               <button
