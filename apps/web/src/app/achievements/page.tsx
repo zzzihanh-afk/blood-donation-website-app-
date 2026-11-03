@@ -15,35 +15,29 @@ export default function AchievementsPage() {
   const getBadgeStyle = (id: string, isUnlocked: boolean) => {
     if (!isUnlocked) {
       return {
-        bg: 'bg-gray-100 text-gray-400 border border-gray-200',
-        dropColor: 'text-gray-300'
+        bg: 'bg-gray-100 border border-gray-200'
       };
     }
     switch (id) {
       case 'ach-first-drop':
         return {
-          bg: 'bg-gradient-to-br from-amber-400 via-amber-500 to-amber-600 text-white shadow-amber-500/30 border-2 border-amber-200',
-          dropColor: 'text-brand-red'
+          bg: 'bg-gradient-to-br from-brand-crimson to-brand-red shadow-brand-red/30 border border-brand-red/40'
         };
       case 'ach-life-saver':
         return {
-          bg: 'bg-gradient-to-br from-slate-200 via-gray-300 to-slate-400 text-gray-900 shadow-slate-400/30 border-2 border-white',
-          dropColor: 'text-brand-red'
+          bg: 'bg-gradient-to-br from-slate-700 via-gray-800 to-slate-900 shadow-slate-500/30 border border-slate-600'
         };
       case 'ach-hero-donor':
         return {
-          bg: 'bg-gradient-to-br from-yellow-300 via-amber-400 to-yellow-600 text-white shadow-amber-500/40 border-2 border-yellow-200',
-          dropColor: 'text-brand-crimson'
+          bg: 'bg-gradient-to-br from-amber-500 via-yellow-600 to-amber-700 shadow-amber-500/40 border border-amber-400'
         };
       case 'ach-guardian-life':
         return {
-          bg: 'bg-gradient-to-br from-purple-600 via-indigo-600 to-amber-500 text-white shadow-purple-500/30 border-2 border-purple-200',
-          dropColor: 'text-white'
+          bg: 'bg-gradient-to-br from-purple-700 via-indigo-800 to-purple-900 shadow-purple-500/30 border border-purple-400'
         };
       default:
         return {
-          bg: 'bg-gradient-to-br from-brand-crimson to-brand-red text-white shadow-brand-red/30',
-          dropColor: 'text-white'
+          bg: 'bg-gradient-to-br from-brand-crimson to-brand-red shadow-brand-red/30'
         };
     }
   };
@@ -99,17 +93,24 @@ export default function AchievementsPage() {
                   isUnlocked ? 'border-brand-red/30' : 'border-gray-200 opacity-90'
                 }`}
               >
-                {/* Badge Crest */}
+                {/* Badge Crest with Official LalBindu Logo */}
                 <div className="text-center mb-4">
                   <div className={`w-20 h-20 mx-auto rounded-3xl flex items-center justify-center shadow-lg relative ${badgeStyle.bg}`}>
-                    <div className="relative flex items-center justify-center">
-                      <Droplet className={`w-10 h-10 fill-current ${badgeStyle.dropColor}`} />
-                      <Heart className="w-4 h-4 text-white fill-white absolute top-4" />
+                    <div className="w-14 h-14 rounded-2xl bg-white p-1.5 shadow-md flex items-center justify-center">
+                      <div className="relative w-full h-full">
+                        <Image
+                          src="/branding/lalbindu-emblem.png"
+                          alt="LalBindu Official Logo"
+                          fill
+                          className={`object-contain ${!isUnlocked ? 'grayscale opacity-30' : 'drop-shadow-sm'}`}
+                          priority
+                        />
+                      </div>
                     </div>
                     {isUnlocked ? (
                       <CheckCircle2 className="w-6 h-6 text-white bg-brand-green rounded-full absolute -top-1 -right-1 shadow-md" />
                     ) : (
-                      <Lock className="w-5 h-5 text-gray-500 bg-white rounded-full p-0.5 absolute -top-1 -right-1 shadow-md" />
+                      <Lock className="w-5 h-5 text-gray-500 bg-white rounded-full p-0.5 absolute -top-1 -right-1 shadow-md border border-gray-200" />
                     )}
                   </div>
 
@@ -262,9 +263,16 @@ export default function AchievementsPage() {
                 {/* Center Gold Seal */}
                 <div className="flex flex-col items-center justify-center">
                   <div className="w-16 h-16 rounded-full bg-gradient-to-br from-amber-400 via-amber-500 to-amber-600 p-0.5 shadow-md flex items-center justify-center">
-                    <div className="w-full h-full rounded-full border-2 border-dashed border-white/80 flex flex-col items-center justify-center text-white">
-                      <Droplet className="w-5 h-5 fill-white text-white" />
-                      <span className="text-[7px] font-black uppercase tracking-wider mt-0.5">OFFICIAL SEAL</span>
+                    <div className="w-full h-full rounded-full border-2 border-dashed border-white/80 flex flex-col items-center justify-center bg-white p-1">
+                      <div className="relative w-6 h-6">
+                        <Image
+                          src="/branding/lalbindu-emblem.png"
+                          alt="LalBindu Official Logo"
+                          fill
+                          className="object-contain"
+                        />
+                      </div>
+                      <span className="text-[6px] font-black uppercase tracking-wider text-amber-900 mt-0.5">OFFICIAL SEAL</span>
                     </div>
                   </div>
                   <span className="text-[9px] font-mono font-bold text-amber-700 mt-1">
