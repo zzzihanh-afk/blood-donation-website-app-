@@ -470,6 +470,7 @@ export default function AdminDashboardPage() {
                   validUntil="31 Dec 2026"
                   verificationToken="LA0010001"
                   verificationUrl="https://lalbindu.bd/verify/LA0010001"
+                  layoutMode="single"
                   interactiveFlip={true}
                   showActions={true}
                   isDemo={true}

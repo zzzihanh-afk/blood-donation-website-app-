@@ -116,6 +116,8 @@ export type LandmarkWatermark =
   | 'sangsad_bhaban'
   | 'ahsan_manzil'
   | 'shat_gombuj'
+  | 'thana_skyline'
+  | 'shaheed_minar'
   | 'blood_drop'
   | 'volunteers'
   | 'bd_map'
@@ -123,10 +125,13 @@ export type LandmarkWatermark =
 
 export type CardBadgeIcon = 
   | 'gold_star'
+  | 'blue_star'
   | 'star'
   | 'fort'
+  | 'arch'
   | 'mosque'
   | 'building'
+  | 'purple_star'
   | 'community'
   | 'user'
   | 'shield';

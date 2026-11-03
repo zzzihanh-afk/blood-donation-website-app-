@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useLanguage } from '@/components/LanguageContext';
 import { CR80IDCard } from '@/components/id-card/CR80IDCard';
 import { REFERENCE_SAMPLE_PROFILES } from '@lalbindu/api-client';
@@ -39,7 +40,10 @@ import {
   Monitor,
   Smartphone,
   ChevronRight,
-  Check
+  Check,
+  Grid,
+  X,
+  Sparkles
 } from 'lucide-react';
 
 interface RoleTemplateState {
@@ -170,7 +174,7 @@ const INITIAL_ROLE_TEMPLATES: Record<string, RoleTemplateState> = {
       showJurisdiction: true,
       showValidity: true,
       watermarkType: 'shat_gombuj',
-      badgeIcon: 'mosque'
+      badgeIcon: 'arch'
     },
     backConfig: {
       showQr: true,
@@ -202,7 +206,7 @@ const INITIAL_ROLE_TEMPLATES: Record<string, RoleTemplateState> = {
       showBadge: true,
       showJurisdiction: true,
       showValidity: true,
-      watermarkType: 'smriti_soudho',
+      watermarkType: 'thana_skyline',
       badgeIcon: 'building'
     },
     backConfig: {
@@ -235,8 +239,8 @@ const INITIAL_ROLE_TEMPLATES: Record<string, RoleTemplateState> = {
       showBadge: true,
       showJurisdiction: true,
       showValidity: true,
-      watermarkType: 'ahsan_manzil',
-      badgeIcon: 'star'
+      watermarkType: 'shaheed_minar',
+      badgeIcon: 'purple_star'
     },
     backConfig: {
       showQr: true,
@@ -362,6 +366,8 @@ export default function IdCardTemplateDesignerPage() {
   const [selectedRoleId, setSelectedRoleId] = useState<string>('super_admin');
   const [selectedProfileId, setSelectedProfileId] = useState<string>('prof-super-admin');
   const [previewSide, setPreviewSide] = useState<'front' | 'back'>('front');
+  const [cardViewMode, setCardViewMode] = useState<'side-by-side' | 'front' | 'back' | 'flip'>('side-by-side');
+  const [showAllRolesModal, setShowAllRolesModal] = useState<boolean>(false);
   const [zoomLevel, setZoomLevel] = useState<number>(1);
   const [auditLogsOpen, setAuditLogsOpen] = useState<boolean>(false);
   const [migrationModalOpen, setMigrationModalOpen] = useState<boolean>(false);
@@ -504,7 +510,15 @@ export default function IdCardTemplateDesignerPage() {
           </div>
 
           {/* Quick Metrics & Actions */}
-          <div className="flex items-center space-x-3">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <button
+              onClick={() => setShowAllRolesModal(true)}
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-brand-red to-brand-crimson hover:from-brand-crimson hover:to-brand-red text-white text-xs font-black shadow-md shadow-brand-red/20 transition-all flex items-center space-x-1.5"
+            >
+              <Grid className="w-3.5 h-3.5" />
+              <span>{lang === 'bn' ? 'সকল ৮ পদের মাস্টার বোর্ড' : 'All 8 Roles Master Board'}</span>
+            </button>
+
             <button
               onClick={() => setAuditLogsOpen(true)}
               className="px-4 py-2 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-700 text-xs font-bold border border-gray-200 transition-all flex items-center space-x-1.5"
@@ -658,13 +672,15 @@ export default function IdCardTemplateDesignerPage() {
                 onChange={(e) => updateFrontConfig('watermarkType', e.target.value as LandmarkWatermark)}
                 className="w-full text-xs p-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-brand-red/20 font-medium"
               >
-                <option value="smriti_soudho">জাতীয় স্মৃতিসৌধ (Smriti Soudho)</option>
-                <option value="sangsad_bhaban">জাতীয় সংসদ ভবন (Sangsad Bhaban)</option>
-                <option value="ahsan_manzil">আহসান মঞ্জিল / লালবাগ কেল্লা (Ahsan Manzil)</option>
-                <option value="shat_gombuj">ষাট গম্বুজ মসজিদ (Sixty Dome Mosque)</option>
-                <option value="blood_drop">লালবিন্দু রক্তের ফোঁটা (LalBindu Drop)</option>
-                <option value="volunteers">স্বেচ্ছাসেবক দল (Community Volunteers)</option>
-                <option value="bd_map">বাংলাদেশ মানচিত্র (BD Map)</option>
+                <option value="smriti_soudho">জাতীয় স্মৃতিসৌধ (Smriti Soudho — Super Admin)</option>
+                <option value="sangsad_bhaban">জাতীয় সংসদ ভবন (Sangsad Bhaban — Division Admin)</option>
+                <option value="ahsan_manzil">আহসান মঞ্জিল / লালবাগ (Ahsan Manzil — District Admin)</option>
+                <option value="shat_gombuj">ষাট গম্বুজ মসজিদ (Shat Gombuj — Upazila Admin)</option>
+                <option value="thana_skyline">মেট্রোপলিটন থানা স্থাপত্য (Thana Skyline — Thana Admin)</option>
+                <option value="shaheed_minar">শহীদ মিনার (Shaheed Minar — Union Admin)</option>
+                <option value="blood_drop">লালবিন্দু রক্তের ফোঁটা (LalBindu Drop — Donor)</option>
+                <option value="volunteers">স্বেচ্ছাসেবক দল (Community Volunteers — Volunteer)</option>
+                <option value="bd_map">বাংলাদেশ মানচিত্র (BD Map Watermark)</option>
                 <option value="none">কোনোটি নয় (None)</option>
               </select>
             </div>
@@ -744,6 +760,38 @@ export default function IdCardTemplateDesignerPage() {
                 </span>
               </div>
 
+              {/* View Mode Segmented Controls */}
+              <div className="flex items-center bg-gray-100 p-1 rounded-xl text-xs font-bold text-gray-600">
+                <button
+                  type="button"
+                  onClick={() => setCardViewMode('side-by-side')}
+                  className={`px-3 py-1 rounded-lg transition-all ${cardViewMode === 'side-by-side' ? 'bg-white text-brand-red shadow-sm' : 'hover:text-gray-900'}`}
+                >
+                  {lang === 'bn' ? 'পাশাপাশি (উভয় পিঠ)' : 'Side-by-Side'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCardViewMode('front')}
+                  className={`px-2.5 py-1 rounded-lg transition-all ${cardViewMode === 'front' ? 'bg-white text-brand-red shadow-sm' : 'hover:text-gray-900'}`}
+                >
+                  {lang === 'bn' ? 'সামনে' : 'Front'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCardViewMode('back')}
+                  className={`px-2.5 py-1 rounded-lg transition-all ${cardViewMode === 'back' ? 'bg-white text-brand-red shadow-sm' : 'hover:text-gray-900'}`}
+                >
+                  {lang === 'bn' ? 'পেছনে' : 'Back'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCardViewMode('flip')}
+                  className={`px-2.5 py-1 rounded-lg transition-all ${cardViewMode === 'flip' ? 'bg-white text-brand-red shadow-sm' : 'hover:text-gray-900'}`}
+                >
+                  {lang === 'bn' ? 'ফ্লিপ' : 'Flip'}
+                </button>
+              </div>
+
               {/* Sample Profile Selector */}
               <div className="flex items-center space-x-2">
                 <span className="text-[11px] font-bold text-gray-500">
@@ -764,8 +812,7 @@ export default function IdCardTemplateDesignerPage() {
             </div>
 
             {/* Card Render Stage */}
-            <div className="py-6 px-4 bg-[#F8FAFC] rounded-3xl border border-gray-100 flex items-center justify-center min-h-[380px] relative overflow-hidden">
-              
+            <div className="py-6 px-4 bg-[#F8FAFC] rounded-3xl border border-gray-100 flex items-center justify-center min-h-[420px] relative overflow-hidden">
               <CR80IDCard
                 roleId={selectedRoleId}
                 fullName={currentProfile.full_name}
@@ -784,11 +831,12 @@ export default function IdCardTemplateDesignerPage() {
                 backConfig={currentTemplate.backConfig}
                 settings={currentTemplate.settings}
                 scale={zoomLevel}
-                interactiveFlip={true}
+                layoutMode={cardViewMode === 'side-by-side' ? 'side-by-side' : 'single'}
+                initialSide={cardViewMode === 'back' ? 'back' : 'front'}
+                interactiveFlip={cardViewMode === 'flip'}
                 showActions={true}
                 isDemo={true}
               />
-
             </div>
 
             {/* Bottom Preview Controls (Zoom & Side toggles) */}
@@ -900,13 +948,14 @@ export default function IdCardTemplateDesignerPage() {
                   onChange={(e) => updateFrontConfig('badgeIcon', e.target.value as CardBadgeIcon)}
                   className="w-full text-xs p-2.5 rounded-xl border border-gray-200 bg-gray-50 font-medium"
                 >
-                  <option value="gold_star">গোল্ডেন স্টার (Gold Rosette Star)</option>
-                  <option value="star">রয়েল স্টার (Royal Blue Star)</option>
-                  <option value="fort">কেল্লা প্রতীক (Historic Fort)</option>
-                  <option value="mosque">ঐতিহ্য প্রতীক (Heritage Terracotta)</option>
-                  <option value="building">আধুনিক স্থাপত্য (Building)</option>
-                  <option value="community">কমিউনিটি রক্তদাতা (Community)</option>
-                  <option value="user">যাচাইকৃত ব্যবহারকারী (Shield User)</option>
+                  <option value="gold_star">গোল্ডেন রোজেট স্টার (Gold Rosette Star — Super Admin)</option>
+                  <option value="blue_star">রয়েল ব্লু স্টার (Royal Blue Star — Division Admin)</option>
+                  <option value="fort">কেল্লা ও ঐতিহ্য প্রতীক (Historic Fort — District Admin)</option>
+                  <option value="arch">টেরাকোটা গম্বুজ প্রতীক (Terracotta Arch — Upazila Admin)</option>
+                  <option value="building">পৌরসভা ভবন প্রতীক (Civic Building — Thana Admin)</option>
+                  <option value="purple_star">বেগুনি স্টার প্রতীক (Purple Star — Union Admin)</option>
+                  <option value="community">কমিউনিটি রক্তদাতা (Community Badge — Donor)</option>
+                  <option value="user">যাচাইকৃত স্বেচ্ছাসেবক (Shield User — Volunteer)</option>
                 </select>
               </div>
             </div>
@@ -1052,6 +1101,144 @@ export default function IdCardTemplateDesignerPage() {
                 {lang === 'bn' ? 'মাইগ্রেশন অনুমোদন করুন' : 'Confirm & Reissue'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          ALL 8 ROLES MASTER BOARD MODAL (Directly matching reference mockup)
+         ========================================================================= */}
+      {showAllRolesModal && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+          <div className="bg-[#FFF8F8] rounded-3xl max-w-7xl w-full p-4 sm:p-8 card-shadow border border-gray-200 relative my-auto max-h-[95vh] overflow-y-auto">
+            
+            {/* Modal Header */}
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-200 pb-5 mb-6">
+              <div>
+                <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-brand-light text-brand-red text-xs font-bold mb-1.5">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>{lang === 'bn' ? 'অফিশিয়াল ৮-রোল সিআর৮০ আইডেন্টিটি সিস্টেম' : 'Official 8-Role CR80 Identity Master Sheet'}</span>
+                </div>
+                <h2 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">
+                  {lang === 'bn' ? 'লালবিন্দু বাংলাদেশ — সকল পদের কার্ড প্রিভিউ বোর্ড' : 'LalBindu Bangladesh — All Roles ID Cards Board'}
+                </h2>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {lang === 'bn' 
+                    ? 'প্রতিটি পদের জন্য নির্ধারিত ল্যান্ডমার্ক ইলাস্ট্রেশন, অ্যাকসেন্ট কালার এবং কিউআর ব্যাক ভেরিফিকেশন সহ সম্পূর্ণ দ্বৈত-কার্ড প্রদর্শনী।' 
+                    : 'Authentic Front & Back dual card presentation across all 8 nationwide roles with landmark illustrations and QR verification.'}
+                </p>
+              </div>
+
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={() => window.print()}
+                  className="px-4 py-2 rounded-xl bg-white border border-gray-300 hover:border-gray-400 text-gray-700 text-xs font-bold transition-all flex items-center space-x-1.5 shadow-sm"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>{lang === 'bn' ? 'বোর্ড প্রিন্ট / পিডিএফ' : 'Print Board PDF'}</span>
+                </button>
+
+                <button
+                  onClick={() => setShowAllRolesModal(false)}
+                  className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center transition-all font-bold"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* 8-Card Grid (4 rows x 2 columns, each showing Front & Back pair) */}
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 lg:gap-10">
+              {[
+                'super_admin',
+                'division_admin',
+                'district_admin',
+                'upazila_admin',
+                'thana_admin',
+                'union_admin',
+                'donor',
+                'volunteer'
+              ].map((roleKey) => {
+                const tpl = templates[roleKey] || INITIAL_ROLE_TEMPLATES[roleKey];
+                const prof = REFERENCE_SAMPLE_PROFILES.find((p: any) => p.role_id === roleKey) || REFERENCE_SAMPLE_PROFILES[0];
+                return (
+                  <div 
+                    key={roleKey}
+                    className="bg-white rounded-3xl p-5 border border-gray-200/80 shadow-md hover:shadow-lg transition-all flex flex-col justify-between"
+                  >
+                    <div className="flex items-center justify-between pb-3 mb-2 border-b border-gray-100">
+                      <div className="flex items-center space-x-2">
+                        <span className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: tpl.settings.primaryColor }} />
+                        <h4 className="text-sm font-black text-gray-900">
+                          {lang === 'bn' ? tpl.roleNameBn : tpl.roleNameEn}
+                        </h4>
+                        <span className="text-[10px] px-2 py-0.5 rounded-md bg-gray-100 font-mono font-bold text-gray-600">
+                          {tpl.versionTag}
+                        </span>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          setSelectedRoleId(roleKey);
+                          setShowAllRolesModal(false);
+                        }}
+                        className="text-xs font-bold text-brand-red hover:underline flex items-center space-x-1"
+                      >
+                        <span>{lang === 'bn' ? 'ডিজাইন সম্পাদনা' : 'Edit Design'}</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    <div className="py-2">
+                      <CR80IDCard
+                        roleId={roleKey}
+                        fullName={prof.full_name}
+                        fullNameBn={prof.full_name_bn}
+                        designation={prof.designation_en}
+                        designationBn={prof.designation_bn}
+                        uniqueId={prof.unique_id}
+                        avatarUrl={prof.avatar_url}
+                        organizationName={prof.organization_name}
+                        jurisdictionName={prof.jurisdiction_en}
+                        bloodGroup={prof.blood_group}
+                        donationCount={prof.donation_count}
+                        validUntil={prof.valid_until}
+                        verificationToken={prof.verification_token}
+                        frontConfig={tpl.frontConfig}
+                        backConfig={tpl.backConfig}
+                        settings={tpl.settings}
+                        layoutMode="side-by-side"
+                        showActions={false}
+                        isDemo={false}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Official LalBindu Bottom Red Wave Banner */}
+            <div className="mt-8 rounded-2xl bg-gradient-to-r from-[#580F1A] via-[#8E0B20] to-[#580F1A] text-white p-5 shadow-xl flex flex-col md:flex-row items-center justify-between gap-4 border border-red-950">
+              <div className="flex items-center space-x-4">
+                <div className="relative w-36 h-9">
+                  <Image
+                    src="/branding/lalbindu-logo.png"
+                    alt="LalBindu"
+                    fill
+                    className="object-contain object-left brightness-0 invert"
+                  />
+                </div>
+                <div className="hidden sm:block h-7 w-[1px] bg-white/20" />
+                <p className="text-sm font-black tracking-wide">
+                  Together for a Blood-Safe Bangladesh ❤️
+                </p>
+              </div>
+
+              <div className="text-right text-[11px] text-red-200/90 font-medium">
+                Official Digital Identity & QR Verification Platform • Spec CR80 (85.6mm × 54mm)
+              </div>
+            </div>
+
           </div>
         </div>
       )}
