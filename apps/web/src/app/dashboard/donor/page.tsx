@@ -28,14 +28,101 @@ import {
   Clock, 
   Heart,
   Settings,
-  UserCheck
+  UserCheck,
+  Phone,
+  MessageCircle,
+  XCircle,
+  Trash2
 } from 'lucide-react';
+
+interface IncomingContactRequest {
+  id: string;
+  donorId?: string;
+  donorIdNumber?: string;
+  donorName?: string;
+  donorBloodGroup?: string;
+  hospitalName: string;
+  requesterMobile: string;
+  urgencyNote: string;
+  status: 'pending' | 'accepted' | 'declined';
+  createdAt: string;
+}
+
+const INITIAL_DONOR_CONTACT_REQUESTS: IncomingContactRequest[] = [
+  {
+    id: 'cnt-init-01',
+    donorId: 'usr-001',
+    donorIdNumber: 'LB-0004278',
+    donorName: 'Ahmed Rahman',
+    donorBloodGroup: 'O+',
+    hospitalName: 'National Institute of Cardiovascular Diseases (NICVD)',
+    requesterMobile: '+8801712998877',
+    urgencyNote: 'Urgent open-heart coronary bypass surgery at ICU-3. Immediate 1 unit O+ donor required tonight.',
+    status: 'pending',
+    createdAt: '2026-11-03T11:45:00+06:00'
+  }
+];
 
 export default function DonorDashboardPage() {
   const { t, lang } = useLanguage();
   const donor = SAMPLE_DONORS[0]; // Ahmed Rahman
   const [availabilityStatus, setAvailabilityStatus] = useState<AvailabilityStatus>(donor.availability_status);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
+  const [incomingRequests, setIncomingRequests] = useState<IncomingContactRequest[]>(INITIAL_DONOR_CONTACT_REQUESTS);
+
+  // Load incoming contact requests from localStorage and sync across tabs
+  const loadRequests = () => {
+    try {
+      const saved = localStorage.getItem('lalbindu_donor_contact_requests');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const customIds = new Set(parsed.map((p: any) => p.id));
+          const base = INITIAL_DONOR_CONTACT_REQUESTS.filter(r => !customIds.has(r.id));
+          setIncomingRequests([...parsed, ...base]);
+          return;
+        }
+      }
+      setIncomingRequests(INITIAL_DONOR_CONTACT_REQUESTS);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  useEffect(() => {
+    loadRequests();
+    window.addEventListener('lalbindu:contact-request-updated', loadRequests);
+    window.addEventListener('storage', loadRequests);
+    return () => {
+      window.removeEventListener('lalbindu:contact-request-updated', loadRequests);
+      window.removeEventListener('storage', loadRequests);
+    };
+  }, []);
+
+  const handleAcceptRequest = (id: string) => {
+    const updated = incomingRequests.map(r => r.id === id ? { ...r, status: 'accepted' as const } : r);
+    setIncomingRequests(updated);
+    try {
+      localStorage.setItem('lalbindu_donor_contact_requests', JSON.stringify(updated));
+    } catch (e) {}
+    alert(lang === 'bn' ? 'রক্তদানে সম্মতি প্রদান করা হয়েছে! রোগীর প্রতিনিধির সাথে যোগাযোগ করুন।' : 'Donation accepted! Please contact the patient representative.');
+  };
+
+  const handleDeclineRequest = (id: string) => {
+    const updated = incomingRequests.map(r => r.id === id ? { ...r, status: 'declined' as const } : r);
+    setIncomingRequests(updated);
+    try {
+      localStorage.setItem('lalbindu_donor_contact_requests', JSON.stringify(updated));
+    } catch (e) {}
+  };
+
+  const handleDeleteRequest = (id: string) => {
+    const updated = incomingRequests.filter(r => r.id !== id);
+    setIncomingRequests(updated);
+    try {
+      localStorage.setItem('lalbindu_donor_contact_requests', JSON.stringify(updated));
+    } catch (e) {}
+  };
 
   // 3-calendar-month calculation
   const lastDonationDate = '2026-08-10';
@@ -118,6 +205,135 @@ export default function DonorDashboardPage() {
               </span>
               <span className="text-[10px] font-bold text-gray-500 uppercase">{t.donorDashboard.tier}</span>
             </div>
+          </div>
+        </div>
+
+        {/* =========================================================================
+            INCOMING EMERGENCY DIRECT CONTACT REQUESTS (From /find-donor)
+           ========================================================================= */}
+        <div className="bg-white rounded-3xl p-6 sm:p-8 card-shadow border border-gray-100">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-gray-100">
+            <div>
+              <div className="flex items-center space-x-2 text-brand-red">
+                <AlertCircle className="w-4 h-4 fill-brand-red text-white" />
+                <span className="text-xs font-bold uppercase tracking-wider">
+                  {lang === 'bn' ? 'সরাসরি রক্তের আবেদন ও যোগাযোগের অনুরোধ' : 'Direct Patient Blood & Contact Requests'}
+                </span>
+                <span className="px-2 py-0.5 rounded-full bg-brand-light text-brand-red text-[10px] font-black">
+                  {incomingRequests.filter(r => r.status === 'pending').length} {lang === 'bn' ? 'টি অপেক্ষমাণ' : 'Pending'}
+                </span>
+              </div>
+              <h2 className="text-xl font-black text-gray-900 tracking-tight mt-1">
+                {lang === 'bn' ? 'আপনার কাছে প্রেরিত জরুরি রক্তের চাহিদাসমূহ' : 'Incoming Patient Contact Requests'}
+              </h2>
+            </div>
+
+            <p className="text-xs text-gray-500 max-w-sm">
+              {lang === 'bn' 
+                ? 'রোগী বা হাসপাতালের প্রতিনিধিবৃন্দ আপনার প্রোফাইল খুঁজে সরাসরি এই রক্তদানের অনুরোধ পাঠিয়েছেন।' 
+                : 'Patients or hospital coordinators who searched for your blood group and sent contact requests directly to you.'}
+            </p>
+          </div>
+
+          <div className="divide-y divide-gray-100 pt-2">
+            {incomingRequests.length === 0 ? (
+              <div className="text-center py-8 text-gray-400 text-xs">
+                {lang === 'bn' ? 'বর্তমানে কোনো সরাসরি রক্তের আবেদন নেই।' : 'No direct contact requests at this moment.'}
+              </div>
+            ) : (
+              incomingRequests.map((req) => (
+                <div key={req.id} className="py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="flex items-start space-x-3.5">
+                    <div className="w-12 h-12 rounded-2xl bg-brand-light border border-brand-red/20 flex flex-col items-center justify-center text-brand-red shrink-0 mt-0.5">
+                      <Droplet className="w-4 h-4 fill-brand-red" />
+                      <span className="text-[11px] font-black leading-none mt-0.5">{req.donorBloodGroup || 'O+'}</span>
+                    </div>
+
+                    <div>
+                      <div className="flex items-center space-x-2">
+                        <h4 className="text-sm font-black text-gray-900">{req.hospitalName}</h4>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                          req.status === 'accepted' 
+                            ? 'bg-green-100 text-brand-green' 
+                            : req.status === 'declined'
+                            ? 'bg-gray-100 text-gray-500'
+                            : 'bg-red-100 text-brand-red'
+                        }`}>
+                          {req.status === 'accepted' ? (lang === 'bn' ? 'সম্মতি জানানো হয়েছে' : 'Accepted') :
+                           req.status === 'declined' ? (lang === 'bn' ? 'বাতিলকৃত' : 'Declined') :
+                           (lang === 'bn' ? 'অপেক্ষমাণ জরুরি' : 'Pending Urgent')}
+                        </span>
+                      </div>
+
+                      <p className="text-xs text-gray-600 mt-1 max-w-xl leading-relaxed">
+                        {req.urgencyNote}
+                      </p>
+
+                      <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 mt-2">
+                        <span className="flex items-center font-bold text-gray-700">
+                          <Phone className="w-3.5 h-3.5 mr-1 text-brand-green" />
+                          {req.requesterMobile}
+                        </span>
+                        <span>•</span>
+                        <span>{new Date(req.createdAt).toLocaleString(lang === 'bn' ? 'bn-BD' : 'en-US')}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center space-x-2 shrink-0">
+                    {req.status === 'pending' ? (
+                      <>
+                        <button
+                          onClick={() => handleAcceptRequest(req.id)}
+                          className="px-4 py-2 rounded-xl bg-brand-green hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition-all flex items-center space-x-1.5"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>{lang === 'bn' ? 'আমি রক্ত দিতে রাজি' : 'I Can Donate'}</span>
+                        </button>
+
+                        <a
+                          href={`tel:${req.requesterMobile}`}
+                          className="px-3 py-2 rounded-xl bg-brand-light hover:bg-red-100 text-brand-red text-xs font-bold border border-brand-red/20 transition-all flex items-center space-x-1"
+                        >
+                          <Phone className="w-3.5 h-3.5" />
+                          <span>{lang === 'bn' ? 'কল করুন' : 'Call'}</span>
+                        </a>
+
+                        <button
+                          onClick={() => handleDeclineRequest(req.id)}
+                          className="px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-bold transition-all"
+                        >
+                          {lang === 'bn' ? 'অপারগ' : 'Decline'}
+                        </button>
+                      </>
+                    ) : req.status === 'accepted' ? (
+                      <div className="flex items-center space-x-2">
+                        <a
+                          href={`tel:${req.requesterMobile}`}
+                          className="px-4 py-2 rounded-xl bg-brand-green text-white text-xs font-bold shadow-sm flex items-center space-x-1.5"
+                        >
+                          <Phone className="w-3.5 h-3.5" />
+                          <span>{lang === 'bn' ? 'রোগীর সাথে যোগাযোগ করুন' : 'Call Patient Now'}</span>
+                        </a>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-400 italic">
+                        {lang === 'bn' ? 'অনুরোধটি বাতিল করা হয়েছে' : 'Request declined'}
+                      </span>
+                    )}
+
+                    <button
+                      onClick={() => handleDeleteRequest(req.id)}
+                      className="p-2 text-gray-300 hover:text-red-500 transition-colors"
+                      title={lang === 'bn' ? 'মুছে ফেলুন' : 'Delete'}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
 

@@ -31,6 +31,11 @@ export default function FindDonorPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [contactModalDonor, setContactModalDonor] = useState<typeof SAMPLE_DONORS[0] | null>(null);
   const [requestSent, setRequestSent] = useState(false);
+  const [requestFormData, setRequestFormData] = useState({
+    patientHospital: '',
+    contactMobile: '',
+    urgencyNote: ''
+  });
 
   // Available districts filtered by selected division
   const filteredDistricts = useMemo(() => {
@@ -73,11 +78,40 @@ export default function FindDonorPage() {
 
   const handleSendContactRequest = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!contactModalDonor) return;
+
+    const newContactReq = {
+      id: `cnt-${Date.now()}`,
+      donorId: contactModalDonor.id,
+      donorIdNumber: contactModalDonor.donor_id_number,
+      donorName: contactModalDonor.full_name,
+      donorBloodGroup: contactModalDonor.blood_group,
+      hospitalName: requestFormData.patientHospital || 'Dhaka Medical College Hospital',
+      requesterMobile: requestFormData.contactMobile || '+8801712345678',
+      urgencyNote: requestFormData.urgencyNote || 'Urgent blood requirement for critical patient.',
+      status: 'pending',
+      createdAt: new Date().toISOString()
+    };
+
+    try {
+      const existing = JSON.parse(localStorage.getItem('lalbindu_donor_contact_requests') || '[]');
+      const updated = [newContactReq, ...existing];
+      localStorage.setItem('lalbindu_donor_contact_requests', JSON.stringify(updated));
+      window.dispatchEvent(new Event('lalbindu:contact-request-updated'));
+    } catch (err) {
+      console.error('Failed to save contact request', err);
+    }
+
     setRequestSent(true);
     setTimeout(() => {
       setRequestSent(false);
       setContactModalDonor(null);
-    }, 2000);
+      setRequestFormData({
+        patientHospital: '',
+        contactMobile: '',
+        urgencyNote: ''
+      });
+    }, 2500);
   };
 
   return (
@@ -275,14 +309,24 @@ export default function FindDonorPage() {
             </button>
 
             {requestSent ? (
-              <div className="text-center py-8 space-y-3">
-                <div className="w-16 h-16 rounded-full bg-green-100 text-brand-green flex items-center justify-center mx-auto">
+              <div className="text-center py-8 space-y-4">
+                <div className="w-16 h-16 rounded-full bg-green-100 text-brand-green flex items-center justify-center mx-auto shadow-sm">
                   <CheckCircle className="w-8 h-8" />
                 </div>
                 <h3 className="text-lg font-bold text-gray-900">{t.findDonorPage.requestSentTitle}</h3>
                 <p className="text-xs text-gray-600 max-w-xs mx-auto">
-                  {t.findDonorPage.requestSentDesc}
+                  {lang === 'bn' 
+                    ? `জরুরি রক্তের অনুরোধ সফলভাবে পাঠানো হয়েছে! দাতা ${contactModalDonor.full_name}-এর ড্যাশবোর্ডে এটি প্রদর্শিত হচ্ছে।` 
+                    : `Emergency contact request sent to ${contactModalDonor.full_name}! It is now visible in their Donor Dashboard.`}
                 </p>
+                <div className="pt-2">
+                  <a
+                    href="/dashboard/donor"
+                    className="inline-flex items-center px-4 py-2 rounded-xl bg-brand-red text-white text-xs font-bold shadow-md hover:bg-brand-crimson transition-all"
+                  >
+                    <span>{lang === 'bn' ? 'দাতা ড্যাশবোর্ডে দেখুন →' : 'View in Donor Dashboard →'}</span>
+                  </a>
+                </div>
               </div>
             ) : (
               <div>
@@ -315,6 +359,8 @@ export default function FindDonorPage() {
                     <input
                       type="text"
                       required
+                      value={requestFormData.patientHospital}
+                      onChange={(e) => setRequestFormData({ ...requestFormData, patientHospital: e.target.value })}
                       placeholder="e.g. Dhaka Medical College Hospital"
                       className="w-full text-xs px-3 py-2 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-brand-red/20 focus:border-brand-red"
                     />
@@ -325,6 +371,8 @@ export default function FindDonorPage() {
                     <input
                       type="tel"
                       required
+                      value={requestFormData.contactMobile}
+                      onChange={(e) => setRequestFormData({ ...requestFormData, contactMobile: e.target.value })}
                       placeholder="017XXXXXXXX"
                       className="w-full text-xs px-3 py-2 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-brand-red/20 focus:border-brand-red"
                     />
@@ -334,6 +382,8 @@ export default function FindDonorPage() {
                     <label className="block text-xs font-bold text-gray-700 mb-1">{t.findDonorPage.urgencyNote}</label>
                     <textarea
                       rows={2}
+                      value={requestFormData.urgencyNote}
+                      onChange={(e) => setRequestFormData({ ...requestFormData, urgencyNote: e.target.value })}
                       placeholder="Describe the medical emergency..."
                       className="w-full text-xs px-3 py-2 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-brand-red/20 focus:border-brand-red"
                     />
