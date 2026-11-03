@@ -1,0 +1,17 @@
+{
+  "name": "@lalbindu/api-client",
+  "version": "1.0.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@lalbindu/shared-types": "workspace:*",
+    "@supabase/supabase-js": "^2.46.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  }
+}

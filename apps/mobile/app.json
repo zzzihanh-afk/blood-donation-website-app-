@@ -1,0 +1,34 @@
+{
+  "expo": {
+    "name": "LalBindu",
+    "slug": "lalbindu",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#C8102E"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "bd.lalbindu.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#C8102E"
+      },
+      "package": "bd.lalbindu.app"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "scheme": "lalbindu"
+  }
+}
