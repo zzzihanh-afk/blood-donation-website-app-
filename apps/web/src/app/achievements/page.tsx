@@ -1,10 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useLanguage } from '@/components/LanguageContext';
 import { DEFAULT_ACHIEVEMENTS } from '@lalbindu/business-rules';
 import { Award, CheckCircle2, Lock, Download, Share2, Droplet, Sparkles, Heart } from 'lucide-react';
 
 export default function AchievementsPage() {
+  const { t, lang } = useLanguage();
   const verifiedDonations = 5; // Sample user has 5 verified donations (Life Saver unlocked)
   const [selectedCertificate, setSelectedCertificate] = useState<typeof DEFAULT_ACHIEVEMENTS[0] | null>(null);
 
@@ -16,30 +18,30 @@ export default function AchievementsPage() {
         <div className="text-center max-w-2xl mx-auto mb-12">
           <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-brand-red/10 text-brand-red text-xs font-bold mb-2">
             <Award className="w-3.5 h-3.5" />
-            <span>Donor Recognition & Badges</span>
+            <span>{t.achievementsPage.tag}</span>
           </div>
           <h1 className="text-3xl sm:text-4xl font-black text-gray-900 tracking-tight">
-            LalBindu Humanitarian Milestones
+            {t.achievementsPage.title}
           </h1>
           <p className="text-sm text-gray-600 mt-2">
-            Every drop is recognized. Achievements are automatically unlocked strictly through genuine, hospital-verified blood donations.
+            {t.achievementsPage.subtitle}
           </p>
 
           {/* User Progress Bar Summary */}
           <div className="mt-6 bg-white p-4 rounded-3xl card-shadow border border-gray-100 flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div className="w-12 h-12 rounded-2xl bg-brand-light flex items-center justify-center text-brand-red font-black text-xl">
-                {verifiedDonations}
+                {lang === 'bn' ? '৫' : verifiedDonations}
               </div>
               <div className="text-left">
-                <p className="text-xs text-gray-500">Your Verified Donations</p>
-                <p className="text-sm font-bold text-gray-900">Life Saver Tier (Rank 2)</p>
+                <p className="text-xs text-gray-500">{t.achievementsPage.yourVerifiedDonations}</p>
+                <p className="text-sm font-bold text-gray-900">{t.achievementsPage.tierTitle}</p>
               </div>
             </div>
 
             <div className="text-right">
-              <p className="text-xs text-gray-500">Next Milestone</p>
-              <p className="text-xs font-bold text-brand-red">5 more to Hero Donor (10)</p>
+              <p className="text-xs text-gray-500">{t.achievementsPage.nextMilestoneLabel}</p>
+              <p className="text-xs font-bold text-brand-red">{t.achievementsPage.nextMilestoneDesc}</p>
             </div>
           </div>
         </div>
@@ -73,18 +75,24 @@ export default function AchievementsPage() {
                     )}
                   </div>
 
-                  <h3 className="text-lg font-black text-gray-900 mt-4">{ach.title_en}</h3>
-                  <p className="text-xs font-bold text-brand-red">{ach.title_bn}</p>
+                  <h3 className="text-lg font-black text-gray-900 mt-4">
+                    {lang === 'bn' ? ach.title_bn : ach.title_en}
+                  </h3>
+                  <p className="text-xs font-bold text-brand-red">
+                    {lang === 'bn' ? ach.title_en : ach.title_bn}
+                  </p>
                   <p className="text-[11px] text-gray-500 mt-2 leading-relaxed min-h-[34px]">
-                    {ach.description_en}
+                    {lang === 'bn' ? ach.description_bn : ach.description_en}
                   </p>
                 </div>
 
                 {/* Progress Bar */}
                 <div className="space-y-2 pt-2 border-t border-gray-100">
                   <div className="flex items-center justify-between text-xs font-semibold">
-                    <span className="text-gray-500">Milestone</span>
-                    <span className="text-gray-900">{ach.required_count} Donations</span>
+                    <span className="text-gray-500">{t.achievementsPage.milestone}</span>
+                    <span className="text-gray-900">
+                      {lang === 'bn' ? `${ach.required_count} বার রক্তদান` : `${ach.required_count} Donations`}
+                    </span>
                   </div>
 
                   <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
@@ -97,7 +105,11 @@ export default function AchievementsPage() {
                   </div>
 
                   <div className="flex justify-between text-[10px] text-gray-400">
-                    <span>{progress} / {ach.required_count} Completed</span>
+                    <span>
+                      {lang === 'bn' 
+                        ? `${progress} / ${ach.required_count} সম্পন্ন`
+                        : `${progress} / ${ach.required_count} ${t.achievementsPage.completedText}`}
+                    </span>
                     <span>{percentage}%</span>
                   </div>
 
@@ -107,7 +119,7 @@ export default function AchievementsPage() {
                       className="w-full mt-3 py-2 px-3 rounded-xl bg-brand-light text-brand-red hover:bg-brand-red hover:text-white font-bold text-xs border border-brand-red/20 transition-all flex items-center justify-center space-x-1.5"
                     >
                       <Download className="w-3.5 h-3.5" />
-                      <span>View Certificate</span>
+                      <span>{t.achievementsPage.viewCertificateBtn}</span>
                     </button>
                   )}
                 </div>
@@ -133,28 +145,30 @@ export default function AchievementsPage() {
               </div>
 
               <p className="text-[10px] uppercase tracking-widest text-brand-red font-extrabold">
-                Certificate of Humanitarian Recognition
+                {t.achievementsPage.certTitle}
               </p>
               
               <h2 className="text-2xl font-black text-gray-900 mt-2">
-                {selectedCertificate.title_en}
+                {lang === 'bn' ? selectedCertificate.title_bn : selectedCertificate.title_en}
               </h2>
               <p className="text-xs font-bold text-brand-green">
-                {selectedCertificate.title_bn}
+                {lang === 'bn' ? selectedCertificate.title_en : selectedCertificate.title_bn}
               </p>
 
               <p className="text-xs text-gray-600 mt-4 leading-relaxed max-w-md mx-auto">
-                Presented to <strong>Ahmed Rahman</strong> (Donor ID: LB-0004278) in grateful recognition of {selectedCertificate.required_count} verified whole-blood donations contributing directly to saving human lives across Bangladesh.
+                {lang === 'bn' 
+                  ? `আহমেদ রহমান (দাতা আইডি: LB-0004278) কে ${selectedCertificate.required_count} বার সফল ও যাচাইকৃত রক্তদানের মাধ্যমে দেশব্যাপী মানুষের মূল্যবান জীবন রক্ষায় অসামান্য অবদানের স্বীকৃতিস্বরূপ এই সম্মাননা সনদ প্রদান করা হলো।`
+                  : `Presented to Ahmed Rahman (Donor ID: LB-0004278) in grateful recognition of ${selectedCertificate.required_count} verified whole-blood donations contributing directly to saving human lives across Bangladesh.`}
               </p>
 
               <div className="mt-6 pt-4 border-t border-gray-200 flex items-center justify-between text-[10px] text-gray-500">
                 <div>
-                  <p className="font-bold text-gray-800">LalBindu Central Board</p>
-                  <p>Secretariat, Dhaka</p>
+                  <p className="font-bold text-gray-800">{t.achievementsPage.centralBoard}</p>
+                  <p>{t.achievementsPage.secretariatDhaka}</p>
                 </div>
                 <div>
-                  <p className="font-bold text-brand-green">Cryptographically Verified</p>
-                  <p>Date: Nov 3, 2026</p>
+                  <p className="font-bold text-brand-green">{t.achievementsPage.cryptoVerified}</p>
+                  <p>{lang === 'bn' ? 'তারিখ: ৩ নভেম্বর, ২০২৬' : 'Date: Nov 3, 2026'}</p>
                 </div>
               </div>
 
@@ -166,14 +180,14 @@ export default function AchievementsPage() {
                 className="py-2.5 px-5 rounded-full bg-brand-red hover:bg-brand-crimson text-white font-bold text-xs shadow-md transition-all flex items-center space-x-2"
               >
                 <Download className="w-4 h-4" />
-                <span>Download PDF</span>
+                <span>{t.achievementsPage.downloadPdfBtn}</span>
               </button>
 
               <button
                 onClick={() => setSelectedCertificate(null)}
                 className="py-2.5 px-5 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs transition-all"
               >
-                Close
+                {t.achievementsPage.closeBtn}
               </button>
             </div>
 

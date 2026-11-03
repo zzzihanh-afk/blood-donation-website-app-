@@ -1,6 +1,9 @@
-import React from 'react';
+'use client';
+
+import React, { use } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useLanguage } from '@/components/LanguageContext';
 import { SAMPLE_ID_CARDS } from '@lalbindu/api-client';
 import { 
   ShieldCheck, 
@@ -14,16 +17,16 @@ import {
   Droplet
 } from 'lucide-react';
 
-export default async function VerifyIdCardPage({
+export default function VerifyIdCardPage({
   params,
 }: {
   params: Promise<{ token: string }>;
 }) {
-  const { token } = await params;
+  const { token } = use(params);
+  const { t, lang } = useLanguage();
   
   // Look up card details by token
   const card = SAMPLE_ID_CARDS[token] || SAMPLE_ID_CARDS['LB-TOKEN-DNR-0004278'];
-  const isValid = !!card;
 
   return (
     <div className="bg-[#FFF8F8] min-h-screen py-12 flex flex-col justify-center items-center px-4">
@@ -35,7 +38,7 @@ export default async function VerifyIdCardPage({
           className="inline-flex items-center space-x-2 text-xs font-bold text-gray-500 hover:text-brand-red mb-4"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Back to LalBindu Home</span>
+          <span>{t.verifyPage.backHome}</span>
         </Link>
 
         {/* Verification Certificate Card */}
@@ -49,11 +52,11 @@ export default async function VerifyIdCardPage({
 
             <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-sm text-xs font-bold tracking-wider uppercase mb-1">
               <CheckCircle2 className="w-3.5 h-3.5 text-brand-gold" />
-              <span>Official LalBindu ID Verification</span>
+              <span>{t.verifyPage.officialVerification}</span>
             </div>
 
             <h1 className="text-xl font-black tracking-tight">
-              Cryptographically Verified Record
+              {t.verifyPage.cryptoRecord}
             </h1>
           </div>
 
@@ -76,7 +79,7 @@ export default async function VerifyIdCardPage({
                   {card.full_name}
                 </h2>
                 <p className="text-xs font-bold text-brand-red mt-0.5">
-                  {card.role_title_en} ({card.role_title_bn})
+                  {lang === 'bn' ? card.role_title_bn : card.role_title_en}
                 </p>
                 <p className="text-[11px] text-gray-500 font-mono mt-0.5">
                   ID: <strong>{card.card_number}</strong>
@@ -87,31 +90,31 @@ export default async function VerifyIdCardPage({
             {/* Status & Validity Grid */}
             <div className="grid grid-cols-2 gap-3 text-xs">
               <div className="p-3 bg-green-50 rounded-2xl border border-green-100">
-                <span className="text-[10px] text-gray-500 block uppercase font-bold">Credential Status</span>
+                <span className="text-[10px] text-gray-500 block uppercase font-bold">{t.verifyPage.credentialStatus}</span>
                 <span className="text-sm font-black text-brand-green flex items-center mt-0.5">
                   <CheckCircle2 className="w-4 h-4 mr-1 shrink-0" />
-                  {card.status.toUpperCase()}
+                  {lang === 'bn' ? 'সক্রিয় (ACTIVE)' : 'ACTIVE'}
                 </span>
               </div>
 
               <div className="p-3 bg-gray-50 rounded-2xl border border-gray-100">
-                <span className="text-[10px] text-gray-500 block uppercase font-bold">Designation</span>
+                <span className="text-[10px] text-gray-500 block uppercase font-bold">{t.verifyPage.designation}</span>
                 <span className="text-xs font-bold text-gray-900 mt-0.5 block truncate">
-                  {card.designation_en || 'Voluntary Donor'}
+                  {lang === 'bn' ? (card.designation_bn || 'স্বেচ্ছাসেবী রক্তদাতা') : (card.designation_en || 'Voluntary Donor')}
                 </span>
               </div>
 
               <div className="p-3 bg-gray-50 rounded-2xl border border-gray-100">
-                <span className="text-[10px] text-gray-500 block uppercase font-bold">Assigned Jurisdiction</span>
+                <span className="text-[10px] text-gray-500 block uppercase font-bold">{t.verifyPage.jurisdiction}</span>
                 <span className="text-xs font-bold text-gray-900 mt-0.5 block truncate">
-                  {card.jurisdiction_en || 'Bangladesh Nationwide'}
+                  {lang === 'bn' ? (card.jurisdiction_bn || 'সারাদেশ') : (card.jurisdiction_en || 'Bangladesh Nationwide')}
                 </span>
               </div>
 
               <div className="p-3 bg-gray-50 rounded-2xl border border-gray-100">
-                <span className="text-[10px] text-gray-500 block uppercase font-bold">Issued At</span>
+                <span className="text-[10px] text-gray-500 block uppercase font-bold">{t.verifyPage.issuedAt}</span>
                 <span className="text-xs font-bold text-gray-900 mt-0.5 block">
-                  {new Date(card.issued_at).toLocaleDateString()}
+                  {new Date(card.issued_at).toLocaleDateString(lang === 'bn' ? 'bn-BD' : 'en-US')}
                 </span>
               </div>
             </div>
@@ -120,7 +123,7 @@ export default async function VerifyIdCardPage({
             <div className="p-3 bg-blue-50/70 rounded-2xl border border-blue-100 text-[11px] text-blue-900 flex items-start space-x-2">
               <Lock className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
               <p>
-                <strong>Zero PII Leakage Guarantee:</strong> Personal telephone numbers, home addresses, National ID (NID), and private medical records are strictly redacted from public verification.
+                <strong>{t.verifyPage.zeroPiiTitle}</strong> {t.verifyPage.zeroPiiDesc}
               </p>
             </div>
 
@@ -128,13 +131,10 @@ export default async function VerifyIdCardPage({
             <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200 text-[11px] text-amber-900 leading-relaxed space-y-1">
               <p className="font-bold flex items-center text-amber-800">
                 <AlertTriangle className="w-3.5 h-3.5 mr-1 shrink-0" />
-                Statutory Platform Disclaimer:
+                {t.verifyPage.disclaimerTitle}
               </p>
               <p>
-                {card.disclaimer_en}
-              </p>
-              <p className="font-bangla text-[10px] text-amber-800/80 pt-1 border-t border-amber-200/60">
-                {card.disclaimer_bn}
+                {lang === 'bn' ? card.disclaimer_bn : card.disclaimer_en}
               </p>
             </div>
 
@@ -142,8 +142,8 @@ export default async function VerifyIdCardPage({
 
           {/* Footer info */}
           <div className="bg-gray-50 px-6 py-4 border-t border-gray-100 flex items-center justify-between text-[11px] text-gray-500">
-            <span>Verified by LalBindu Authority</span>
-            <span className="font-mono text-[10px] text-gray-400">SHA-256 Token Hash Match</span>
+            <span>{t.verifyPage.verifiedByAuth}</span>
+            <span className="font-mono text-[10px] text-gray-400">{t.verifyPage.tokenMatch}</span>
           </div>
 
         </div>

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import QRCode from 'qrcode';
+import { useLanguage } from '@/components/LanguageContext';
 import { 
   SAMPLE_DONORS, 
   SAMPLE_BLOOD_REQUESTS 
@@ -30,6 +31,7 @@ import {
 } from 'lucide-react';
 
 export default function DonorDashboardPage() {
+  const { t, lang } = useLanguage();
   const donor = SAMPLE_DONORS[0]; // Ahmed Rahman
   const [availabilityStatus, setAvailabilityStatus] = useState<AvailabilityStatus>(donor.availability_status);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
@@ -58,6 +60,12 @@ export default function DonorDashboardPage() {
     setAvailabilityStatus(newStatus);
   };
 
+  const getStatusLabel = (status: AvailabilityStatus) => {
+    if (status === 'available') return t.donorDashboard.availableStatus;
+    if (status === 'temporarily_unavailable') return t.donorDashboard.temporarilyUnavailableStatus;
+    return t.donorDashboard.pausedStatus;
+  };
+
   return (
     <div className="bg-[#FFF8F8] min-h-screen py-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
@@ -77,12 +85,14 @@ export default function DonorDashboardPage() {
               <div className="flex items-center space-x-2">
                 <h1 className="text-2xl font-black text-gray-900 tracking-tight">{donor.full_name}</h1>
                 <span className="px-2.5 py-0.5 rounded-full bg-green-100 text-brand-green text-[10px] font-extrabold uppercase flex items-center">
-                  <ShieldCheck className="w-3 h-3 mr-1" /> Verified Donor
+                  <ShieldCheck className="w-3 h-3 mr-1" /> {t.donorDashboard.verifiedDonor}
                 </span>
               </div>
-              <p className="text-xs text-brand-red font-mono font-bold mt-0.5">Donor ID: {donor.donor_id_number}</p>
+              <p className="text-xs text-brand-red font-mono font-bold mt-0.5">
+                {t.donorDashboard.donorIdLabel} {donor.donor_id_number}
+              </p>
               <p className="text-xs text-gray-500 mt-1">
-                {donor.district_name_en} District, {donor.division_name_en} Division
+                {lang === 'bn' ? 'ঢাকা জেলা, ঢাকা বিভাগ' : `${donor.district_name_en} District, ${donor.division_name_en} Division`}
               </p>
             </div>
           </div>
@@ -91,17 +101,21 @@ export default function DonorDashboardPage() {
           <div className="flex items-center space-x-4 border-t md:border-t-0 pt-4 md:pt-0 border-gray-100">
             <div className="text-center px-4 py-2 bg-brand-light rounded-2xl border border-brand-red/20">
               <span className="block text-xl font-black text-brand-red">{donor.blood_group}</span>
-              <span className="text-[10px] font-bold text-gray-500 uppercase">Blood Group</span>
+              <span className="text-[10px] font-bold text-gray-500 uppercase">{t.donorDashboard.bloodGroup}</span>
             </div>
 
             <div className="text-center px-4 py-2 bg-gray-50 rounded-2xl border border-gray-100">
-              <span className="block text-xl font-black text-gray-900">{donor.verified_donation_count}</span>
-              <span className="text-[10px] font-bold text-gray-500 uppercase">Verified Donations</span>
+              <span className="block text-xl font-black text-gray-900">
+                {lang === 'bn' ? '৫' : donor.verified_donation_count}
+              </span>
+              <span className="text-[10px] font-bold text-gray-500 uppercase">{t.donorDashboard.verifiedDonations}</span>
             </div>
 
             <div className="text-center px-4 py-2 bg-emerald-50 rounded-2xl border border-emerald-100">
-              <span className="block text-xl font-black text-brand-green">Rank 2</span>
-              <span className="text-[10px] font-bold text-gray-500 uppercase">Life Saver Tier</span>
+              <span className="block text-xl font-black text-brand-green">
+                {lang === 'bn' ? 'র‌্যাঙ্ক ২' : 'Rank 2'}
+              </span>
+              <span className="text-[10px] font-bold text-gray-500 uppercase">{t.donorDashboard.tier}</span>
             </div>
           </div>
         </div>
@@ -114,22 +128,22 @@ export default function DonorDashboardPage() {
             <div>
               <div className="flex items-center space-x-2 text-brand-red">
                 <Clock className="w-4 h-4" />
-                <span className="text-xs font-bold uppercase tracking-wider">Availability Engine</span>
+                <span className="text-xs font-bold uppercase tracking-wider">{t.donorDashboard.availabilityEngineTag}</span>
               </div>
               <h2 className="text-xl font-black text-gray-900 tracking-tight mt-1">
-                Platform Request Status & Recovery Period
+                {t.donorDashboard.availabilityHeading}
               </h2>
             </div>
 
             {/* Availability Status Badge & Toggle */}
             <div className="flex items-center space-x-2">
-              <span className="text-xs text-gray-500 font-semibold">Current State:</span>
+              <span className="text-xs text-gray-500 font-semibold">{t.donorDashboard.currentStateLabel}</span>
               <span className={`px-3 py-1.5 rounded-full text-xs font-black uppercase ${
                 availabilityStatus === 'available'
                   ? 'bg-green-100 text-brand-green border border-green-200'
                   : 'bg-amber-100 text-amber-800 border border-amber-200'
               }`}>
-                {availabilityStatus.replace('_', ' ')}
+                {getStatusLabel(availabilityStatus)}
               </span>
             </div>
           </div>
@@ -137,21 +151,21 @@ export default function DonorDashboardPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6">
             
             <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 space-y-1">
-              <span className="text-[11px] font-bold text-gray-500 uppercase">Last Verified Donation</span>
+              <span className="text-[11px] font-bold text-gray-500 uppercase">{t.donorDashboard.lastVerifiedDonation}</span>
               <p className="text-base font-black text-gray-900">{lastDonationDate}</p>
-              <p className="text-[11px] text-gray-500">Dhaka Medical College Hospital</p>
+              <p className="text-[11px] text-gray-500">{t.donorDashboard.hospitalDhaka}</p>
             </div>
 
             <div className="p-4 bg-red-50 rounded-2xl border border-red-100 space-y-1">
-              <span className="text-[11px] font-bold text-brand-red uppercase">Platform Waiting Rule</span>
-              <p className="text-base font-black text-gray-900">3 Calendar Months</p>
-              <p className="text-[11px] text-gray-600">Calculated strictly in Asia/Dhaka time</p>
+              <span className="text-[11px] font-bold text-brand-red uppercase">{t.donorDashboard.platformWaitingRule}</span>
+              <p className="text-base font-black text-gray-900">{t.donorDashboard.ruleDetail}</p>
+              <p className="text-[11px] text-gray-600">{t.donorDashboard.ruleSub}</p>
             </div>
 
             <div className="p-4 bg-green-50 rounded-2xl border border-green-100 space-y-1">
-              <span className="text-[11px] font-bold text-brand-green uppercase">Next Eligibility Review</span>
+              <span className="text-[11px] font-bold text-brand-green uppercase">{t.donorDashboard.nextReview}</span>
               <p className="text-base font-black text-gray-900">{nextEligibleDate}</p>
-              <p className="text-[11px] text-gray-600">Platform review window reached</p>
+              <p className="text-[11px] text-gray-600">{t.donorDashboard.reviewSub}</p>
             </div>
 
           </div>
@@ -159,8 +173,8 @@ export default function DonorDashboardPage() {
           {/* Donor Controls */}
           <div className="mt-6 p-4 bg-gray-50 rounded-2xl border border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="text-xs text-gray-600">
-              <p className="font-bold text-gray-900">Need to pause requests temporarily?</p>
-              <p>You can pause incoming emergency alerts if you are unwell, traveling, or unable to donate.</p>
+              <p className="font-bold text-gray-900">{t.donorDashboard.pauseQuestion}</p>
+              <p>{t.donorDashboard.pauseExplanation}</p>
             </div>
 
             <div className="flex items-center space-x-2 shrink-0">
@@ -172,7 +186,7 @@ export default function DonorDashboardPage() {
                     : 'bg-white text-gray-700 border border-gray-200 hover:border-brand-green'
                 }`}
               >
-                Accept Requests
+                {t.donorDashboard.acceptRequestsBtn}
               </button>
 
               <button
@@ -183,13 +197,13 @@ export default function DonorDashboardPage() {
                     : 'bg-white text-gray-700 border border-gray-200 hover:border-gray-800'
                 }`}
               >
-                Pause Requests
+                {t.donorDashboard.pauseRequestsBtn}
               </button>
             </div>
           </div>
 
           <p className="text-[11px] text-gray-400 mt-4 italic">
-            * Medical Notice: The 3-calendar-month rule is an administrative coordination restriction. Final medical fitness is determined solely by qualified clinical staff prior to any transfusion.
+            {t.donorDashboard.medicalNotice}
           </p>
         </div>
 
@@ -201,10 +215,10 @@ export default function DonorDashboardPage() {
             <div>
               <div className="flex items-center space-x-2 text-brand-red">
                 <QrCode className="w-4 h-4" />
-                <span className="text-xs font-bold uppercase tracking-wider">Universal Digital ID Card</span>
+                <span className="text-xs font-bold uppercase tracking-wider">{t.donorDashboard.idCardTag}</span>
               </div>
               <h2 className="text-xl font-black text-gray-900 tracking-tight mt-1">
-                Your Official LalBindu Donor ID
+                {t.donorDashboard.idCardHeading}
               </h2>
             </div>
 
@@ -214,18 +228,18 @@ export default function DonorDashboardPage() {
                 className="px-4 py-2 rounded-xl bg-brand-red hover:bg-brand-crimson text-white text-xs font-bold shadow-md transition-all flex items-center space-x-1.5"
               >
                 <Download className="w-3.5 h-3.5" />
-                <span>Download PNG</span>
+                <span>{t.donorDashboard.downloadPng}</span>
               </button>
 
               <button
                 onClick={() => {
                   navigator.clipboard.writeText(verificationUrl);
-                  alert("Public QR verification link copied to clipboard!");
+                  alert(lang === 'bn' ? "পাবলিক কিউআর ভেরিফিকেশন লিংক ক্লিপবোর্ডে কপি হয়েছে!" : "Public QR verification link copied to clipboard!");
                 }}
                 className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-bold transition-all flex items-center space-x-1.5"
               >
                 <Share2 className="w-3.5 h-3.5" />
-                <span>Share Link</span>
+                <span>{t.donorDashboard.shareLink}</span>
               </button>
             </div>
           </div>
@@ -240,13 +254,13 @@ export default function DonorDashboardPage() {
                   <Droplet className="w-5 h-5 fill-brand-red" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-black tracking-tight leading-none">LalBindu</h3>
-                  <span className="text-[9px] text-white/80 uppercase tracking-wider">Voluntary Blood Donor</span>
+                  <h3 className="text-sm font-black tracking-tight leading-none">{t.donorDashboard.cardTitle}</h3>
+                  <span className="text-[9px] text-white/80 uppercase tracking-wider">{t.donorDashboard.cardSub}</span>
                 </div>
               </div>
 
               <span className="px-2.5 py-0.5 rounded-full bg-white/20 text-[10px] font-bold text-white uppercase backdrop-blur-sm">
-                Active Member
+                {t.donorDashboard.activeMember}
               </span>
             </div>
 
@@ -271,7 +285,7 @@ export default function DonorDashboardPage() {
                     {donor.blood_group}
                   </span>
                   <span className="text-[11px] text-white/90 font-medium">
-                    {donor.district_name_en} District
+                    {lang === 'bn' ? 'ঢাকা জেলা' : `${donor.district_name_en} District`}
                   </span>
                 </div>
               </div>
@@ -280,9 +294,9 @@ export default function DonorDashboardPage() {
             {/* QR Code and Validity Footer */}
             <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3 border border-white/20 flex items-center justify-between">
               <div className="text-[10px] text-white/80 space-y-0.5">
-                <p>Status: <strong className="text-white">Active Verified Donor</strong></p>
-                <p>Verified Donations: <strong className="text-white">{donor.verified_donation_count} Times</strong></p>
-                <p>Issue Date: <strong>2025-01-10</strong></p>
+                <p>{lang === 'bn' ? 'অবস্থা:' : 'Status:'} <strong className="text-white">{t.donorDashboard.statusVerifiedDonor}</strong></p>
+                <p>{lang === 'bn' ? 'যাচাইকৃত রক্তদান:' : 'Verified Donations:'} <strong className="text-white">{lang === 'bn' ? '৫ বার' : `${donor.verified_donation_count} Times`}</strong></p>
+                <p>{t.donorDashboard.issueDateLabel}</p>
               </div>
 
               {/* Dynamic QR Code */}
@@ -296,7 +310,7 @@ export default function DonorDashboardPage() {
             </div>
 
             <p className="text-[8px] text-center text-white/60 mt-3">
-              Scan QR code to verify validity on lalbindu.bd/verify. Not a clinical clearance certificate.
+              {t.donorDashboard.scanNotice}
             </p>
 
           </div>
@@ -308,13 +322,13 @@ export default function DonorDashboardPage() {
         <div className="bg-white rounded-3xl p-6 sm:p-8 card-shadow border border-gray-100">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-black text-gray-900 tracking-tight">
-              Verified Donation History
+              {t.donorDashboard.donationHistoryHeading}
             </h2>
             <button
               onClick={() => alert("Donation record submission modal")}
               className="text-xs font-bold text-brand-red hover:underline"
             >
-              + Submit New Record
+              {t.donorDashboard.submitNewRecordBtn}
             </button>
           </div>
 
@@ -322,44 +336,44 @@ export default function DonorDashboardPage() {
             <table className="w-full text-left text-xs">
               <thead className="bg-gray-50 text-gray-500 uppercase tracking-wider font-bold border-b border-gray-100">
                 <tr>
-                  <th className="py-3 px-4">Date</th>
-                  <th className="py-3 px-4">Donation Type</th>
-                  <th className="py-3 px-4">Hospital / Institution</th>
-                  <th className="py-3 px-4">Units</th>
-                  <th className="py-3 px-4">Verification Status</th>
+                  <th className="py-3 px-4">{t.donorDashboard.tableDate}</th>
+                  <th className="py-3 px-4">{t.donorDashboard.tableType}</th>
+                  <th className="py-3 px-4">{t.donorDashboard.tableHospital}</th>
+                  <th className="py-3 px-4">{t.donorDashboard.tableUnits}</th>
+                  <th className="py-3 px-4">{t.donorDashboard.tableStatus}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 text-gray-700">
                 <tr>
                   <td className="py-3 px-4 font-bold text-gray-900">2026-08-10</td>
-                  <td className="py-3 px-4">Whole Blood</td>
-                  <td className="py-3 px-4">Dhaka Medical College Hospital</td>
-                  <td className="py-3 px-4 font-bold">1 Unit</td>
+                  <td className="py-3 px-4">{t.donorDashboard.wholeBlood}</td>
+                  <td className="py-3 px-4">{t.donorDashboard.hospitalDhaka}</td>
+                  <td className="py-3 px-4 font-bold">{lang === 'bn' ? '১ ব্যাগ' : '1 Unit'}</td>
                   <td className="py-3 px-4">
                     <span className="px-2 py-0.5 rounded-full bg-green-100 text-brand-green font-bold text-[10px]">
-                      Verified by Hospital
+                      {t.donorDashboard.verifiedByHospital}
                     </span>
                   </td>
                 </tr>
                 <tr>
                   <td className="py-3 px-4 font-bold text-gray-900">2026-04-15</td>
-                  <td className="py-3 px-4">Whole Blood</td>
-                  <td className="py-3 px-4">NICVD Heart Institute</td>
-                  <td className="py-3 px-4 font-bold">1 Unit</td>
+                  <td className="py-3 px-4">{t.donorDashboard.wholeBlood}</td>
+                  <td className="py-3 px-4">{lang === 'bn' ? 'এনআইসিভিডি হৃদরোগ ইনস্টিটিউট' : 'NICVD Heart Institute'}</td>
+                  <td className="py-3 px-4 font-bold">{lang === 'bn' ? '১ ব্যাগ' : '1 Unit'}</td>
                   <td className="py-3 px-4">
                     <span className="px-2 py-0.5 rounded-full bg-green-100 text-brand-green font-bold text-[10px]">
-                      Verified by Officer
+                      {t.donorDashboard.verifiedByOfficer}
                     </span>
                   </td>
                 </tr>
                 <tr>
                   <td className="py-3 px-4 font-bold text-gray-900">2025-12-01</td>
-                  <td className="py-3 px-4">Whole Blood</td>
-                  <td className="py-3 px-4">Red Crescent Holy Family Hospital</td>
-                  <td className="py-3 px-4 font-bold">1 Unit</td>
+                  <td className="py-3 px-4">{t.donorDashboard.wholeBlood}</td>
+                  <td className="py-3 px-4">{lang === 'bn' ? 'রেড ক্রিসেন্ট হলি ফ্যামিলি হাসপাতাল' : 'Red Crescent Holy Family Hospital'}</td>
+                  <td className="py-3 px-4 font-bold">{lang === 'bn' ? '১ ব্যাগ' : '1 Unit'}</td>
                   <td className="py-3 px-4">
                     <span className="px-2 py-0.5 rounded-full bg-green-100 text-brand-green font-bold text-[10px]">
-                      Verified by Hospital
+                      {t.donorDashboard.verifiedByHospital}
                     </span>
                   </td>
                 </tr>

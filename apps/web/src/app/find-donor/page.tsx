@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import Image from 'next/image';
+import { useLanguage } from '@/components/LanguageContext';
 import { 
   BANGLADESH_DIVISIONS, 
   BANGLADESH_KEY_DISTRICTS, 
@@ -23,6 +24,7 @@ import {
 } from 'lucide-react';
 
 export default function FindDonorPage() {
+  const { t, lang } = useLanguage();
   const [selectedBloodGroup, setSelectedBloodGroup] = useState<string>('All');
   const [selectedDivision, setSelectedDivision] = useState<string>('All');
   const [selectedDistrict, setSelectedDistrict] = useState<string>('All');
@@ -86,13 +88,13 @@ export default function FindDonorPage() {
         <div className="mb-8">
           <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-brand-red/10 text-brand-red text-xs font-bold mb-2">
             <Droplet className="w-3.5 h-3.5 fill-brand-red" />
-            <span>Nationwide Donor Discovery</span>
+            <span>{t.findDonorPage.tag}</span>
           </div>
           <h1 className="text-3xl sm:text-4xl font-black text-gray-900 tracking-tight">
-            Find Blood Donors Across Bangladesh
+            {t.findDonorPage.title}
           </h1>
           <p className="text-sm text-gray-600 mt-1">
-            Search verified, consenting voluntary donors in all 64 districts. Donor contact privacy is strictly protected.
+            {t.findDonorPage.subtitle}
           </p>
         </div>
 
@@ -102,13 +104,13 @@ export default function FindDonorPage() {
             
             {/* Blood Group */}
             <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1">Blood Group</label>
+              <label className="block text-xs font-bold text-gray-700 mb-1">{t.findDonorPage.bloodGroup}</label>
               <select
                 value={selectedBloodGroup}
                 onChange={(e) => setSelectedBloodGroup(e.target.value)}
-                className="w-full text-xs font-semibold px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-red/20 focus:border-brand-red"
+                className="w-full text-xs font-semibold px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-red/20 focus:border-brand-red font-bold text-brand-red"
               >
-                <option value="All">All Blood Groups</option>
+                <option value="All">{t.findDonorPage.allGroups}</option>
                 {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(bg => (
                   <option key={bg} value={bg}>{bg}</option>
                 ))}
@@ -117,7 +119,7 @@ export default function FindDonorPage() {
 
             {/* Division */}
             <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1">Division</label>
+              <label className="block text-xs font-bold text-gray-700 mb-1">{t.findDonorPage.division}</label>
               <select
                 value={selectedDivision}
                 onChange={(e) => {
@@ -126,35 +128,35 @@ export default function FindDonorPage() {
                 }}
                 className="w-full text-xs font-semibold px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-red/20 focus:border-brand-red"
               >
-                <option value="All">All Divisions</option>
+                <option value="All">{t.findDonorPage.allDivisions}</option>
                 {BANGLADESH_DIVISIONS.map(div => (
-                  <option key={div.id} value={div.id}>{div.name_en} ({div.name_bn})</option>
+                  <option key={div.id} value={div.id}>{lang === 'bn' ? div.name_bn : div.name_en}</option>
                 ))}
               </select>
             </div>
 
             {/* District */}
             <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1">District (Zilla)</label>
+              <label className="block text-xs font-bold text-gray-700 mb-1">{t.findDonorPage.district}</label>
               <select
                 value={selectedDistrict}
                 onChange={(e) => setSelectedDistrict(e.target.value)}
                 className="w-full text-xs font-semibold px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-red/20 focus:border-brand-red"
               >
-                <option value="All">All Districts</option>
+                <option value="All">{t.findDonorPage.allDistricts}</option>
                 {filteredDistricts.map(dist => (
-                  <option key={dist.id} value={dist.id}>{dist.name_en} ({dist.name_bn})</option>
+                  <option key={dist.id} value={dist.id}>{lang === 'bn' ? dist.name_bn : dist.name_en}</option>
                 ))}
               </select>
             </div>
 
             {/* Text Search */}
             <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1">Search Keywords</label>
+              <label className="block text-xs font-bold text-gray-700 mb-1">{t.findDonorPage.searchKeywords}</label>
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="Donor Name or Area..."
+                  placeholder={t.findDonorPage.searchPlaceholder}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-9 pr-4 py-2.5 text-xs font-semibold rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-red/20 focus:border-brand-red"
@@ -167,7 +169,9 @@ export default function FindDonorPage() {
 
           {/* Quick Filter Reset */}
           <div className="flex items-center justify-between text-xs text-gray-500 pt-2 border-t border-gray-100">
-            <span>Showing <strong className="text-gray-900 font-bold">{filteredDonors.length}</strong> verified available donors</span>
+            <span>
+              {t.findDonorPage.showingText} <strong className="text-gray-900 font-bold">{lang === 'bn' ? `${filteredDonors.length} জন` : filteredDonors.length}</strong> {t.findDonorPage.verifiedAvailableDonors}
+            </span>
             {(selectedBloodGroup !== 'All' || selectedDivision !== 'All' || selectedDistrict !== 'All' || searchQuery) && (
               <button
                 onClick={() => {
@@ -178,7 +182,7 @@ export default function FindDonorPage() {
                 }}
                 className="text-brand-red font-bold hover:underline"
               >
-                Reset Filters
+                {t.findDonorPage.resetFilters}
               </button>
             )}
           </div>
@@ -200,7 +204,7 @@ export default function FindDonorPage() {
                   <div>
                     <h3 className="text-base font-bold text-gray-900 flex items-center">
                       {donor.full_name}
-                      <span title="Verified Profile">
+                      <span title={t.findDonorPage.verifiedProfile}>
                         <CheckCircle className="w-4 h-4 text-brand-green ml-1.5 shrink-0" />
                       </span>
                     </h3>
@@ -209,7 +213,7 @@ export default function FindDonorPage() {
                 </div>
 
                 <span className="px-2.5 py-1 bg-green-100 text-brand-green text-[10px] font-extrabold rounded-full uppercase">
-                  Available
+                  {t.findDonorPage.available}
                 </span>
               </div>
 
@@ -218,12 +222,16 @@ export default function FindDonorPage() {
                 <div className="flex items-center space-x-2">
                   <MapPin className="w-3.5 h-3.5 text-gray-400 shrink-0" />
                   <span className="font-semibold text-gray-800">
-                    {donor.upazila_name_en}, {donor.district_name_en} ({donor.division_name_en})
+                    {lang === 'bn' 
+                      ? `${donor.upazila_name_en}, ${donor.district_name_en} জেলা`
+                      : `${donor.upazila_name_en}, ${donor.district_name_en} (${donor.division_name_en})`}
                   </span>
                 </div>
                 <div className="flex items-center justify-between pt-1 border-t border-gray-200/60">
-                  <span>Verified Donations:</span>
-                  <span className="font-bold text-brand-red">{donor.verified_donation_count} Times</span>
+                  <span>{t.findDonorPage.verifiedDonationsCount}</span>
+                  <span className="font-bold text-brand-red">
+                    {lang === 'bn' ? `${donor.verified_donation_count} বার` : `${donor.verified_donation_count} Times`}
+                  </span>
                 </div>
               </div>
 
@@ -233,7 +241,7 @@ export default function FindDonorPage() {
                 className="w-full py-2.5 px-4 rounded-xl bg-brand-red hover:bg-brand-crimson text-white font-bold text-xs shadow-md transition-all flex items-center justify-center space-x-2"
               >
                 <HeartHandshake className="w-4 h-4" />
-                <span>Request Contact</span>
+                <span>{t.findDonorPage.requestContactBtn}</span>
               </button>
             </div>
           ))}
@@ -243,9 +251,9 @@ export default function FindDonorPage() {
         {filteredDonors.length === 0 && (
           <div className="bg-white rounded-3xl p-12 text-center card-shadow border border-gray-100 max-w-md mx-auto my-8">
             <Droplet className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <h3 className="text-lg font-bold text-gray-900">No Donors Found</h3>
+            <h3 className="text-lg font-bold text-gray-900">{t.findDonorPage.noDonorsFound}</h3>
             <p className="text-xs text-gray-500 mt-1">
-              No donors matched your exact filter combination. Try adjusting the blood group or division.
+              {t.findDonorPage.noDonorsSub}
             </p>
           </div>
         )}
@@ -271,9 +279,9 @@ export default function FindDonorPage() {
                 <div className="w-16 h-16 rounded-full bg-green-100 text-brand-green flex items-center justify-center mx-auto">
                   <CheckCircle className="w-8 h-8" />
                 </div>
-                <h3 className="text-lg font-bold text-gray-900">Contact Request Sent!</h3>
+                <h3 className="text-lg font-bold text-gray-900">{t.findDonorPage.requestSentTitle}</h3>
                 <p className="text-xs text-gray-600 max-w-xs mx-auto">
-                  We have notified <strong>{contactModalDonor.full_name}</strong>. Once they accept your request, you will receive their direct contact details.
+                  {t.findDonorPage.requestSentDesc}
                 </p>
               </div>
             ) : (
@@ -284,26 +292,26 @@ export default function FindDonorPage() {
                   </div>
                   <div>
                     <h3 className="text-base font-bold text-gray-900">
-                      Request Blood from {contactModalDonor.full_name}
+                      {t.findDonorPage.requestBloodFrom} {contactModalDonor.full_name}
                     </h3>
                     <p className="text-xs text-brand-green font-semibold">
-                      Donor ID: {contactModalDonor.donor_id_number}
+                      ID: {contactModalDonor.donor_id_number}
                     </p>
                   </div>
                 </div>
 
                 <div className="p-3 bg-red-50 rounded-2xl border border-red-100 text-xs text-gray-700 mb-4 space-y-1">
                   <p className="font-bold text-brand-red flex items-center">
-                    <ShieldCheck className="w-3.5 h-3.5 mr-1" /> Privacy Notice:
+                    <ShieldCheck className="w-3.5 h-3.5 mr-1" /> {t.findDonorPage.privacyNoticeTitle}
                   </p>
                   <p className="text-[11px] leading-relaxed">
-                    To safeguard voluntary donors against harassment and spam, phone numbers are shared only when the donor accepts your emergency alert.
+                    {t.findDonorPage.privacyNoticeDesc}
                   </p>
                 </div>
 
                 <form onSubmit={handleSendContactRequest} className="space-y-3">
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">Patient Hospital / Clinic</label>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">{t.findDonorPage.patientHospital}</label>
                     <input
                       type="text"
                       required
@@ -313,7 +321,7 @@ export default function FindDonorPage() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">Your Contact Mobile Number</label>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">{t.findDonorPage.contactMobile}</label>
                     <input
                       type="tel"
                       required
@@ -323,7 +331,7 @@ export default function FindDonorPage() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">Urgency Note</label>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">{t.findDonorPage.urgencyNote}</label>
                     <textarea
                       rows={2}
                       placeholder="Describe the medical emergency..."
@@ -336,7 +344,7 @@ export default function FindDonorPage() {
                     className="w-full py-3 rounded-xl bg-brand-red hover:bg-brand-crimson text-white font-bold text-xs shadow-md transition-all flex items-center justify-center space-x-2 mt-2"
                   >
                     <Send className="w-4 h-4" />
-                    <span>Dispatch Emergency Request</span>
+                    <span>{t.findDonorPage.dispatchBtn}</span>
                   </button>
                 </form>
               </div>

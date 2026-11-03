@@ -60,22 +60,13 @@ export default function HomePage() {
               
               <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-brand-red/10 border border-brand-red/20 text-brand-red text-xs font-bold tracking-wide">
                 <Sparkles className="w-3.5 h-3.5" />
-                <span>{lang === 'bn' ? 'সমগ্র বাংলাদেশে ডিজিটাল রক্তদান নেটওয়ার্ক' : "Bangladesh's Nationwide Blood Donation Network"}</span>
+                <span>{t.hero.badge}</span>
               </div>
 
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-gray-900 tracking-tight leading-[1.12]">
-                {lang === 'bn' ? (
-                  <>
-                    রক্ত দিন, <span className="text-brand-red">জীবন বাঁচান</span> <br />
-                    সমগ্র বাংলাদেশে
-                  </>
-                ) : (
-                  <>
-                    Donate Blood, <br />
-                    <span className="text-brand-red">Save Lives</span> <br />
-                    Across Bangladesh
-                  </>
-                )}
+                {t.hero.headlineLead} <br />
+                <span className="text-brand-red">{t.hero.headlineAccent}</span> <br />
+                {t.hero.headlineTail}
               </h1>
 
               <p className="text-base sm:text-lg text-gray-600 max-w-xl leading-relaxed">
@@ -119,10 +110,10 @@ export default function HomePage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <span className="w-3 h-3 rounded-full bg-brand-red animate-ping" />
-                    <span className="text-xs font-extrabold text-brand-red tracking-wider uppercase">LalBindu Live</span>
+                    <span className="text-xs font-extrabold text-brand-red tracking-wider uppercase">{t.hero.liveTag}</span>
                   </div>
                   <span className="px-3 py-1 bg-white rounded-full text-[10px] font-bold text-gray-700 shadow-sm">
-                    Verified BD Platform
+                    {t.hero.verifiedPlatform}
                   </span>
                 </div>
 
@@ -138,10 +129,10 @@ export default function HomePage() {
 
                   <div className="mt-4 text-center">
                     <h3 className="text-xl font-black text-gray-900 tracking-tight">
-                      Every Drop Connects a Life
+                      {t.hero.pulseTitle}
                     </h3>
                     <p className="text-xs text-gray-600 mt-1 max-w-[280px]">
-                      Connecting 64 Districts with verified donors & instant emergency response.
+                      {t.hero.pulseDesc}
                     </p>
                   </div>
                 </div>
@@ -153,12 +144,12 @@ export default function HomePage() {
                       <ShieldCheck className="w-4 h-4" />
                     </div>
                     <div>
-                      <p className="text-[10px] text-gray-500 font-medium">Digital ID Verification</p>
-                      <p className="text-xs font-bold text-gray-900">100% Cryptographic QR</p>
+                      <p className="text-[10px] text-gray-500 font-medium">{t.hero.idVerificationTitle}</p>
+                      <p className="text-xs font-bold text-gray-900">{t.hero.idVerificationDesc}</p>
                     </div>
                   </div>
                   <span className="text-[10px] font-bold px-2 py-0.5 bg-brand-green text-white rounded-full">
-                    Active
+                    {t.hero.activeStatus}
                   </span>
                 </div>
 
@@ -178,7 +169,9 @@ export default function HomePage() {
           <div className="pt-2 md:pt-0">
             <div className="flex items-center justify-center space-x-2 text-brand-red mb-1">
               <Users className="w-5 h-5" />
-              <span className="text-xl sm:text-2xl font-black text-gray-900">1,245,320</span>
+              <span className="text-xl sm:text-2xl font-black text-gray-900">
+                {lang === 'bn' ? '১২,৪৫,৩২০' : '1,245,320'}
+              </span>
             </div>
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.stats.registeredDonors}</p>
           </div>
@@ -186,7 +179,9 @@ export default function HomePage() {
           <div className="pt-2 md:pt-0">
             <div className="flex items-center justify-center space-x-2 text-brand-red mb-1">
               <Droplet className="w-5 h-5 fill-brand-red" />
-              <span className="text-xl sm:text-2xl font-black text-gray-900">98,450</span>
+              <span className="text-xl sm:text-2xl font-black text-gray-900">
+                {lang === 'bn' ? '৯৮,৪৫০' : '98,450'}
+              </span>
             </div>
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.stats.totalDonations}</p>
           </div>
@@ -194,7 +189,9 @@ export default function HomePage() {
           <div className="pt-2 md:pt-0">
             <div className="flex items-center justify-center space-x-2 text-brand-red mb-1">
               <Building2 className="w-5 h-5" />
-              <span className="text-xl sm:text-2xl font-black text-gray-900">250+</span>
+              <span className="text-xl sm:text-2xl font-black text-gray-900">
+                {lang === 'bn' ? '২৫০+' : '250+'}
+              </span>
             </div>
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.stats.partnerHospitals}</p>
           </div>
@@ -202,7 +199,9 @@ export default function HomePage() {
           <div className="pt-2 md:pt-0">
             <div className="flex items-center justify-center space-x-2 text-brand-red mb-1">
               <Heart className="w-5 h-5 fill-brand-red" />
-              <span className="text-xl sm:text-2xl font-black text-gray-900">12,500+</span>
+              <span className="text-xl sm:text-2xl font-black text-gray-900">
+                {lang === 'bn' ? '১২,৫০০+' : '12,500+'}
+              </span>
             </div>
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.stats.livesSaved}</p>
           </div>
@@ -210,7 +209,9 @@ export default function HomePage() {
           <div className="pt-2 md:pt-0">
             <div className="flex items-center justify-center space-x-2 text-brand-red mb-1">
               <Award className="w-5 h-5" />
-              <span className="text-xl sm:text-2xl font-black text-gray-900">50+</span>
+              <span className="text-xl sm:text-2xl font-black text-gray-900">
+                {lang === 'bn' ? '৫০+' : '50+'}
+              </span>
             </div>
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.stats.achievementsCount}</p>
           </div>
@@ -298,8 +299,8 @@ export default function HomePage() {
 
             <div className="flex items-center justify-between my-2 p-3 bg-red-50 rounded-2xl border border-red-100">
               <div className="text-xs font-bold text-brand-red">
-                <span>Active Emergencies Today</span>
-                <span className="block text-lg font-black text-gray-900">42 Urgent Cases</span>
+                <span>{t.quickCards.activeEmergenciesToday}</span>
+                <span className="block text-lg font-black text-gray-900">{t.quickCards.urgentCases}</span>
               </div>
               <div className="w-12 h-12 rounded-xl bg-brand-red text-white flex items-center justify-center shadow-md">
                 <Droplet className="w-6 h-6 fill-white" />
@@ -329,9 +330,9 @@ export default function HomePage() {
               {/* Mini ID Card Preview */}
               <div className="bg-gradient-to-r from-red-50 to-rose-50 p-3 rounded-2xl border border-brand-red/20 shadow-sm flex items-center justify-between">
                 <div>
-                  <div className="text-[10px] font-extrabold text-brand-red uppercase tracking-wider">LalBindu Donor ID</div>
+                  <div className="text-[10px] font-extrabold text-brand-red uppercase tracking-wider">{t.quickCards.donorIdMini}</div>
                   <div className="text-xs font-bold text-gray-900 mt-0.5">Ahmed Rahman</div>
-                  <div className="text-[11px] font-bold text-brand-green">O+ Positive • LB-0004278</div>
+                  <div className="text-[11px] font-bold text-brand-green">O+ • LB-0004278</div>
                 </div>
                 <div className="w-11 h-11 bg-white p-1 rounded-lg border border-gray-200 flex items-center justify-center shadow-sm">
                   <QrCode className="w-8 h-8 text-gray-800" />
@@ -373,32 +374,32 @@ export default function HomePage() {
                   <div className="w-8 h-8 mx-auto rounded-full bg-brand-red text-white flex items-center justify-center text-xs font-bold shadow-sm">
                     1
                   </div>
-                  <p className="text-[10px] font-bold text-gray-800 mt-1.5">First Drop</p>
-                  <p className="text-[9px] text-gray-500">1 Unit</p>
+                  <p className="text-[10px] font-bold text-gray-800 mt-1.5">{lang === 'bn' ? 'প্রথম বিন্দু' : 'First Drop'}</p>
+                  <p className="text-[9px] text-gray-500">{lang === 'bn' ? '১ বার' : '1 Unit'}</p>
                 </div>
 
                 <div className="p-2 rounded-2xl bg-blue-50 border border-blue-100">
                   <div className="w-8 h-8 mx-auto rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold shadow-sm">
                     5
                   </div>
-                  <p className="text-[10px] font-bold text-gray-800 mt-1.5">Life Saver</p>
-                  <p className="text-[9px] text-gray-500">5 Units</p>
+                  <p className="text-[10px] font-bold text-gray-800 mt-1.5">{lang === 'bn' ? 'জীবন রক্ষক' : 'Life Saver'}</p>
+                  <p className="text-[9px] text-gray-500">{lang === 'bn' ? '৫ বার' : '5 Units'}</p>
                 </div>
 
                 <div className="p-2 rounded-2xl bg-amber-50 border border-amber-100">
                   <div className="w-8 h-8 mx-auto rounded-full bg-amber-500 text-white flex items-center justify-center text-xs font-bold shadow-sm">
                     10
                   </div>
-                  <p className="text-[10px] font-bold text-gray-800 mt-1.5">Hero</p>
-                  <p className="text-[9px] text-gray-500">10 Units</p>
+                  <p className="text-[10px] font-bold text-gray-800 mt-1.5">{lang === 'bn' ? 'বীর দাতা' : 'Hero'}</p>
+                  <p className="text-[9px] text-gray-500">{lang === 'bn' ? '১০ বার' : '10 Units'}</p>
                 </div>
 
                 <div className="p-2 rounded-2xl bg-purple-50 border border-purple-100">
                   <div className="w-8 h-8 mx-auto rounded-full bg-purple-700 text-white flex items-center justify-center text-xs font-bold shadow-sm">
                     25
                   </div>
-                  <p className="text-[10px] font-bold text-gray-800 mt-1.5">Guardian</p>
-                  <p className="text-[9px] text-gray-500">25 Units</p>
+                  <p className="text-[10px] font-bold text-gray-800 mt-1.5">{lang === 'bn' ? 'অভিভাবক' : 'Guardian'}</p>
+                  <p className="text-[9px] text-gray-500">{lang === 'bn' ? '২৫ বার' : '25 Units'}</p>
                 </div>
               </div>
             </div>
@@ -418,8 +419,8 @@ export default function HomePage() {
                   <Heart className="w-5 h-5 fill-white" />
                 </div>
                 <div className="text-xs">
-                  <p className="font-bold text-gray-900">Over 15,000 Volunteers</p>
-                  <p className="text-[11px] text-gray-600">Active across 495+ Upazilas in Bangladesh</p>
+                  <p className="font-bold text-gray-900">{t.quickCards.volunteersCount}</p>
+                  <p className="text-[11px] text-gray-600">{t.quickCards.volunteersDesc}</p>
                 </div>
               </div>
             </div>
@@ -444,42 +445,42 @@ export default function HomePage() {
               <div className="grid grid-cols-2 gap-2 text-[11px] font-semibold text-gray-700">
                 <div className="flex items-center space-x-1.5">
                   <CheckCircle2 className="w-3.5 h-3.5 text-brand-red shrink-0" />
-                  <span>Digital ID with QR</span>
+                  <span>{t.quickCards.fDigitalId}</span>
                 </div>
                 <div className="flex items-center space-x-1.5">
                   <CheckCircle2 className="w-3.5 h-3.5 text-brand-red shrink-0" />
-                  <span>Campaign Manager</span>
+                  <span>{t.quickCards.fCampaigns}</span>
                 </div>
                 <div className="flex items-center space-x-1.5">
                   <CheckCircle2 className="w-3.5 h-3.5 text-brand-red shrink-0" />
-                  <span>Blood Request System</span>
+                  <span>{t.quickCards.fRequests}</span>
                 </div>
                 <div className="flex items-center space-x-1.5">
                   <CheckCircle2 className="w-3.5 h-3.5 text-brand-red shrink-0" />
-                  <span>Emergency Alerts</span>
+                  <span>{t.quickCards.fAlerts}</span>
                 </div>
                 <div className="flex items-center space-x-1.5">
                   <CheckCircle2 className="w-3.5 h-3.5 text-brand-red shrink-0" />
-                  <span>Achievement Badges</span>
+                  <span>{t.quickCards.fBadges}</span>
                 </div>
                 <div className="flex items-center space-x-1.5">
                   <CheckCircle2 className="w-3.5 h-3.5 text-brand-red shrink-0" />
-                  <span>Smart Matching</span>
+                  <span>{t.quickCards.fMatching}</span>
                 </div>
                 <div className="flex items-center space-x-1.5">
                   <CheckCircle2 className="w-3.5 h-3.5 text-brand-red shrink-0" />
-                  <span>Donation History</span>
+                  <span>{t.quickCards.fHistory}</span>
                 </div>
                 <div className="flex items-center space-x-1.5">
                   <CheckCircle2 className="w-3.5 h-3.5 text-brand-red shrink-0" />
-                  <span>Social Share API</span>
+                  <span>{t.quickCards.fShare}</span>
                 </div>
               </div>
             </div>
 
             <div className="pt-4 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
-              <span>Bilingual: বাংলা + EN</span>
-              <span className="font-bold text-brand-red">Open 24/7/365</span>
+              <span>{t.quickCards.bilingualSupport}</span>
+              <span className="font-bold text-brand-red">{t.quickCards.available247}</span>
             </div>
           </div>
 
@@ -495,17 +496,17 @@ export default function HomePage() {
           <div>
             <div className="flex items-center space-x-2 text-brand-red">
               <span className="w-2.5 h-2.5 rounded-full bg-brand-red animate-ping" />
-              <span className="text-xs font-bold uppercase tracking-wider">Live Requests</span>
+              <span className="text-xs font-bold uppercase tracking-wider">{t.emergencyFeed.tag}</span>
             </div>
             <h2 className="text-2xl font-black text-gray-900 tracking-tight mt-1">
-              Urgent Blood Needed Now
+              {t.emergencyFeed.heading}
             </h2>
           </div>
           <Link
             href="/blood-requests"
             className="mt-3 sm:mt-0 text-xs font-bold text-brand-red hover:underline flex items-center space-x-1"
           >
-            <span>View All Active Requests</span>
+            <span>{t.emergencyFeed.viewAllBtn}</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
@@ -523,7 +524,9 @@ export default function HomePage() {
                     ? 'bg-red-100 text-brand-red border border-red-200'
                     : 'bg-amber-100 text-amber-800 border border-amber-200'
                 }`}>
-                  {req.urgency.replace('_', ' ')}
+                  {lang === 'bn' 
+                    ? (req.urgency === 'critical_emergency' ? 'সংকটাপন্ন জরুরি' : 'জরুরি')
+                    : req.urgency.replace('_', ' ')}
                 </span>
                 <span className="text-[11px] font-semibold text-gray-400">
                   {req.request_code}
@@ -538,7 +541,9 @@ export default function HomePage() {
                   </div>
                   <div>
                     <h4 className="text-sm font-bold text-gray-900 line-clamp-1">{req.hospital_name}</h4>
-                    <p className="text-xs text-gray-500">{req.hospital_district_en} District</p>
+                    <p className="text-xs text-gray-500">
+                      {lang === 'bn' ? `${req.hospital_district_bn} জেলা` : `${req.hospital_district_en} District`}
+                    </p>
                   </div>
                 </div>
 
@@ -547,8 +552,8 @@ export default function HomePage() {
                 </p>
 
                 <div className="flex items-center justify-between text-xs text-gray-500 pt-1">
-                  <span>Units Needed: <strong className="text-gray-900 font-bold">{req.units_needed}</strong></span>
-                  <span>Fulfilled: <strong className="text-brand-green font-bold">{req.units_fulfilled}</strong></span>
+                  <span>{t.emergencyFeed.unitsNeeded} <strong className="text-gray-900 font-bold">{lang === 'bn' ? `${req.units_needed} ব্যাগ` : `${req.units_needed} Units`}</strong></span>
+                  <span>{t.emergencyFeed.fulfilled} <strong className="text-brand-green font-bold">{lang === 'bn' ? `${req.units_fulfilled} ব্যাগ` : `${req.units_fulfilled} Units`}</strong></span>
                 </div>
               </div>
 
@@ -557,7 +562,7 @@ export default function HomePage() {
                 href={`/blood-requests?id=${req.id}`}
                 className="mt-4 w-full py-2 rounded-xl bg-brand-red hover:bg-brand-crimson text-white font-bold text-xs text-center shadow transition-all block"
               >
-                I Can Donate
+                {t.emergencyFeed.canDonateBtn}
               </Link>
             </div>
           ))}
@@ -573,13 +578,13 @@ export default function HomePage() {
             
             <div className="lg:col-span-7 space-y-4">
               <span className="px-3 py-1 bg-white/20 rounded-full text-xs font-bold text-white uppercase tracking-wider">
-                LalBindu Mobile Experience
+                {t.mobileSection.tag}
               </span>
               <h2 className="text-3xl sm:text-4xl font-black tracking-tight">
-                Emergency Blood Coordination In Your Pocket
+                {t.mobileSection.heading}
               </h2>
               <p className="text-sm text-white/80 max-w-lg leading-relaxed">
-                Receive instant notifications when someone nearby requires your blood group. Carry your verified Digital ID Card everywhere with offline QR security.
+                {t.mobileSection.desc}
               </p>
 
               <div className="flex flex-wrap gap-4 pt-3">
@@ -589,8 +594,8 @@ export default function HomePage() {
                 >
                   <Smartphone className="w-5 h-5 text-brand-green" />
                   <div className="text-left">
-                    <span className="block text-[9px] text-gray-500 uppercase leading-none">Download for</span>
-                    <span className="text-xs font-black">Android App</span>
+                    <span className="block text-[9px] text-gray-500 uppercase leading-none">{t.mobileSection.downloadFor}</span>
+                    <span className="text-xs font-black">{t.mobileSection.androidBtn}</span>
                   </div>
                 </button>
 
@@ -600,8 +605,8 @@ export default function HomePage() {
                 >
                   <Smartphone className="w-5 h-5 text-white" />
                   <div className="text-left">
-                    <span className="block text-[9px] text-white/70 uppercase leading-none">Available for</span>
-                    <span className="text-xs font-black">Apple iOS</span>
+                    <span className="block text-[9px] text-white/70 uppercase leading-none">{t.mobileSection.availableFor}</span>
+                    <span className="text-xs font-black">{t.mobileSection.iosBtn}</span>
                   </div>
                 </button>
               </div>
@@ -617,19 +622,19 @@ export default function HomePage() {
                     </div>
 
                     <div className="bg-brand-light p-3 rounded-2xl border border-brand-red/20 mb-3 text-center">
-                      <div className="text-[10px] text-gray-500">Donor Dashboard</div>
+                      <div className="text-[10px] text-gray-500">{lang === 'bn' ? 'রক্তদাতা ড্যাশবোর্ড' : 'Donor Dashboard'}</div>
                       <div className="text-sm font-black text-gray-900">Ahmed Rahman</div>
-                      <div className="text-xs font-bold text-brand-red">Blood Group: O+ Positive</div>
+                      <div className="text-xs font-bold text-brand-red">{lang === 'bn' ? 'রক্তের গ্রুপ: O+ পজিটিভ' : 'Blood Group: O+ Positive'}</div>
                     </div>
 
                     <div className="space-y-2">
                       <div className="p-2 bg-gray-50 rounded-xl flex items-center justify-between text-xs">
-                        <span>Total Donations</span>
-                        <strong className="font-bold text-brand-red">5 Units</strong>
+                        <span>{lang === 'bn' ? 'মোট রক্তদান' : 'Total Donations'}</span>
+                        <strong className="font-bold text-brand-red">{lang === 'bn' ? '৫ বার' : '5 Units'}</strong>
                       </div>
                       <div className="p-2 bg-gray-50 rounded-xl flex items-center justify-between text-xs">
-                        <span>Status</span>
-                        <strong className="font-bold text-brand-green">Available</strong>
+                        <span>{lang === 'bn' ? 'অবস্থা' : 'Status'}</span>
+                        <strong className="font-bold text-brand-green">{lang === 'bn' ? 'প্রস্তুত' : 'Available'}</strong>
                       </div>
                     </div>
                   </div>

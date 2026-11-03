@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useLanguage } from '@/components/LanguageContext';
 import { 
   SAMPLE_BLOOD_REQUESTS, 
   BANGLADESH_KEY_DISTRICTS 
@@ -21,6 +22,7 @@ import {
 } from 'lucide-react';
 
 export default function BloodRequestsPage() {
+  const { t, lang } = useLanguage();
   const [requests, setRequests] = useState<BloodRequestItem[]>(SAMPLE_BLOOD_REQUESTS);
   const [filterUrgency, setFilterUrgency] = useState<string>('All');
   const [newRequestModalOpen, setNewRequestModalOpen] = useState(false);
@@ -45,6 +47,13 @@ export default function BloodRequestsPage() {
     if (filterUrgency !== 'All' && r.urgency !== filterUrgency) return false;
     return true;
   });
+
+  const getUrgencyLabel = (u: string) => {
+    if (u === 'critical_emergency') return t.bloodRequestsPage.criticalEmergency;
+    if (u === 'urgent') return t.bloodRequestsPage.urgent;
+    if (u === 'routine') return t.bloodRequestsPage.routine;
+    return t.bloodRequestsPage.allEmergencies;
+  };
 
   const handleCreateRequest = (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,13 +95,13 @@ export default function BloodRequestsPage() {
           <div>
             <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-brand-red/10 text-brand-red text-xs font-bold mb-2">
               <AlertCircle className="w-3.5 h-3.5" />
-              <span>Emergency Blood Coordination</span>
+              <span>{t.bloodRequestsPage.tag}</span>
             </div>
             <h1 className="text-3xl sm:text-4xl font-black text-gray-900 tracking-tight">
-              Emergency Blood Requests
+              {t.bloodRequestsPage.title}
             </h1>
             <p className="text-sm text-gray-600 mt-1">
-              Active patient requirements verified across Bangladesh hospitals. Donors can respond directly to save lives.
+              {t.bloodRequestsPage.subtitle}
             </p>
           </div>
 
@@ -101,7 +110,7 @@ export default function BloodRequestsPage() {
             className="inline-flex items-center justify-center px-6 py-3 rounded-2xl bg-brand-red hover:bg-brand-crimson text-white font-bold text-xs shadow-lg shadow-brand-red/25 transition-all space-x-2 shrink-0"
           >
             <Plus className="w-4 h-4" />
-            <span>Post Blood Request</span>
+            <span>{t.bloodRequestsPage.postBtn}</span>
           </button>
         </div>
 
@@ -117,7 +126,7 @@ export default function BloodRequestsPage() {
                   : 'bg-white text-gray-700 border border-gray-200 hover:border-brand-red'
               }`}
             >
-              {u === 'All' ? 'All Emergencies' : u.replace('_', ' ').toUpperCase()}
+              {getUrgencyLabel(u)}
             </button>
           ))}
         </div>
@@ -139,7 +148,7 @@ export default function BloodRequestsPage() {
                       ? 'bg-amber-100 text-amber-800 border border-amber-200'
                       : 'bg-blue-100 text-blue-800 border border-blue-200'
                   }`}>
-                    {req.urgency.replace('_', ' ')}
+                    {getUrgencyLabel(req.urgency)}
                   </span>
                   <span className="text-xs font-mono font-bold text-gray-400">
                     {req.request_code}
@@ -154,7 +163,7 @@ export default function BloodRequestsPage() {
                     <h3 className="text-base font-bold text-gray-900 line-clamp-1">{req.hospital_name}</h3>
                     <p className="text-xs text-gray-500 flex items-center mt-0.5">
                       <MapPin className="w-3 h-3 mr-1 text-gray-400" />
-                      {req.hospital_district_en} District
+                      {lang === 'bn' ? `${req.hospital_district_bn} জেলা` : `${req.hospital_district_en} District`}
                     </p>
                   </div>
                 </div>
@@ -162,8 +171,13 @@ export default function BloodRequestsPage() {
                 <div className="bg-gray-50 p-3 rounded-2xl border border-gray-100 text-xs text-gray-700 space-y-2 mb-4">
                   <p className="font-medium line-clamp-2">{req.description}</p>
                   <div className="flex items-center justify-between text-[11px] text-gray-500 pt-1 border-t border-gray-200/60">
-                    <span>Component: <strong>{req.component}</strong></span>
-                    <span>Units: <strong className="text-brand-red">{req.units_needed} Needed</strong></span>
+                    <span>{t.bloodRequestsPage.componentLabel} <strong>{req.component}</strong></span>
+                    <span>
+                      {t.bloodRequestsPage.unitsNeededLabel}{' '}
+                      <strong className="text-brand-red">
+                        {lang === 'bn' ? `${req.units_needed} ব্যাগ প্রয়োজন` : `${req.units_needed} Needed`}
+                      </strong>
+                    </span>
                   </div>
                 </div>
               </div>
@@ -175,7 +189,7 @@ export default function BloodRequestsPage() {
                   className="w-full py-2.5 px-4 rounded-xl bg-brand-red hover:bg-brand-crimson text-white font-bold text-xs shadow-md transition-all flex items-center justify-center space-x-2"
                 >
                   <Heart className="w-4 h-4 fill-white" />
-                  <span>I Want to Donate</span>
+                  <span>{t.bloodRequestsPage.iCanDonateBtn}</span>
                 </button>
               </div>
 
@@ -204,26 +218,26 @@ export default function BloodRequestsPage() {
                 <div className="w-16 h-16 rounded-full bg-green-100 text-brand-green flex items-center justify-center mx-auto">
                   <CheckCircle2 className="w-8 h-8" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900">Request Published!</h3>
+                <h3 className="text-xl font-bold text-gray-900">{t.bloodRequestsPage.publishedTitle}</h3>
                 <p className="text-xs text-gray-600 max-w-xs mx-auto">
-                  Matching donors in your hospital&apos;s district are being alerted right now via push notification and SMS.
+                  {t.bloodRequestsPage.publishedDesc}
                 </p>
               </div>
             ) : (
               <div>
                 <div className="flex items-center space-x-2 text-brand-red mb-2">
                   <Droplet className="w-5 h-5 fill-brand-red" />
-                  <h3 className="text-lg font-bold text-gray-900">Post Emergency Blood Request</h3>
+                  <h3 className="text-lg font-bold text-gray-900">{t.bloodRequestsPage.postModalTitle}</h3>
                 </div>
                 <p className="text-xs text-gray-500 mb-4">
-                  Please provide genuine clinical details. All emergency requests are verified for patient safety.
+                  {t.bloodRequestsPage.postModalSub}
                 </p>
 
                 <form onSubmit={handleCreateRequest} className="space-y-3 text-xs">
                   
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block font-bold text-gray-700 mb-1">Patient Reference / Initials</label>
+                      <label className="block font-bold text-gray-700 mb-1">{t.bloodRequestsPage.patientInitials}</label>
                       <input
                         type="text"
                         required
@@ -235,7 +249,7 @@ export default function BloodRequestsPage() {
                     </div>
 
                     <div>
-                      <label className="block font-bold text-gray-700 mb-1">Blood Group Required</label>
+                      <label className="block font-bold text-gray-700 mb-1">{t.bloodRequestsPage.bloodGroupRequired}</label>
                       <select
                         value={formData.bloodGroup}
                         onChange={(e) => setFormData({ ...formData, bloodGroup: e.target.value })}
@@ -250,7 +264,7 @@ export default function BloodRequestsPage() {
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block font-bold text-gray-700 mb-1">Units Needed</label>
+                      <label className="block font-bold text-gray-700 mb-1">{t.bloodRequestsPage.unitsNeeded}</label>
                       <input
                         type="number"
                         min={1}
@@ -263,21 +277,21 @@ export default function BloodRequestsPage() {
                     </div>
 
                     <div>
-                      <label className="block font-bold text-gray-700 mb-1">Urgency Level</label>
+                      <label className="block font-bold text-gray-700 mb-1">{t.bloodRequestsPage.urgencyLevel}</label>
                       <select
                         value={formData.urgency}
                         onChange={(e) => setFormData({ ...formData, urgency: e.target.value })}
                         className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-brand-red/20 focus:border-brand-red font-bold text-brand-red"
                       >
-                        <option value="critical_emergency">Critical Emergency (Immediate)</option>
-                        <option value="urgent">Urgent (Within 12 Hours)</option>
-                        <option value="routine">Routine (Scheduled Surgery)</option>
+                        <option value="critical_emergency">{t.bloodRequestsPage.criticalEmergency}</option>
+                        <option value="urgent">{t.bloodRequestsPage.urgent}</option>
+                        <option value="routine">{t.bloodRequestsPage.routine}</option>
                       </select>
                     </div>
                   </div>
 
                   <div>
-                    <label className="block font-bold text-gray-700 mb-1">Hospital / Clinic Name</label>
+                    <label className="block font-bold text-gray-700 mb-1">{t.bloodRequestsPage.hospitalName}</label>
                     <input
                       type="text"
                       required
@@ -290,20 +304,20 @@ export default function BloodRequestsPage() {
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block font-bold text-gray-700 mb-1">District</label>
+                      <label className="block font-bold text-gray-700 mb-1">{t.bloodRequestsPage.district}</label>
                       <select
                         value={formData.districtName}
                         onChange={(e) => setFormData({ ...formData, districtName: e.target.value })}
                         className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-brand-red/20 focus:border-brand-red"
                       >
                         {BANGLADESH_KEY_DISTRICTS.map(d => (
-                          <option key={d.id} value={d.name_en}>{d.name_en}</option>
+                          <option key={d.id} value={d.name_en}>{lang === 'bn' ? d.name_bn : d.name_en}</option>
                         ))}
                       </select>
                     </div>
 
                     <div>
-                      <label className="block font-bold text-gray-700 mb-1">Requester Phone (+880)</label>
+                      <label className="block font-bold text-gray-700 mb-1">{t.bloodRequestsPage.requesterPhone}</label>
                       <input
                         type="tel"
                         required
@@ -316,7 +330,7 @@ export default function BloodRequestsPage() {
                   </div>
 
                   <div>
-                    <label className="block font-bold text-gray-700 mb-1">Clinical Reason / Case Details</label>
+                    <label className="block font-bold text-gray-700 mb-1">{t.bloodRequestsPage.clinicalReason}</label>
                     <textarea
                       rows={2}
                       placeholder="Briefly state patient diagnosis and requirement context..."
@@ -331,7 +345,7 @@ export default function BloodRequestsPage() {
                     className="w-full py-3 rounded-xl bg-brand-red hover:bg-brand-crimson text-white font-bold text-xs shadow-md transition-all flex items-center justify-center space-x-2 mt-4"
                   >
                     <Send className="w-4 h-4" />
-                    <span>Publish & Alert Nearby Donors</span>
+                    <span>{t.bloodRequestsPage.publishAlertBtn}</span>
                   </button>
                 </form>
               </div>
@@ -360,7 +374,7 @@ export default function BloodRequestsPage() {
               </div>
               <div>
                 <h3 className="text-base font-bold text-gray-900">
-                  Confirm Donation Commitment
+                  {t.bloodRequestsPage.confirmDonationTitle}
                 </h3>
                 <p className="text-xs text-gray-500">
                   {donateModalRequest.hospital_name}
@@ -369,26 +383,28 @@ export default function BloodRequestsPage() {
             </div>
 
             <p className="text-xs text-gray-600 mb-4 bg-gray-50 p-3 rounded-2xl border border-gray-100">
-              By confirming, your willingness and phone number will be shared with the patient&apos;s verified representative: <strong>{donateModalRequest.requester_contact_phone}</strong>.
+              {t.bloodRequestsPage.confirmDesc} <strong>{donateModalRequest.requester_contact_phone}</strong>.
             </p>
 
             <div className="space-y-2">
               <button
                 onClick={() => {
-                  alert(`Thank you! The requester has been notified of your commitment. You may reach them at ${donateModalRequest.requester_contact_phone}`);
+                  alert(lang === 'bn' 
+                    ? `ধন্যবাদ! আবেদনকারীকে আপনার সম্মতির নোটিফিকেশন পাঠানো হয়েছে। আপনি তাকে ${donateModalRequest.requester_contact_phone} নম্বরে সরাসরি কল করতে পারেন।`
+                    : `Thank you! The requester has been notified of your commitment. You may reach them at ${donateModalRequest.requester_contact_phone}`);
                   setDonateModalRequest(null);
                 }}
                 className="w-full py-3 rounded-xl bg-brand-red hover:bg-brand-crimson text-white font-bold text-xs shadow-md transition-all flex items-center justify-center space-x-2"
               >
                 <CheckCircle2 className="w-4 h-4" />
-                <span>Confirm & Share My Contact Details</span>
+                <span>{t.bloodRequestsPage.confirmShareBtn}</span>
               </button>
 
               <button
                 onClick={() => setDonateModalRequest(null)}
                 className="w-full py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs transition-all"
               >
-                Cancel
+                {t.bloodRequestsPage.cancelBtn}
               </button>
             </div>
           </div>
