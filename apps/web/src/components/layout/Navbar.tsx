@@ -134,6 +134,7 @@ export const Navbar: React.FC = () => {
     { href: '/blood-requests', label: t.nav.bloodRequests },
     { href: '/campaigns', label: t.nav.campaigns },
     { href: '/achievements', label: t.nav.achievements },
+    { href: '/id-cards', label: lang === 'bn' ? 'ডিজিটাল আইডি কার্ড' : 'Digital ID Cards' },
     { href: '/dashboard/donor', label: t.nav.donorDashboard },
     { href: '/dashboard/admin', label: t.nav.adminDashboard },
   ];

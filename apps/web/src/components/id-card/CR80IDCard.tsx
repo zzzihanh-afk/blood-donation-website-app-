@@ -186,8 +186,190 @@ export const CR80IDCard: React.FC<CR80IDCardProps> = ({
     }).then(setQrDataUrl).catch(console.error);
   }, [targetVerifyUrl]);
 
-  const handleExportPNG = (side: 'front' | 'back' | 'both') => {
-    alert(`Exporting ${side.toUpperCase()} in high-resolution CR80 (85.6mm × 54mm) 300 DPI vector format...`);
+  // High-Resolution 300 DPI CR80 PNG Client-Side Vector/Canvas Exporter
+  const handleExportPNG = async (side: 'front' | 'back' | 'both') => {
+    const exportSide = async (s: 'front' | 'back') => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1011; // 85.6mm at 300 DPI
+      canvas.height = 638; // 54.0mm at 300 DPI
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      // Card Background (Smooth rounded rectangle with subtle gradient)
+      const r = 40;
+      ctx.beginPath();
+      ctx.moveTo(r, 0);
+      ctx.lineTo(canvas.width - r, 0);
+      ctx.quadraticCurveTo(canvas.width, 0, canvas.width, r);
+      ctx.lineTo(canvas.width, canvas.height - r);
+      ctx.quadraticCurveTo(canvas.width, canvas.height, canvas.width - r, canvas.height);
+      ctx.lineTo(r, canvas.height);
+      ctx.quadraticCurveTo(0, canvas.height, 0, canvas.height - r);
+      ctx.lineTo(0, r);
+      ctx.quadraticCurveTo(0, 0, r, 0);
+      ctx.closePath();
+      ctx.clip();
+
+      const bgGrad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+      bgGrad.addColorStop(0, '#FFFFFF');
+      bgGrad.addColorStop(0.7, '#FCFDFE');
+      bgGrad.addColorStop(1, '#F7FAFC');
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      if (s === 'front') {
+        // Top Role Header Ribbon
+        ctx.fillStyle = primaryColor;
+        ctx.beginPath();
+        const rw = 320;
+        const rh = 42;
+        const rx = (canvas.width - rw) / 2;
+        ctx.roundRect(rx, 0, rw, rh, [0, 0, 18, 18]);
+        ctx.fill();
+
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = '900 18px "Inter", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(ribbonLabel.toUpperCase(), canvas.width / 2, 28);
+
+        // LalBindu Brand Text on Left
+        ctx.fillStyle = '#C8102E';
+        ctx.font = '900 38px "Inter", sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText('LalBindu', 60, 95);
+        ctx.fillStyle = '#707070';
+        ctx.font = 'italic 600 14px "Inter", sans-serif';
+        ctx.fillText('Every Drop Connects a Life.', 60, 118);
+
+        // Cardholder Information
+        ctx.fillStyle = '#171717';
+        ctx.font = '900 34px "Inter", sans-serif';
+        ctx.fillText(fullName, 260, 240);
+
+        ctx.fillStyle = primaryColor;
+        ctx.font = '900 22px "Inter", sans-serif';
+        ctx.fillText(designation, 260, 275);
+
+        ctx.fillStyle = '#4B5563';
+        ctx.font = 'bold 20px monospace';
+        ctx.fillText(`ID: ${uniqueId}`, 260, 310);
+
+        if (organizationName || jurisdictionName) {
+          ctx.fillStyle = '#6B7280';
+          ctx.font = '600 18px "Inter", sans-serif';
+          ctx.fillText(organizationName || jurisdictionName || '', 260, 345);
+        }
+
+        if (donationCount !== undefined) {
+          ctx.fillStyle = '#374151';
+          ctx.font = 'bold 18px "Inter", sans-serif';
+          ctx.fillText(`Total Donations: ${donationCount}`, 260, 380);
+        }
+
+        ctx.fillStyle = '#9CA3AF';
+        ctx.font = '600 16px "Inter", sans-serif';
+        ctx.fillText(`Valid Until: ${validUntil}`, 260, 420);
+
+        // Sweeping Curve along bottom
+        ctx.fillStyle = primaryColor;
+        ctx.beginPath();
+        ctx.moveTo(0, canvas.height - 90);
+        ctx.bezierCurveTo(canvas.width * 0.3, canvas.height - 35, canvas.width * 0.7, canvas.height - 130, canvas.width, canvas.height - 75);
+        ctx.lineTo(canvas.width, canvas.height);
+        ctx.lineTo(0, canvas.height);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = secondaryColor;
+        ctx.globalAlpha = 0.85;
+        ctx.beginPath();
+        ctx.moveTo(0, canvas.height - 60);
+        ctx.bezierCurveTo(canvas.width * 0.35, canvas.height - 15, canvas.width * 0.75, canvas.height - 90, canvas.width, canvas.height - 45);
+        ctx.lineTo(canvas.width, canvas.height);
+        ctx.lineTo(0, canvas.height);
+        ctx.closePath();
+        ctx.fill();
+        ctx.globalAlpha = 1.0;
+
+        // Photo Frame placeholder / photo
+        ctx.strokeStyle = primaryColor;
+        ctx.lineWidth = 5;
+        ctx.fillStyle = '#E5E7EB';
+        ctx.beginPath();
+        ctx.roundRect(60, 180, 160, 200, 24);
+        ctx.fill();
+        ctx.stroke();
+
+        // Blood group badge for donor
+        if (bloodGroup) {
+          ctx.fillStyle = '#C8102E';
+          ctx.beginPath();
+          ctx.arc(canvas.width - 120, 240, 45, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#FFFFFF';
+          ctx.font = '900 24px "Inter", sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(bloodGroup, canvas.width - 120, 248);
+        }
+
+      } else {
+        // BACK SIDE
+        ctx.fillStyle = '#C8102E';
+        ctx.font = '900 38px "Inter", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('LalBindu', canvas.width / 2, 85);
+        ctx.fillStyle = '#707070';
+        ctx.font = 'italic 600 14px "Inter", sans-serif';
+        ctx.fillText('Every Drop Connects a Life.', canvas.width / 2, 108);
+
+        // QR Code
+        if (qrDataUrl) {
+          const qrImg = new window.Image();
+          qrImg.src = qrDataUrl;
+          await new Promise((res) => { qrImg.onload = res; });
+          ctx.drawImage(qrImg, (canvas.width - 200) / 2, 140, 200, 200);
+        }
+
+        // "SCAN TO VERIFY" badge
+        ctx.fillStyle = '#171717';
+        ctx.beginPath();
+        ctx.roundRect((canvas.width - 220) / 2, 360, 220, 34, 17);
+        ctx.fill();
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = '900 15px "Inter", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('SCAN TO VERIFY', canvas.width / 2, 383);
+
+        // Verification URL
+        ctx.fillStyle = '#374151';
+        ctx.font = 'bold 16px monospace';
+        ctx.fillText(`https://lalbindu.bd/verify/${uniqueId}`, canvas.width / 2, 420);
+
+        // Issue & Valid
+        ctx.fillStyle = '#6B7280';
+        ctx.font = '600 14px "Inter", sans-serif';
+        ctx.fillText(`Issued: ${issueDate} | Valid: Active`, canvas.width / 2, 445);
+
+        // Slogan wave footer
+        ctx.fillStyle = primaryColor;
+        ctx.fillRect(0, canvas.height - 48, canvas.width, 48);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 16px "Inter", sans-serif';
+        ctx.fillText('Together for a Blood-Safe Bangladesh ❤️', canvas.width / 2, canvas.height - 18);
+      }
+
+      const link = document.createElement('a');
+      link.download = `LalBindu-CR80-${uniqueId}-${s.toUpperCase()}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    };
+
+    if (side === 'both') {
+      await exportSide('front');
+      setTimeout(() => exportSide('back'), 450);
+    } else {
+      await exportSide(side);
+    }
   };
 
   const handleShare = () => {
