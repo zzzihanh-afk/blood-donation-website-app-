@@ -36,8 +36,20 @@ import {
   CheckCircle,
   Download,
   Share2,
-  Trash2
+  Trash2,
+  Calendar,
+  ExternalLink
 } from 'lucide-react';
+import { CreateCampaignModal } from '@/components/campaigns/CreateCampaignModal';
+import { 
+  CampaignItem, 
+  CampaignDelegation, 
+  getStoredCampaigns, 
+  addCampaign, 
+  deleteCampaign, 
+  getCampaignDelegations, 
+  toggleDelegationPermission 
+} from '@/lib/campaigns';
 
 export interface SubordinateAppointment {
   id: string;
@@ -127,7 +139,17 @@ export default function AdminDashboardPage() {
   const [selectedJurisdiction, setSelectedJurisdiction] = useState<'national' | 'division' | 'district' | 'upazila'>('national');
   const [selectedDivision, setSelectedDivision] = useState('div-dha');
   const [selectedDistrict, setSelectedDistrict] = useState('dist-dhaka');
-  const [activeTab, setActiveTab] = useState<'overview' | 'verifications' | 'admins' | 'id-cards'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'verifications' | 'admins' | 'id-cards' | 'campaigns'>('overview');
+
+  // Campaigns & Super Admin Delegations state
+  const [campaigns, setCampaigns] = useState<CampaignItem[]>([]);
+  const [delegations, setDelegations] = useState<CampaignDelegation[]>([]);
+  const [isCreateCampaignModalOpen, setIsCreateCampaignModalOpen] = useState(false);
+
+  useEffect(() => {
+    setCampaigns(getStoredCampaigns());
+    setDelegations(getCampaignDelegations());
+  }, []);
 
   // Subordinate appointments state with localStorage persistence
   const [appointments, setAppointments] = useState<SubordinateAppointment[]>(() => {
@@ -311,6 +333,35 @@ export default function AdminDashboardPage() {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
+  // Admin Campaign Handlers
+  const handleAdminCreateCampaign = (newCamp: CampaignItem) => {
+    const updated = addCampaign(newCamp);
+    setCampaigns(updated);
+    setToastMessage(lang === 'bn' 
+      ? `সুপার অ্যাডমিন অনুমোদিত রক্তদান কর্মসূচি "${newCamp.title_bn || newCamp.title_en}" সফলভাবে প্রকাশিত হয়েছে!` 
+      : `Super Admin authorized campaign "${newCamp.title_en}" published successfully!`);
+    setTimeout(() => setToastMessage(null), 4500);
+  };
+
+  const handleAdminDeleteCampaign = (id: string, title: string) => {
+    if (!confirm(lang === 'bn' ? `আপনি কি নিশ্চিত যে "${title}" কর্মসূচিটি প্রত্যাহার করতে চান?` : `Are you sure you want to cancel and remove "${title}"?`)) return;
+    const updated = deleteCampaign(id);
+    setCampaigns(updated);
+    setToastMessage(lang === 'bn' ? 'কর্মসূচিটি সফলভাবে প্রত্যাহার করা হয়েছে।' : 'Campaign revoked and removed from portal.');
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  const handleToggleCampaignPermission = (userId: string, currentAllowed: boolean) => {
+    const nextState = !currentAllowed;
+    const updated = toggleDelegationPermission(userId, nextState);
+    setDelegations(updated);
+    const target = updated.find(d => d.userId === userId);
+    setToastMessage(lang === 'bn'
+      ? `সুপার অ্যাডমিন কর্তৃক "${target?.name}" এর জন্য রক্তদান কর্মসূচি তৈরির অনুমতি ${nextState ? 'অনুমোদন (Granted)' : 'স্থগিত (Revoked)'} করা হয়েছে।`
+      : `Super Admin ${nextState ? 'granted' : 'revoked'} campaign creation rights for "${target?.name}".`);
+    setTimeout(() => setToastMessage(null), 4000);
+  };
+
   return (
     <div className="bg-[#FFF8F8] min-h-screen py-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
@@ -396,6 +447,7 @@ export default function AdminDashboardPage() {
             { id: 'overview', label: t.adminDashboard.tabOverview },
             { id: 'verifications', label: `${t.adminDashboard.tabVerifications} (${pendingVerifications.length})` },
             { id: 'admins', label: t.adminDashboard.tabAdmins },
+            { id: 'campaigns', label: lang === 'bn' ? `রক্তদান কর্মসূচি (${campaigns.length})` : `Campaigns (${campaigns.length})` },
             { id: 'id-cards', label: lang === 'bn' ? 'প্রশাসনিক আইডি কার্ড টেমপ্লেট' : 'Administrative ID Card Templates' }
           ].map(tab => (
             <button
@@ -745,6 +797,232 @@ export default function AdminDashboardPage() {
                         <span>{lang === 'bn' ? 'ডিজাইন কাস্টমাইজ' : 'Customize'}</span>
                         <ChevronRight className="w-3 h-3" />
                       </Link>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+          </div>
+        )}
+
+        {/* =========================================================================
+            TAB 5: NATIONWIDE COMMUNITY BLOOD DONATION CAMPAIGNS
+           ========================================================================= */}
+        {activeTab === 'campaigns' && (
+          <div className="space-y-8">
+            
+            {/* Header & Quick Action Banner */}
+            <div className="bg-gradient-to-r from-brand-burgundy via-brand-red to-brand-crimson text-white rounded-3xl p-6 sm:p-8 card-shadow flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
+              <div className="space-y-2 max-w-xl z-10">
+                <span className="px-3 py-1 rounded-full bg-white/20 text-white text-[10px] font-mono font-bold uppercase tracking-wider backdrop-blur-sm">
+                  Super Admin Exclusive • Portal Authority
+                </span>
+                <h2 className="text-2xl sm:text-3xl font-black tracking-tight">
+                  {lang === 'bn' ? 'দেশব্যাপী রক্তদান কর্মসূচি ও প্রশাসনিক নিয়ন্ত্রণ' : 'Nationwide Blood Campaigns & Authorizations'}
+                </h2>
+                <p className="text-xs text-white/90 leading-relaxed">
+                  {lang === 'bn'
+                    ? 'সুপার অ্যাডমিনের প্রত্যক্ষ অনুমোদনে নতুন রক্তদান ক্যাম্প প্রকাশ করুন এবং নির্বাচিত আঞ্চলিক সমন্বয়কদের ক্যাম্পেইন তৈরির অনুমতি প্রদান বা প্রত্যাহার করুন।'
+                    : 'Authorize and deploy public blood donation campaigns across Bangladesh, and delegate campaign creation permissions to subordinate coordinators.'}
+                </p>
+                <div className="pt-2 flex flex-wrap gap-3">
+                  <button
+                    onClick={() => setIsCreateCampaignModalOpen(true)}
+                    className="px-5 py-2.5 rounded-xl bg-white text-brand-burgundy font-black text-xs shadow-lg hover:bg-gray-100 transition-all flex items-center space-x-2"
+                  >
+                    <Plus className="w-4 h-4 stroke-[3]" />
+                    <span>{lang === 'bn' ? 'নতুন কর্মসূচি তৈরি করুন' : 'Create Blood Donation Campaign'}</span>
+                  </button>
+                  <Link
+                    href="/campaigns"
+                    className="px-4 py-2.5 rounded-xl bg-white/15 hover:bg-white/25 text-white font-bold text-xs border border-white/30 backdrop-blur-sm transition-all flex items-center space-x-2"
+                  >
+                    <span>{lang === 'bn' ? 'পাবলিক বোর্ড দেখুন' : 'View Public Campaigns Board'}</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
+              </div>
+            </div>
+
+            {/* Campaign Metrics */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+              {[
+                { label: lang === 'bn' ? 'সক্রিয় কর্মসূচি' : 'Active Campaigns', value: campaigns.length.toString(), icon: Calendar, color: 'text-brand-burgundy' },
+                { label: lang === 'bn' ? 'মোট লক্ষ্যমাত্রা স্লট' : 'Total Slot Capacity', value: campaigns.reduce((acc, c) => acc + c.slotsAvailable, 0).toLocaleString(), icon: Users, color: 'text-brand-green' },
+                { label: lang === 'bn' ? 'নিবন্ধিত দাতা সংখ্যা' : 'Registered Donors', value: campaigns.reduce((acc, c) => acc + c.registeredCount, 0).toLocaleString(), icon: Droplet, color: 'text-brand-red' },
+                { label: lang === 'bn' ? 'অনুমোদিত সমন্বয়ক' : 'Super Admin Delegated Admins', value: delegations.filter(d => d.canCreateCampaigns).length.toString(), icon: ShieldCheck, color: 'text-amber-600' }
+              ].map((stat, idx) => {
+                const Icon = stat.icon;
+                return (
+                  <div key={idx} className="bg-white rounded-3xl p-5 card-shadow border border-gray-100 flex items-center justify-between">
+                    <div>
+                      <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">{stat.label}</p>
+                      <h4 className="text-2xl font-black text-gray-900 mt-1">{stat.value}</h4>
+                    </div>
+                    <div className={`p-3.5 rounded-2xl bg-gray-50 ${stat.color}`}>
+                      <Icon className="w-5 h-5" />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Super Admin Delegation Console ("and those that he allow") */}
+            <div className="bg-white rounded-3xl p-6 sm:p-8 card-shadow border border-amber-200/80 space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-4">
+                <div>
+                  <div className="inline-flex items-center space-x-1.5 px-3 py-0.5 rounded-full bg-amber-50 text-amber-700 text-[10px] font-mono font-bold uppercase mb-1 border border-amber-200">
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    <span>Super Admin Access Delegation Engine</span>
+                  </div>
+                  <h3 className="text-lg font-black text-gray-900">
+                    {lang === 'bn' ? 'সমন্বয়ক পর্যায়ে কর্মসূচি তৈরির অনুমতি অর্পণ' : 'Coordinator Campaign Creation Delegation Console'}
+                  </h3>
+                  <p className="text-xs text-gray-500">
+                    {lang === 'bn' 
+                      ? 'সুপার অ্যাডমিন হিসেবে আপনি নির্দিষ্ট বিভাগীয় বা জেলা সমন্বয়ককে কর্মসূচি তৈরির অনুমতি প্রদান বা প্রত্যাহার করতে পারবেন।' 
+                      : 'As Super Administrator, grant or revoke campaign publishing clearance to regional coordinators and staff.'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Delegations Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {delegations.map((d) => (
+                  <div 
+                    key={d.userId}
+                    className="p-4 rounded-2xl border border-gray-100 bg-gray-50/70 flex flex-col justify-between gap-3"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h4 className="text-sm font-bold text-gray-900">{d.name}</h4>
+                        <p className="text-xs text-brand-burgundy font-semibold">{d.role}</p>
+                        <p className="text-[11px] text-gray-500 flex items-center mt-0.5">
+                          <MapPin className="w-3 h-3 mr-1 text-gray-400" />
+                          {d.jurisdiction}
+                        </p>
+                      </div>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                        d.canCreateCampaigns 
+                          ? 'bg-emerald-100 text-brand-green border border-emerald-200' 
+                          : 'bg-gray-200 text-gray-600'
+                      }`}>
+                        {d.canCreateCampaigns 
+                          ? (lang === 'bn' ? 'অনুমোদিত' : 'Authorized') 
+                          : (lang === 'bn' ? 'অনুমতিহীন' : 'Restricted')}
+                      </span>
+                    </div>
+
+                    <div className="pt-2 border-t border-gray-200 flex items-center justify-between">
+                      <span className="text-[10px] text-gray-400">
+                        {d.authorizedBy}
+                      </span>
+                      <button
+                        onClick={() => handleToggleCampaignPermission(d.userId, d.canCreateCampaigns)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center space-x-1 ${
+                          d.canCreateCampaigns
+                            ? 'bg-red-50 hover:bg-red-100 text-brand-red border border-red-200'
+                            : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                        }`}
+                      >
+                        {d.canCreateCampaigns ? (
+                          <>
+                            <Lock className="w-3 h-3" />
+                            <span>{lang === 'bn' ? 'অনুমতি প্রত্যাহার' : 'Revoke Rights'}</span>
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle2 className="w-3 h-3" />
+                            <span>{lang === 'bn' ? 'অনুমতি প্রদান করুন' : 'Grant Rights'}</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Nationwide Campaigns List */}
+            <div className="bg-white rounded-3xl p-6 sm:p-8 card-shadow border border-gray-100 space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-4">
+                <div>
+                  <h3 className="text-lg font-black text-gray-900">
+                    {lang === 'bn' ? 'প্রকাশিত ও সক্রিয় কর্মসূচি তালিকা' : 'Active Public Blood Drives Registry'}
+                  </h3>
+                  <p className="text-xs text-gray-500">
+                    {lang === 'bn' ? 'সমগ্র বাংলাদেশে চলমান ও আসন্ন অনুমোদিত কর্মসূচি তালিকা' : 'Nationwide ongoing and upcoming approved donation drives'}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setIsCreateCampaignModalOpen(true)}
+                  className="px-4 py-2 rounded-xl bg-brand-burgundy text-white text-xs font-bold shadow-md hover:bg-[#400B13] flex items-center space-x-1.5 self-start sm:self-auto"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>{lang === 'bn' ? 'নতুন কর্মসূচি যোগ করুন' : 'Add Campaign'}</span>
+                </button>
+              </div>
+
+              <div className="divide-y divide-gray-100">
+                {campaigns.map((camp) => (
+                  <div key={camp.id} className="py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="space-y-1 max-w-xl">
+                      <div className="flex items-center space-x-2">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-brand-red">
+                          {camp.status.toUpperCase()}
+                        </span>
+                        <span className="text-xs font-bold text-gray-500 flex items-center">
+                          <Building2 className="w-3.5 h-3.5 mr-1 text-gray-400" />
+                          {camp.division} • {camp.district}
+                        </span>
+                      </div>
+                      <h4 className="text-sm font-black text-gray-900">
+                        {lang === 'bn' ? camp.title_bn : camp.title_en}
+                      </h4>
+                      <p className="text-xs text-gray-600">
+                        {camp.organizer} • <span className="text-gray-500">{camp.venue}</span>
+                      </p>
+                      <div className="flex items-center space-x-4 text-[11px] text-gray-400 pt-1">
+                        <span className="flex items-center">
+                          <Calendar className="w-3 h-3 mr-1" />
+                          {camp.date}
+                        </span>
+                        <span className="flex items-center">
+                          <Clock className="w-3 h-3 mr-1" />
+                          {camp.time}
+                        </span>
+                        <span className="text-brand-burgundy font-semibold">
+                          By: {camp.approvedBy}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-4">
+                      {/* Slots meter */}
+                      <div className="text-right">
+                        <p className="text-xs font-bold text-gray-900">
+                          {camp.registeredCount} / {camp.slotsAvailable}
+                        </p>
+                        <p className="text-[10px] text-gray-500">
+                          {lang === 'bn' ? 'নিবন্ধিত দাতা' : 'Donors Registered'}
+                        </p>
+                        <div className="w-24 bg-gray-100 h-1.5 rounded-full mt-1 overflow-hidden">
+                          <div 
+                            className="bg-brand-green h-full rounded-full" 
+                            style={{ width: `${Math.min(100, (camp.registeredCount / camp.slotsAvailable) * 100)}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Remove Button */}
+                      <button
+                        onClick={() => handleAdminDeleteCampaign(camp.id, camp.title_en)}
+                        className="p-2 rounded-xl text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                        title="Delete Campaign"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -1119,6 +1397,17 @@ export default function AdminDashboardPage() {
           </div>
         </div>
       )}
+
+      {/* =========================================================================
+          MODAL 4: SUPER ADMIN CREATE CAMPAIGN MODAL
+         ========================================================================= */}
+      <CreateCampaignModal
+        isOpen={isCreateCampaignModalOpen}
+        onClose={() => setIsCreateCampaignModalOpen(false)}
+        onCreated={handleAdminCreateCampaign}
+        approverName="Md. Rahman Hossain (LA0010001)"
+        approverRole="Super Administrator"
+      />
 
     </div>
   );

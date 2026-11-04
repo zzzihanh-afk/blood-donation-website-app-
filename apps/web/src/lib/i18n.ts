@@ -275,7 +275,16 @@ export const translations = {
       organizerLabel: 'Organizer:',
       slotsLeft: 'slots left',
       registerBtn: 'Register to Participate',
-      registeredBtn: 'Registered'
+      registeredBtn: 'Registered',
+      createCampaignBtn: '+ Create Blood Donation Campaign',
+      adminPortalBtn: 'Admin Portal Console',
+      filterAll: 'All Bangladesh',
+      authorizedBy: 'Authorized by',
+      manageBtn: 'Manage Campaign',
+      deleteBtn: 'Delete',
+      accessRestricted: 'Administrative Authorization Required',
+      restrictedNotice: 'Blood donation campaign creation is restricted exclusively to Super Administrators and regional coordinators officially delegated by the LalBindu Super Admin Portal.',
+      viewAsRole: 'Preview / Access Role:'
     },
     verifyPage: {
       backHome: 'Back to LalBindu Home',
@@ -577,7 +586,16 @@ export const translations = {
       organizerLabel: 'আয়োজক:',
       slotsLeft: 'টি স্লট বাকি আছে',
       registerBtn: 'অংশগ্রহণের নিবন্ধন করুন',
-      registeredBtn: 'নিবন্ধিত হয়েছেন'
+      registeredBtn: 'নিবন্ধিত হয়েছেন',
+      createCampaignBtn: '+ নতুন রক্তদান কর্মসূচি তৈরি করুন',
+      adminPortalBtn: 'অ্যাডমিন কর্মসূচি কনসোল',
+      filterAll: 'সমগ্র বাংলাদেশ',
+      authorizedBy: 'অনুমোদনকারী:',
+      manageBtn: 'কর্মসূচি ব্যবস্থাপনা',
+      deleteBtn: 'মুছে ফেলুন',
+      accessRestricted: 'প্রশাসনিক অনুমতি আবশ্যক',
+      restrictedNotice: 'রক্তদান কর্মসূচি তৈরি শুধুমাত্র সুপার অ্যাডমিনিস্ট্রেটর এবং কেন্দ্রীয় অ্যাডমিন পোর্টাল কর্তৃক অনুমোদিত সমন্বয়কদের জন্য উন্মুক্ত।',
+      viewAsRole: 'ভূমিকা ও অ্যাক্সেস পরীক্ষা:'
     },
     verifyPage: {
       backHome: 'লালবিন্দু হোমপেজে ফিরে যান',
