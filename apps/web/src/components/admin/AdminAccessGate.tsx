@@ -14,7 +14,8 @@ import {
   Sparkles,
   KeyRound,
   ShieldCheck,
-  AlertTriangle
+  AlertTriangle,
+  Crown
 } from 'lucide-react';
 
 interface AdminAccessGateProps {
@@ -131,25 +132,34 @@ export const AdminAccessGate: React.FC<AdminAccessGateProps> = ({ children }) =>
 
         {/* Executive / Staff Switcher (For testing or official staff login) */}
         <div className="pt-4 border-t border-gray-100">
-          <div className="bg-amber-50/70 border border-amber-200/80 rounded-2xl p-4 text-left flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="bg-gradient-to-r from-amber-50 to-red-50 border border-amber-300 rounded-2xl p-4 text-left flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <p className="text-xs font-bold text-amber-950 flex items-center">
-                <KeyRound className="w-3.5 h-3.5 mr-1.5 text-amber-600" />
-                {lang === 'bn' ? 'আপনি কি লালবিন্দু সুপার অ্যাডমিন?' : 'Are you a Super Administrator?'}
+              <p className="text-xs font-black text-amber-950 flex items-center">
+                <Crown className="w-3.5 h-3.5 mr-1.5 text-amber-600" />
+                {lang === 'bn' ? 'সুপার অ্যাডমিন প্রবেশাধিকার (সর্বোচ্চ ক্ষমতা)' : 'Super Admin Clearance (Highest Authority)'}
               </p>
-              <p className="text-[11px] text-amber-800 mt-0.5">
+              <p className="text-[11px] text-amber-900 mt-0.5">
                 {lang === 'bn' 
-                  ? 'অফিশিয়াল সুপার অ্যাডমিন অ্যাকাউন্ট (LA0010001) দিয়ে লগইন করে অ্যাডমিন পোর্টাল খুলুন।' 
-                  : 'Authenticate as Md. Rahman Hossain (LA0010001) to enter the National Admin Portal.'}
+                  ? 'আইডি: superadmin | পাসওয়ার্ড: superadmin — শুধুমাত্র সুপার অ্যাডমিন নতুন অ্যাকাউন্ট তৈরি ও কো-অ্যাডমিন নিয়োগ করতে পারেন।' 
+                  : 'ID: superadmin | Password: superadmin — Only Super Admin holds exclusive authority to create accounts and delegate Co-Admins.'}
               </p>
             </div>
-            <button
-              onClick={() => setCurrentSession('super_admin')}
-              className="px-4 py-2 rounded-xl bg-brand-burgundy hover:bg-[#400B13] text-white text-xs font-bold shadow-sm whitespace-nowrap transition-colors flex items-center space-x-1 self-start sm:self-auto"
-            >
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span>{lang === 'bn' ? 'সুপার অ্যাডমিন লগইন' : 'Super Admin Login'}</span>
-            </button>
+            <div className="flex items-center gap-2 self-start sm:self-auto">
+              <button
+                onClick={() => setCurrentSession('superadmin')}
+                className="px-4 py-2 rounded-xl bg-brand-burgundy hover:bg-[#400B13] text-white text-xs font-black shadow-sm whitespace-nowrap transition-colors flex items-center space-x-1"
+              >
+                <Crown className="w-3.5 h-3.5 text-amber-300" />
+                <span>{lang === 'bn' ? 'সুপার অ্যাডমিন লগইন' : 'Super Admin (superadmin)'}</span>
+              </button>
+              <button
+                onClick={() => setCurrentSession('co_admin')}
+                className="px-3 py-2 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-bold whitespace-nowrap transition-colors border border-amber-300"
+                title="Sign in under Co-Admin delegated authority"
+              >
+                <span>Co-Admin (coadmin)</span>
+              </button>
+            </div>
           </div>
         </div>
 

@@ -61,6 +61,21 @@ import {
   syncNotificationsFromDatabase
 } from '@/lib/notifications';
 import { CreateNotificationModal } from '@/components/notifications/CreateNotificationModal';
+import { 
+  getCurrentSession, 
+  isHighestAuthority, 
+  UserSession 
+} from '@/lib/session';
+import { 
+  AccountUser, 
+  getStoredAccounts, 
+  createAccountByAuthority, 
+  delegateCoAdminAuthority, 
+  updateAccountAuthorityStatus, 
+  getPendingApplications, 
+  approvePendingApplication, 
+  PendingApplication 
+} from '@/lib/accounts';
 
 export interface SubordinateAppointment {
   id: string;
@@ -183,18 +198,55 @@ export default function AdminDashboardPage() {
   const [notificationsList, setNotificationsList] = useState<NotificationItem[]>([]);
   const [isCreateNotifModalOpen, setIsCreateNotifModalOpen] = useState(false);
 
+  // Active session & registered accounts state
+  const [session, setSession] = useState<UserSession>(() => getCurrentSession());
+  const [accountsList, setAccountsList] = useState<AccountUser[]>(() => getStoredAccounts());
+  const [pendingApps, setPendingApps] = useState<PendingApplication[]>(() => getPendingApplications());
+  const [isCreateAccountModalOpen, setIsCreateAccountModalOpen] = useState(false);
+  const [accountSubTab, setAccountSubTab] = useState<'appointments' | 'roster' | 'pending'>('appointments');
+
+  // Account creation form state
+  const [newAccountForm, setNewAccountForm] = useState({
+    name: '',
+    nameBn: '',
+    username: '',
+    password: '',
+    role: 'donor' as 'donor' | 'co_super_admin' | 'division_admin',
+    phone: '',
+    email: '',
+    bloodGroup: 'O+',
+    division: 'Dhaka',
+    district: 'Dhaka'
+  });
+
+  const isSuperAdmin = isHighestAuthority(session);
+
   useEffect(() => {
     setCampaigns(getStoredCampaigns());
     setDelegations(getCampaignDelegations());
     setNotificationsList(getStoredNotifications());
+    setSession(getCurrentSession());
+    setAccountsList(getStoredAccounts());
+    setPendingApps(getPendingApplications());
     syncNotificationsFromDatabase();
 
     const handleNotifsUpdate = () => {
       setNotificationsList(getStoredNotifications());
     };
+    const handleSessionChange = () => setSession(getCurrentSession());
+    const handleAccountsUpdate = () => setAccountsList(getStoredAccounts());
+    const handleAppsUpdate = () => setPendingApps(getPendingApplications());
+
     window.addEventListener('lalbindu_notifications_updated', handleNotifsUpdate);
+    window.addEventListener('lalbindu_session_changed', handleSessionChange);
+    window.addEventListener('lalbindu_accounts_updated', handleAccountsUpdate);
+    window.addEventListener('lalbindu_pending_apps_updated', handleAppsUpdate);
+
     return () => {
       window.removeEventListener('lalbindu_notifications_updated', handleNotifsUpdate);
+      window.removeEventListener('lalbindu_session_changed', handleSessionChange);
+      window.removeEventListener('lalbindu_accounts_updated', handleAccountsUpdate);
+      window.removeEventListener('lalbindu_pending_apps_updated', handleAppsUpdate);
     };
   }, []);
 
@@ -369,6 +421,25 @@ export default function AdminDashboardPage() {
       toggleDelegationPermission(newAppointment.id, true);
     }
 
+    // Register official system account with credentials for login
+    createAccountByAuthority(
+      {
+        id: cardId.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+        username: newAppointForm.email ? newAppointForm.email.split('@')[0] : `admin-${randomSuffix}`,
+        password: isCoSuper ? 'coadmin' : 'admin123',
+        name: newAppointment.name,
+        nameBn: newAppointment.nameBn,
+        email: newAppointment.email,
+        phone: newAppointment.phone,
+        role: newAppointment.roleId as any,
+        division: newAppointment.division,
+        district: newAppointment.district,
+        cardId: newAppointment.cardId
+      },
+      session.role,
+      session.id
+    );
+
     setIsAppointModalOpen(false);
     setToastMessage(lang === 'bn' 
       ? isCoSuper
@@ -424,6 +495,101 @@ export default function AdminDashboardPage() {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
+  // Approve pending public registration request (Super Admin Exclusive)
+  const handleApproveApplication = (appId: string) => {
+    const res = approvePendingApplication(appId, session.role, session.id);
+    if (res.success && res.account) {
+      setToastMessage(lang === 'bn' 
+        ? `আবেদনকারী "${res.account.name}" এর অ্যাকাউন্ট অনুমোদিত হয়েছে! আইডি: ${res.account.cardId}` 
+        : `Applicant "${res.account.name}" approved and account created! ID: ${res.account.cardId}`);
+      setTimeout(() => setToastMessage(null), 4500);
+    } else {
+      alert(res.error || 'Failed to approve application.');
+    }
+  };
+
+  // Create account directly with Super Admin authority
+  const handleCreateCustomAccount = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newAccountForm.name.trim() || !newAccountForm.phone.trim()) {
+      alert('Please provide full name and mobile number.');
+      return;
+    }
+
+    const username = newAccountForm.username.trim() || newAccountForm.email.split('@')[0] || `usr-${Date.now().toString(36)}`;
+    const pass = newAccountForm.password.trim() || (newAccountForm.role === 'co_super_admin' ? 'coadmin' : 'donor123');
+
+    const res = createAccountByAuthority(
+      {
+        name: newAccountForm.name,
+        nameBn: newAccountForm.nameBn,
+        username: username,
+        password: pass,
+        phone: newAccountForm.phone,
+        email: newAccountForm.email || `${username}@lalbindu.bd`,
+        role: newAccountForm.role,
+        bloodGroup: newAccountForm.bloodGroup,
+        division: newAccountForm.division,
+        district: newAccountForm.district
+      },
+      session.role,
+      session.id
+    );
+
+    if (!res.success || !res.account) {
+      alert(res.error || 'Failed to create account.');
+      return;
+    }
+
+    // If administrative, also add to subordinate appointments
+    if (newAccountForm.role !== 'donor') {
+      const isCoSuper = newAccountForm.role === 'co_super_admin';
+      const newAppointment: SubordinateAppointment = {
+        id: res.account.id,
+        name: res.account.name,
+        nameBn: res.account.nameBn,
+        roleId: res.account.role,
+        role: isCoSuper ? 'Co-Super Administrator (Equal Power)' : 'Division Administrator',
+        roleBn: isCoSuper ? 'কো-সুপার প্রশাসক (সমান নির্বাহী ক্ষমতা)' : 'বিভাগীয় প্রশাসক',
+        jurisdiction: isCoSuper ? 'National (All Bangladesh)' : `${newAccountForm.division} Division`,
+        jurisdictionBn: isCoSuper ? 'জাতীয় (সমগ্র বাংলাদেশ)' : `${newAccountForm.division} বিভাগ`,
+        division: newAccountForm.division,
+        district: newAccountForm.district,
+        phone: res.account.phone,
+        email: res.account.email,
+        cardId: res.account.cardId,
+        color: isCoSuper ? '#580F1A' : '#0D3B66',
+        status: 'Active',
+        appointedDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+        validUntil: '31 Dec 2026',
+        avatarUrl: res.account.avatarUrl || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80',
+        isEqualSuperAdmin: isCoSuper
+      };
+      const updated = [newAppointment, ...appointments];
+      setAppointments(updated);
+      localStorage.setItem('lalbindu_subordinate_appointments', JSON.stringify(updated));
+    }
+
+    setIsCreateAccountModalOpen(false);
+    setToastMessage(lang === 'bn' 
+      ? `অ্যাকাউন্ট "${res.account.name}" (${res.account.role.toUpperCase()}) সফলভাবে তৈরি হয়েছে! আইডি: ${res.account.cardId} | পাসওয়ার্ড: ${pass}` 
+      : `Account "${res.account.name}" created! ID: ${res.account.cardId} | Password: ${pass}`);
+    setTimeout(() => setToastMessage(null), 5000);
+
+    setNewAccountForm({
+      name: '',
+      nameBn: '',
+      username: '',
+      password: '',
+      role: 'donor',
+      phone: '',
+      email: '',
+      bloodGroup: 'O+',
+      division: 'Dhaka',
+      district: 'Dhaka'
+    });
+  };
+
   // Admin Campaign Handlers
   const handleAdminCreateCampaign = (newCamp: CampaignItem) => {
     const updated = addCampaign(newCamp);
@@ -465,6 +631,81 @@ export default function AdminDashboardPage() {
             <span>{toastMessage}</span>
           </div>
         )}
+
+        {/* Supreme Executive Authority Status Bar */}
+        <div className={`p-5 rounded-3xl border shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4 ${
+          isSuperAdmin 
+            ? 'bg-gradient-to-r from-brand-burgundy via-[#400B13] to-[#200408] text-white border-amber-500/40'
+            : 'bg-gradient-to-r from-amber-50 to-emerald-50 text-gray-900 border-amber-300'
+        }`}>
+          <div className="flex items-center space-x-3.5">
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border shadow-inner ${
+              isSuperAdmin 
+                ? 'bg-amber-400/20 text-amber-300 border-amber-400/40' 
+                : 'bg-emerald-100 text-emerald-800 border-emerald-300'
+            }`}>
+              {isSuperAdmin ? <Crown className="w-6 h-6 text-amber-300 animate-pulse" /> : <ShieldCheck className="w-6 h-6 text-emerald-700" />}
+            </div>
+            <div>
+              <div className="flex items-center space-x-2">
+                <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full ${
+                  isSuperAdmin ? 'bg-amber-400 text-gray-950 shadow-xs' : 'bg-emerald-200 text-emerald-950'
+                }`}>
+                  {isSuperAdmin ? 'Highest Platform Authority' : 'Delegated Co-Admin Clearance'}
+                </span>
+                <span className={`text-[11px] font-mono ${isSuperAdmin ? 'text-amber-200' : 'text-gray-600'}`}>
+                  Signed in as: <strong>{session.id || 'superadmin'}</strong>
+                </span>
+              </div>
+              <h2 className="text-sm sm:text-base font-black mt-1">
+                {isSuperAdmin 
+                  ? 'National Super Administrator (Master Root Authority)' 
+                  : `Co-Administrator (${session.name}) • Delegated Authority`}
+              </h2>
+              <p className={`text-xs mt-0.5 ${isSuperAdmin ? 'text-amber-100/80' : 'text-gray-600'}`}>
+                {isSuperAdmin 
+                  ? 'Exclusive Authority: Only Super Admin can create accounts and delegate Co-Admins across Bangladesh.' 
+                  : 'Operating under executive delegation from Super Admin (superadmin). Authorized for donor onboarding & clinical verification.'}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 self-start md:self-auto">
+            {/* Create Account Button (Super Admin or Delegated Co-Admin) */}
+            <button
+              onClick={() => setIsCreateAccountModalOpen(true)}
+              className="px-4 py-2 rounded-xl bg-white text-brand-burgundy hover:bg-gray-100 text-xs font-black shadow-sm transition-all flex items-center space-x-1.5"
+            >
+              <UserPlus className="w-4 h-4 text-brand-burgundy" />
+              <span>{lang === 'bn' ? '+ নতুন অ্যাকাউন্ট তৈরি' : '+ Create Account'}</span>
+            </button>
+
+            {/* Delegate Co-Admin Button (SUPER ADMIN EXCLUSIVE) */}
+            {isSuperAdmin ? (
+              <button
+                onClick={() => {
+                  setNewAppointForm({
+                    ...newAppointForm,
+                    roleId: 'co_super_admin'
+                  });
+                  setIsAppointModalOpen(true);
+                }}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-gray-950 text-xs font-black shadow-sm transition-all flex items-center space-x-1.5"
+              >
+                <Crown className="w-4 h-4 text-gray-950" />
+                <span>{lang === 'bn' ? '👑 কো-অ্যাডমিন ক্ষমতা অর্পণ' : '👑 Delegate Co-Admin'}</span>
+              </button>
+            ) : (
+              <span
+                className="px-3 py-2 rounded-xl bg-gray-200/80 text-gray-400 text-xs font-bold flex items-center space-x-1 cursor-not-allowed"
+                title="Only the supreme Super Admin (superadmin) can delegate Co-Admin authority."
+              >
+                <Lock className="w-3.5 h-3.5" />
+                <span>Delegate Co-Admin (Locked)</span>
+              </span>
+            )}
+          </div>
+        </div>
 
         {/* Header with Jurisdiction Selector */}
         <div className="bg-white rounded-3xl p-6 sm:p-8 card-shadow border border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -741,36 +982,99 @@ export default function AdminDashboardPage() {
                 <h2 className="text-lg font-black text-gray-900">{t.adminDashboard.tabAdmins}</h2>
                 <p className="text-xs text-gray-500">
                   {lang === 'bn' 
-                    ? 'প্রত্যেক অনুমোদিত প্রতিনিধি একটি স্বতন্ত্র লালবিন্দু প্রশাসনিক ডিজিটাল আইডি কার্ড ধারণ করেন।'
-                    : 'Every appointed representative holds an individual LalBindu Administrative Digital ID Card.'}
+                    ? 'সুপার অ্যাডমিনের অধীনে অর্পিত কো-অ্যাডমিন, আঞ্চলিক সমন্বয়ক ও নিবন্ধিত অ্যাকাউন্ট পরিচালনা।'
+                    : 'Manage delegated Co-Admins, regional officers, and system accounts provisioned by the Super Admin.'}
                 </p>
               </div>
 
-              {selectedJurisdiction === 'national' ? (
+              <div className="flex items-center gap-2 self-start sm:self-auto">
+                {/* Create Account Button */}
                 <button
-                  onClick={() => setIsAppointModalOpen(true)}
-                  className="px-4 py-2.5 bg-gradient-to-r from-brand-burgundy to-brand-red hover:from-[#400B13] hover:to-[#6a0b17] text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center space-x-1.5 self-start sm:self-auto"
+                  onClick={() => setIsCreateAccountModalOpen(true)}
+                  className="px-3.5 py-2 bg-white border border-brand-burgundy/30 hover:bg-brand-light text-brand-burgundy font-bold text-xs rounded-xl shadow-xs transition-all flex items-center space-x-1"
                 >
-                  <Crown className="w-4 h-4 text-amber-300" />
-                  <span>{lang === 'bn' ? '+ নতুন সমন্বয়ক / কো-সুপার অ্যাডমিন নিয়োগ' : '+ Appoint Coordinator / Co-Super Admin'}</span>
+                  <UserPlus className="w-3.5 h-3.5" />
+                  <span>{lang === 'bn' ? '+ অ্যাকাউন্ট তৈরি' : '+ Create Account'}</span>
                 </button>
-              ) : (
-                <button
-                  onClick={() => {
-                    alert(lang === 'bn' 
-                      ? 'প্রবেশাধিকার সীমাবদ্ধ: শুধুমাত্র ন্যাশনাল সুপার অ্যাডমিনিস্ট্রেটর পোর্টাল থেকে নতুন সমন্বয়ক বা প্রশাসনিক অ্যাকাউন্ট তৈরি করা সম্ভব।' 
-                      : 'Access Restricted: Only National Super Administrators possess the executive authority to appoint coordinators or create administrative accounts.');
-                  }}
-                  className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-500 font-bold text-xs rounded-xl border border-gray-300 transition-all flex items-center space-x-1.5 cursor-not-allowed self-start sm:self-auto"
-                  title="Super Admin Only"
-                >
-                  <Lock className="w-3.5 h-3.5 text-gray-400" />
-                  <span>{lang === 'bn' ? 'সমন্বয়ক নিয়োগ (সুপার অ্যাডমিন নিয়ন্ত্রিত)' : 'Appoint Coordinator (Super Admin Only)'}</span>
-                </button>
-              )}
+
+                {selectedJurisdiction === 'national' ? (
+                  <button
+                    onClick={() => {
+                      setNewAppointForm({
+                        ...newAppointForm,
+                        roleId: 'co_super_admin'
+                      });
+                      setIsAppointModalOpen(true);
+                    }}
+                    className="px-4 py-2 bg-gradient-to-r from-brand-burgundy to-brand-red hover:from-[#400B13] hover:to-[#6a0b17] text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center space-x-1.5"
+                  >
+                    <Crown className="w-4 h-4 text-amber-300" />
+                    <span>{lang === 'bn' ? '👑 কো-অ্যাডমিন অর্পণ' : '👑 Delegate Co-Admin'}</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      alert(lang === 'bn' 
+                        ? 'প্রবেশাধিকার সীমাবদ্ধ: শুধুমাত্র ন্যাশনাল সুপার অ্যাডমিনিস্ট্রেটর পোর্টাল থেকে নতুন সমন্বয়ক বা প্রশাসনিক অ্যাকাউন্ট তৈরি করা সম্ভব।' 
+                        : 'Access Restricted: Only National Super Administrators possess the executive authority to appoint coordinators or create administrative accounts.');
+                    }}
+                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-500 font-bold text-xs rounded-xl border border-gray-300 transition-all flex items-center space-x-1.5 cursor-not-allowed"
+                    title="Super Admin Only"
+                  >
+                    <Lock className="w-3.5 h-3.5 text-gray-400" />
+                    <span>{lang === 'bn' ? 'ক্ষমতা অর্পণ (লকড)' : 'Delegate (Locked)'}</span>
+                  </button>
+                )}
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* Sub-tab Navigation */}
+            <div className="flex border-b border-gray-100 space-x-3 text-xs font-bold pt-1">
+              <button
+                onClick={() => setAccountSubTab('appointments')}
+                className={`pb-2.5 px-3 border-b-2 transition-all flex items-center space-x-1.5 ${
+                  accountSubTab === 'appointments'
+                    ? 'border-brand-burgundy text-brand-burgundy font-black'
+                    : 'border-transparent text-gray-500 hover:text-gray-900'
+                }`}
+              >
+                <Crown className="w-3.5 h-3.5" />
+                <span>{lang === 'bn' ? 'অর্পিত কো-অ্যাডমিন ও প্রতিনিধি' : 'Delegated Co-Admins & Officers'} ({appointments.length})</span>
+              </button>
+
+              <button
+                onClick={() => setAccountSubTab('roster')}
+                className={`pb-2.5 px-3 border-b-2 transition-all flex items-center space-x-1.5 ${
+                  accountSubTab === 'roster'
+                    ? 'border-brand-burgundy text-brand-burgundy font-black'
+                    : 'border-transparent text-gray-500 hover:text-gray-900'
+                }`}
+              >
+                <Users className="w-3.5 h-3.5" />
+                <span>{lang === 'bn' ? 'নিবন্ধিত অ্যাকাউন্ট তালিকা' : 'Registered Accounts Roster'} ({accountsList.length})</span>
+              </button>
+
+              <button
+                onClick={() => setAccountSubTab('pending')}
+                className={`pb-2.5 px-3 border-b-2 transition-all flex items-center space-x-1.5 ${
+                  accountSubTab === 'pending'
+                    ? 'border-brand-burgundy text-brand-burgundy font-black'
+                    : 'border-transparent text-gray-500 hover:text-gray-900'
+                }`}
+              >
+                <Clock className="w-3.5 h-3.5" />
+                <span>{lang === 'bn' ? 'পাবলিক আবেদন কিউ' : 'Public Applications Queue'}</span>
+                {pendingApps.filter(p => p.status === 'pending').length > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full bg-brand-red text-white text-[10px] font-bold">
+                    {pendingApps.filter(p => p.status === 'pending').length}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            {/* Sub-view 1: Delegated Co-Admins & Appointments Grid */}
+            {accountSubTab === 'appointments' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {appointments.map((adm) => (
                 <div key={adm.id} className="p-5 rounded-2xl border border-gray-200/80 bg-gray-50 hover:bg-white hover:border-brand-burgundy/30 hover:shadow-md transition-all flex flex-col justify-between">
                   <div>
@@ -832,6 +1136,179 @@ export default function AdminDashboardPage() {
                 </div>
               ))}
             </div>
+            )}
+
+            {/* Sub-view 2: Registered Accounts Roster */}
+            {accountSubTab === 'roster' && (
+              <div className="space-y-4">
+                <div className="p-4 bg-amber-50/60 rounded-2xl border border-amber-200 text-xs text-amber-900 flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Crown className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>
+                      {lang === 'bn' 
+                        ? 'সুপার অ্যাডমিনের সর্বোচ্চ কর্তৃত্বাধীন অ্যাকাউন্ট ডেটাবেস। শুধুমাত্র অনুমোদিত ব্যবহারকারীরা লগইন করতে পারেন।' 
+                        : 'Official account roster governed under Super Admin authority. Only verified credentials can authenticate.'}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setIsCreateAccountModalOpen(true)}
+                    className="px-3 py-1.5 rounded-xl bg-brand-burgundy text-white font-bold text-xs shadow-xs hover:bg-[#400B13] shrink-0"
+                  >
+                    + {lang === 'bn' ? 'অ্যাকাউন্ট তৈরি' : 'Create Account'}
+                  </button>
+                </div>
+
+                <div className="overflow-x-auto rounded-2xl border border-gray-100">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-gray-50 text-gray-500 uppercase tracking-wider font-bold">
+                      <tr>
+                        <th className="p-3">{lang === 'bn' ? 'নাম ও প্রোফাইল' : 'Account & Name'}</th>
+                        <th className="p-3">{lang === 'bn' ? 'পদমর্যাদা ও ক্ষমতা' : 'Role & Authority'}</th>
+                        <th className="p-3">{lang === 'bn' ? 'লগইন আইডি / ব্যবহারকারী' : 'Login ID / Username'}</th>
+                        <th className="p-3">{lang === 'bn' ? 'পাসওয়ার্ড' : 'Credentials'}</th>
+                        <th className="p-3">{lang === 'bn' ? 'স্ট্যাটাস' : 'Status'}</th>
+                        <th className="p-3 text-right">{lang === 'bn' ? 'অ্যাকশন' : 'Action'}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 bg-white">
+                      {accountsList.map((acc) => (
+                        <tr key={acc.id} className="hover:bg-gray-50/50">
+                          <td className="p-3">
+                            <div className="flex items-center space-x-2.5">
+                              <div className="w-8 h-8 rounded-full bg-brand-light text-brand-burgundy font-black flex items-center justify-center text-xs shrink-0">
+                                {acc.name.charAt(0)}
+                              </div>
+                              <div>
+                                <p className="font-bold text-gray-900 flex items-center">
+                                  {acc.name}
+                                  {acc.isSuperAdmin && (
+                                    <Crown className="w-3.5 h-3.5 text-amber-500 ml-1 inline" />
+                                  )}
+                                </p>
+                                <p className="text-[10px] text-gray-400">{acc.phone} • {acc.email}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="p-3">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                              acc.authorityLevel === 'highest'
+                                ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                                : acc.authorityLevel === 'co_admin'
+                                ? 'bg-purple-100 text-purple-900 border border-purple-200'
+                                : 'bg-gray-100 text-gray-800'
+                            }`}>
+                              {acc.authorityLevel === 'highest' ? '👑 Highest Authority' : acc.authorityLevel === 'co_admin' ? '🛡️ Delegated Co-Admin' : '🩸 Verified Donor'}
+                            </span>
+                            {acc.delegatedBy && (
+                              <p className="text-[9px] text-gray-400 mt-0.5">By {acc.delegatedBy}</p>
+                            )}
+                          </td>
+                          <td className="p-3 font-mono font-bold text-gray-800">
+                            {acc.username || acc.id}
+                          </td>
+                          <td className="p-3 font-mono text-gray-600 bg-gray-50/60 rounded px-2">
+                            {acc.password}
+                          </td>
+                          <td className="p-3">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              acc.status === 'Active' ? 'bg-green-100 text-brand-green' : 'bg-red-100 text-red-700'
+                            }`}>
+                              {acc.status}
+                            </span>
+                          </td>
+                          <td className="p-3 text-right">
+                            {acc.id !== 'superadmin' ? (
+                              <button
+                                onClick={() => {
+                                  const nextStatus = acc.status === 'Active' ? 'Suspended' : 'Active';
+                                  updateAccountAuthorityStatus(acc.id, nextStatus, session.role, session.id);
+                                  setToastMessage(`Account status changed to ${nextStatus}.`);
+                                  setTimeout(() => setToastMessage(null), 3000);
+                                }}
+                                className="text-[11px] font-semibold text-gray-600 hover:text-brand-burgundy underline"
+                              >
+                                {acc.status === 'Active' ? 'Suspend' : 'Activate'}
+                              </button>
+                            ) : (
+                              <span className="text-[10px] text-amber-700 font-bold">Master Root</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Sub-view 3: Pending Public Applications Queue */}
+            {accountSubTab === 'pending' && (
+              <div className="space-y-4">
+                <div className="p-4 bg-blue-50/70 rounded-2xl border border-blue-200 text-xs text-blue-900 flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0" />
+                    <span>
+                      {lang === 'bn' 
+                        ? 'পাবলিক রেজিস্ট্রেশন আবেদন কিউ — লালবিন্দু চার্টার অনুযায়ী কেবল সুপার অ্যাডমিন কর্তৃক অনুমোদিত হলেই অ্যাকাউন্ট সক্রিয় হবে।' 
+                        : 'Public Registration Clearance Queue — Under the LalBindu Charter, accounts activate only upon Super Admin approval.'}
+                    </span>
+                  </div>
+                </div>
+
+                {pendingApps.filter(p => p.status === 'pending').length === 0 ? (
+                  <div className="text-center py-12 text-gray-500 bg-gray-50 rounded-2xl">
+                    <CheckCircle2 className="w-12 h-12 text-brand-green mx-auto mb-2 opacity-50" />
+                    <p className="font-bold text-sm">
+                      {lang === 'bn' ? 'কোনো অনিষ্পন্ন পাবলিক আবেদন নেই।' : 'No pending public registration applications.'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto rounded-2xl border border-gray-100">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-gray-50 text-gray-500 uppercase tracking-wider font-bold">
+                        <tr>
+                          <th className="p-3">{lang === 'bn' ? 'আবেদনকারী' : 'Applicant'}</th>
+                          <th className="p-3">{lang === 'bn' ? 'রক্তের গ্রুপ' : 'Blood Group'}</th>
+                          <th className="p-3">{lang === 'bn' ? 'অবস্থান' : 'Location'}</th>
+                          <th className="p-3">{lang === 'bn' ? 'আবেদনের সময়' : 'Applied At'}</th>
+                          <th className="p-3 text-right">{lang === 'bn' ? 'সুপার অ্যাডমিন অ্যাকশন' : 'Super Admin Action'}</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100 bg-white">
+                        {pendingApps.filter(p => p.status === 'pending').map((app) => (
+                          <tr key={app.id} className="hover:bg-gray-50/50">
+                            <td className="p-3">
+                              <p className="font-bold text-gray-900">{app.fullName}</p>
+                              <p className="text-[10px] text-gray-400">{app.phone} • {app.email || 'No email'}</p>
+                            </td>
+                            <td className="p-3">
+                              <span className="font-black px-2 py-0.5 rounded bg-brand-light text-brand-red">
+                                {app.bloodGroup}
+                              </span>
+                            </td>
+                            <td className="p-3 text-gray-700 font-medium">
+                              {app.districtId}, {app.divisionId}
+                            </td>
+                            <td className="p-3 text-gray-500 font-mono text-[11px]">
+                              {new Date(app.appliedAt).toLocaleDateString()}
+                            </td>
+                            <td className="p-3 text-right">
+                              <button
+                                onClick={() => handleApproveApplication(app.id)}
+                                className="px-3.5 py-1.5 rounded-xl bg-brand-burgundy hover:bg-[#400B13] text-white font-bold text-xs shadow-xs transition-all flex items-center space-x-1 ml-auto"
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                <span>{lang === 'bn' ? 'অনুমোদন ও অ্যাকাউন্ট তৈরি' : 'Approve & Create Account'}</span>
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -1412,6 +1889,189 @@ export default function AdminDashboardPage() {
         )}
 
       </div>
+
+      {/* =========================================================================
+          MODAL 0: CREATE ACCOUNT / PROVISION USER (SUPER ADMIN AUTHORITY)
+         ========================================================================= */}
+      {isCreateAccountModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 card-shadow border border-gray-100 relative my-8">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-4 mb-5">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-brand-burgundy font-black">
+                  <UserPlus className="w-5 h-5 text-amber-600" />
+                </div>
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-brand-burgundy text-white">
+                      Super Admin Authority
+                    </span>
+                  </div>
+                  <h3 className="text-lg font-black text-gray-900 mt-0.5">
+                    {lang === 'bn' ? 'নতুন অ্যাকাউন্ট অনুমোদন ও তৈরি' : 'Create & Provision Account'}
+                  </h3>
+                  <p className="text-xs text-gray-500">
+                    {lang === 'bn' 
+                      ? 'সুপার অ্যাডমিনের সর্বোচ্চ কর্তৃত্ববলে নতুন রক্তদাতা বা কো-অ্যাডমিন অ্যাকাউন্ট তৈরি করুন।' 
+                      : 'Provision verified donor or administrative accounts with official credentials under Super Admin authority.'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsCreateAccountModalOpen(false)}
+                className="w-8 h-8 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center font-bold"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateCustomAccount} className="space-y-4 text-xs">
+              <div>
+                <label className="block font-bold text-gray-700 mb-1">
+                  {lang === 'bn' ? 'অ্যাকাউন্টের ধরন ও ক্ষমতা' : 'Account Type & Authority Level'} *
+                </label>
+                <select
+                  value={newAccountForm.role}
+                  onChange={(e) => setNewAccountForm({ ...newAccountForm, role: e.target.value as any })}
+                  className="w-full text-xs p-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white font-bold text-brand-burgundy"
+                >
+                  <option value="donor">🩸 Voluntary Blood Donor (যাচাইকৃত রক্তদাতা)</option>
+                  {isSuperAdmin && (
+                    <option value="co_super_admin">👑 Co-Super Administrator (কো-সুপার অ্যাডমিন — অর্পিত ক্ষমতা)</option>
+                  )}
+                  <option value="division_admin">🛡️ Division Administrator (বিভাগীয় প্রশাসক)</option>
+                </select>
+                {newAccountForm.role === 'co_super_admin' && (
+                  <p className="text-[11px] text-amber-800 mt-1 font-medium">
+                    This delegates executive authority as a Co-Admin to verify donors, dispatch alerts, and oversee platform tasks.
+                  </p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">Full Legal Name *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Tanzim Ahmed"
+                    value={newAccountForm.name}
+                    onChange={(e) => setNewAccountForm({ ...newAccountForm, name: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white font-semibold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">Full Name (Bangla)</label>
+                  <input
+                    type="text"
+                    placeholder="উদাঃ তানজিম আহমেদ"
+                    value={newAccountForm.nameBn}
+                    onChange={(e) => setNewAccountForm({ ...newAccountForm, nameBn: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white font-semibold"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">Login Username / ID *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. tanzim.donor"
+                    value={newAccountForm.username}
+                    onChange={(e) => setNewAccountForm({ ...newAccountForm, username: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white font-mono font-semibold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">Initial Password *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder={newAccountForm.role === 'co_super_admin' ? 'coadmin' : 'donor123'}
+                    value={newAccountForm.password}
+                    onChange={(e) => setNewAccountForm({ ...newAccountForm, password: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white font-mono font-semibold"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">Mobile (+880) *</label>
+                  <input
+                    type="tel"
+                    required
+                    placeholder="017XXXXXXXX"
+                    value={newAccountForm.phone}
+                    onChange={(e) => setNewAccountForm({ ...newAccountForm, phone: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white font-semibold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">Blood Group *</label>
+                  <select
+                    value={newAccountForm.bloodGroup}
+                    onChange={(e) => setNewAccountForm({ ...newAccountForm, bloodGroup: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white font-bold text-brand-red"
+                  >
+                    {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Unknown'].map(bg => (
+                      <option key={bg} value={bg}>{bg}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">Division *</label>
+                  <select
+                    value={newAccountForm.division}
+                    onChange={(e) => setNewAccountForm({ ...newAccountForm, division: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white font-semibold"
+                  >
+                    {BANGLADESH_DIVISIONS.map(d => (
+                      <option key={d.id} value={d.name_en}>{d.name_en}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">District</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Dhaka, Bogura"
+                    value={newAccountForm.district}
+                    onChange={(e) => setNewAccountForm({ ...newAccountForm, district: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white font-semibold"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end space-x-3 pt-3 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setIsCreateAccountModalOpen(false)}
+                  className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-brand-burgundy to-brand-red hover:from-[#400B13] hover:to-[#6a0b17] text-white text-xs font-black shadow-md flex items-center space-x-1.5"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  <span>Create & Provision Account</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* =========================================================================
           MODAL 1: APPOINT NEW COORDINATOR / NOMINATION WORKFLOW

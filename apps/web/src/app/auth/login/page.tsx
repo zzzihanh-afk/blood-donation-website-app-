@@ -4,21 +4,84 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Phone, Mail, Lock, ArrowRight, ShieldCheck, Droplet, CheckCircle2 } from 'lucide-react';
+import { Phone, Mail, Lock, ArrowRight, ShieldCheck, Droplet, CheckCircle2, Crown, AlertCircle, KeyRound, UserCheck } from 'lucide-react';
 import { normalizeBangladeshPhone } from '@lalbindu/validation';
+import { authenticateAccount } from '@/lib/accounts';
+import { setCurrentSession } from '@/lib/session';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [authMode, setAuthMode] = useState<'phone' | 'email'>('phone');
+  const [authMode, setAuthMode] = useState<'credentials' | 'phone'>('credentials');
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
   const [otpSent, setOtpSent] = useState(false);
   const [otpCode, setOtpCode] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
+  // Auto-fill Super Admin credentials
+  const handleQuickSuperAdminFill = () => {
+    setAuthMode('credentials');
+    setIdentifier('superadmin');
+    setPassword('superadmin');
+    setErrorMessage('');
+  };
+
+  // Auto-fill Co-Admin credentials
+  const handleQuickCoAdminFill = () => {
+    setAuthMode('credentials');
+    setIdentifier('coadmin');
+    setPassword('coadmin');
+    setErrorMessage('');
+  };
+
+  // Direct Credentials Login (Handles Super Admin, Co-Admin, and provisioned accounts)
+  const handleCredentialsLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage('');
+    setSuccessMessage('');
+    setLoading(true);
+
+    setTimeout(() => {
+      const result = authenticateAccount(identifier, password);
+
+      if (!result.success || !result.account) {
+        setLoading(false);
+        setErrorMessage(result.error || 'Invalid credentials. Only accounts provisioned by the Super Admin can sign in.');
+        return;
+      }
+
+      const acc = result.account;
+      setLoading(false);
+
+      if (acc.role === 'super_admin' || acc.id === 'superadmin') {
+        setCurrentSession('superadmin');
+        setSuccessMessage('National Super Admin Authenticated! Entering Administrative Suite...');
+        setTimeout(() => {
+          router.push('/dashboard/admin');
+        }, 600);
+      } else if (acc.role === 'co_super_admin' || acc.authorityLevel === 'co_admin') {
+        setCurrentSession('co_admin');
+        setSuccessMessage('Co-Administrator Authenticated under Super Admin Delegation!');
+        setTimeout(() => {
+          router.push('/dashboard/admin');
+        }, 600);
+      } else {
+        setCurrentSession('donor');
+        setSuccessMessage(`Welcome back, ${acc.name}! Entering Donor Dashboard...`);
+        setTimeout(() => {
+          router.push('/dashboard/donor');
+        }, 600);
+      }
+    }, 500);
+  };
+
+  // Phone OTP Flow for Donors
   const handleSendOtp = (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage('');
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
@@ -28,28 +91,21 @@ export default function LoginPage() {
 
   const handleVerifyOtp = (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage('');
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
-      router.push('/dashboard/donor');
-    }, 800);
-  };
-
-  const handleEmailLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+      setCurrentSession('donor');
       router.push('/dashboard/donor');
     }, 800);
   };
 
   return (
-    <div className="bg-[#FFF8F8] min-h-screen py-16 flex items-center justify-center px-4">
-      <div className="max-w-md w-full">
+    <div className="bg-[#FFF8F8] min-h-screen py-12 flex items-center justify-center px-4">
+      <div className="max-w-md w-full space-y-6">
         
         {/* Brand Header */}
-        <div className="text-center mb-8">
+        <div className="text-center">
           <Link href="/" className="inline-block relative w-48 h-12 mb-3">
             <Image 
               src="/branding/lalbindu-logo.png" 
@@ -63,19 +119,88 @@ export default function LoginPage() {
             Sign In to LalBindu
           </h1>
           <p className="text-xs text-gray-500 mt-1">
-            Access your donor dashboard, emergency requests, and digital ID card.
+            Authoritative Healthcare & Emergency Blood Network of Bangladesh
           </p>
         </div>
 
-        {/* Card */}
+        {/* Super Admin Credentials Showcase Card */}
+        <div className="bg-gradient-to-r from-brand-burgundy to-[#30080E] rounded-3xl p-4 sm:p-5 text-white shadow-xl border border-amber-500/30 relative overflow-hidden">
+          <div className="absolute -right-4 -bottom-4 opacity-10 text-white">
+            <Crown className="w-32 h-32" />
+          </div>
+
+          <div className="flex items-center justify-between mb-2">
+            <span className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-amber-400/20 text-amber-300 text-[10px] font-black uppercase tracking-wider border border-amber-400/30">
+              <Crown className="w-3.5 h-3.5 text-amber-300" />
+              <span>Highest Authority Access</span>
+            </span>
+            <span className="text-[10px] font-mono text-gray-300">Supreme Role</span>
+          </div>
+
+          <div className="space-y-1">
+            <h3 className="text-sm font-black text-white flex items-center space-x-1.5">
+              <span>National Super Admin Credentials</span>
+            </h3>
+            <p className="text-[11px] text-gray-300">
+              Holds highest authority. Only Super Admin can create accounts and delegate Co-Admins.
+            </p>
+          </div>
+
+          <div className="mt-3 grid grid-cols-2 gap-2 text-xs font-mono">
+            <div className="bg-black/30 rounded-xl p-2 border border-white/10">
+              <span className="text-[10px] text-gray-400 block font-sans">Super Admin ID:</span>
+              <strong className="text-amber-300 text-xs">superadmin</strong>
+            </div>
+            <div className="bg-black/30 rounded-xl p-2 border border-white/10">
+              <span className="text-[10px] text-gray-400 block font-sans">Password:</span>
+              <strong className="text-amber-300 text-xs">superadmin</strong>
+            </div>
+          </div>
+
+          <div className="mt-3 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleQuickSuperAdminFill}
+              className="flex-1 py-1.5 px-3 rounded-xl bg-amber-400 hover:bg-amber-300 text-gray-950 text-[11px] font-black transition-colors flex items-center justify-center space-x-1 shadow-sm"
+            >
+              <KeyRound className="w-3.5 h-3.5" />
+              <span>Auto-Fill Super Admin</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleQuickCoAdminFill}
+              className="py-1.5 px-3 rounded-xl bg-white/10 hover:bg-white/20 text-white text-[11px] font-bold transition-colors flex items-center justify-center space-x-1 border border-white/20"
+              title="Dr. Nusrat Jahan (Co-Admin delegated by Super Admin)"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-300" />
+              <span>Co-Admin (coadmin)</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Main Login Card */}
         <div className="bg-white rounded-3xl p-6 sm:p-8 card-shadow border border-gray-100">
           
           {/* Auth Mode Toggle */}
           <div className="flex rounded-2xl bg-gray-100 p-1 mb-6 text-xs font-bold">
             <button
               onClick={() => {
+                setAuthMode('credentials');
+                setErrorMessage('');
+              }}
+              className={`flex-1 py-2 rounded-xl transition-all ${
+                authMode === 'credentials'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-900'
+              }`}
+            >
+              ID & Password (Admin / Donor)
+            </button>
+            <button
+              onClick={() => {
                 setAuthMode('phone');
                 setOtpSent(false);
+                setErrorMessage('');
               }}
               className={`flex-1 py-2 rounded-xl transition-all ${
                 authMode === 'phone'
@@ -85,19 +210,70 @@ export default function LoginPage() {
             >
               Mobile OTP (+880)
             </button>
-            <button
-              onClick={() => setAuthMode('email')}
-              className={`flex-1 py-2 rounded-xl transition-all ${
-                authMode === 'email'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-900'
-              }`}
-            >
-              Email & Password
-            </button>
           </div>
 
-          {/* Phone OTP Form */}
+          {/* Feedback Alerts */}
+          {errorMessage && (
+            <div className="mb-4 p-3 rounded-2xl bg-red-50 border border-red-200 text-brand-red text-xs flex items-start space-x-2 animate-in fade-in">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span className="font-semibold">{errorMessage}</span>
+            </div>
+          )}
+
+          {successMessage && (
+            <div className="mb-4 p-3 rounded-2xl bg-green-50 border border-green-200 text-brand-green text-xs flex items-start space-x-2 animate-in fade-in">
+              <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+              <span className="font-semibold">{successMessage}</span>
+            </div>
+          )}
+
+          {/* Credentials Form (Super Admin, Co-Admin, Provisioned Users) */}
+          {authMode === 'credentials' && (
+            <form onSubmit={handleCredentialsLogin} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  User ID / Username / Official Email
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. superadmin or coadmin"
+                    value={identifier}
+                    onChange={(e) => setIdentifier(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2.5 text-xs font-semibold rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-burgundy/20 focus:border-brand-burgundy font-mono"
+                  />
+                  <KeyRound className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Password</label>
+                <div className="relative">
+                  <input
+                    type="password"
+                    required
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2.5 text-xs font-semibold rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-burgundy/20 focus:border-brand-burgundy font-mono"
+                  />
+                  <Lock className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-brand-burgundy to-brand-red hover:from-[#400B13] hover:to-[#6a0b17] text-white font-black text-xs shadow-md transition-all flex items-center justify-center space-x-2"
+              >
+                <span>{loading ? 'Verifying Authority...' : 'Sign In with Authority'}</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </form>
+          )}
+
+          {/* Mobile OTP Form */}
           {authMode === 'phone' && (
             <div>
               {!otpSent ? (
@@ -172,54 +348,10 @@ export default function LoginPage() {
             </div>
           )}
 
-          {/* Email & Password Form */}
-          {authMode === 'email' && (
-            <form onSubmit={handleEmailLogin} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Email Address</label>
-                <div className="relative">
-                  <input
-                    type="email"
-                    required
-                    placeholder="ahmed.rahman@lalbindu.bd"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2.5 text-xs font-semibold rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-red/20 focus:border-brand-red"
-                  />
-                  <Mail className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Password</label>
-                <div className="relative">
-                  <input
-                    type="password"
-                    required
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2.5 text-xs font-semibold rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-red/20 focus:border-brand-red"
-                  />
-                  <Lock className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-3 rounded-xl bg-brand-red hover:bg-brand-crimson text-white font-bold text-xs shadow-md transition-all flex items-center justify-center space-x-2"
-              >
-                <span>{loading ? 'Authenticating...' : 'Sign In with Email'}</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </form>
-          )}
-
           <div className="mt-6 pt-4 border-t border-gray-100 text-center text-xs text-gray-500">
-            Don&apos;t have an account yet?{' '}
-            <Link href="/auth/register" className="font-bold text-brand-red hover:underline">
-              Register as Donor
+            Account registration is governed by Super Admin authority.{' '}
+            <Link href="/auth/register" className="font-bold text-brand-burgundy hover:underline">
+              Request or Provision Account
             </Link>
           </div>
 

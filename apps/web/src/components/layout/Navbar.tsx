@@ -26,7 +26,8 @@ import {
   Lock,
   Plus,
   Megaphone,
-  Calendar
+  Calendar,
+  Crown
 } from 'lucide-react';
 import { getCurrentSession, setCurrentSession, isAuthorizedAdmin, UserSession } from '@/lib/session';
 import { 
@@ -385,7 +386,9 @@ export const Navbar: React.FC = () => {
                     <p className="text-xs font-bold text-gray-900">{session.email}</p>
                     <p className={`text-[10px] font-semibold ${isAdmin ? 'text-brand-burgundy' : 'text-brand-green'}`}>
                       {isAdmin 
-                        ? (lang === 'bn' ? `জাতীয় সুপার অ্যাডমিন আইডি: ${session.adminId}` : `National Super Admin ID: ${session.adminId}`)
+                        ? (session.role === 'super_admin' || session.id === 'superadmin' || session.authorityLevel === 'highest'
+                            ? (lang === 'bn' ? `জাতীয় সুপার অ্যাডমিন আইডি: ${session.adminId || 'superadmin'}` : `National Super Admin ID: ${session.adminId || 'superadmin'}`)
+                            : (lang === 'bn' ? `কো-অ্যাডমিন আইডি: ${session.adminId || 'coadmin'}` : `Co-Admin ID: ${session.adminId || 'coadmin'}`))
                         : (lang === 'bn' ? `যাচাইকৃত দাতা আইডি: ${session.donorId}` : `Verified Donor ID: ${session.donorId}`)}
                     </p>
                   </div>
@@ -458,14 +461,25 @@ export const Navbar: React.FC = () => {
                       <div className="border-t border-gray-100 my-1"></div>
                       <button
                         onClick={() => {
-                          setCurrentSession('super_admin');
+                          setCurrentSession('superadmin');
                           setUserDropdownOpen(false);
                           router.push('/dashboard/admin');
                         }}
                         className="w-full text-left flex items-center px-4 py-2 text-xs font-semibold text-brand-burgundy bg-amber-50/50 hover:bg-amber-100/70 transition-colors"
                       >
-                        <KeyRound className="w-4 h-4 mr-2.5 text-amber-600" />
-                        <span>{lang === 'bn' ? 'সুপার অ্যাডমিন লগইন (স্টাফ)' : 'Switch to Super Admin View (Staff)'}</span>
+                        <Crown className="w-4 h-4 mr-2.5 text-amber-600" />
+                        <span>{lang === 'bn' ? 'সুপার অ্যাডমিন লগইন (superadmin)' : 'Switch to Super Admin (superadmin)'}</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setCurrentSession('co_admin');
+                          setUserDropdownOpen(false);
+                          router.push('/dashboard/admin');
+                        }}
+                        className="w-full text-left flex items-center px-4 py-2 text-xs font-semibold text-amber-900 bg-amber-50/30 hover:bg-amber-100/50 transition-colors"
+                      >
+                        <ShieldCheck className="w-4 h-4 mr-2.5 text-emerald-600" />
+                        <span>{lang === 'bn' ? 'কো-অ্যাডমিন লগইন (coadmin)' : 'Switch to Co-Admin (coadmin)'}</span>
                       </button>
                     </>
                   )}
