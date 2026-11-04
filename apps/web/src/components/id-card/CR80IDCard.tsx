@@ -18,7 +18,8 @@ import {
   Droplet,
   Layers,
   Copy,
-  Check
+  Check,
+  User
 } from 'lucide-react';
 import { 
   SmritiSoudhoSVG, 
@@ -332,6 +333,21 @@ export const CR80IDCard: React.FC<CR80IDCardProps> = ({
               ctx.restore();
             }
           } catch (e) {}
+        } else {
+          // Clean vector silhouette placeholder for no-photo ID cards
+          ctx.save();
+          ctx.fillStyle = '#CBD5E1';
+          ctx.beginPath();
+          ctx.arc(140, 255, 34, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(140, 360, 58, Math.PI, 0, false);
+          ctx.fill();
+          ctx.fillStyle = '#64748B';
+          ctx.font = 'bold 14px "Inter", sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('NO PHOTO', 140, 365);
+          ctx.restore();
         }
       }
 
@@ -839,14 +855,30 @@ export const CR80IDCard: React.FC<CR80IDCardProps> = ({
           {front.showPhoto && (
             <div 
               style={{ borderColor: primaryColor }}
-              className="relative w-16 sm:w-18 h-20 sm:h-22 rounded-2xl overflow-hidden bg-gray-100 border-[2.5px] shrink-0 shadow-md"
+              className="relative w-16 sm:w-18 h-20 sm:h-22 rounded-2xl overflow-hidden bg-gray-100 border-[2.5px] shrink-0 shadow-md flex flex-col items-center justify-center"
             >
-              <Image
-                src={avatarUrl}
-                alt={fullName}
-                fill
-                className="object-cover"
-              />
+              {avatarUrl ? (
+                avatarUrl.startsWith('data:') || avatarUrl.startsWith('blob:') ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={avatarUrl}
+                    alt={fullName}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <Image
+                    src={avatarUrl}
+                    alt={fullName}
+                    fill
+                    className="object-cover"
+                  />
+                )
+              ) : (
+                <div className="w-full h-full bg-gradient-to-b from-gray-50 to-gray-200 flex flex-col items-center justify-center text-gray-400 p-1">
+                  <User className="w-7 h-7 sm:w-8 sm:h-8 text-gray-400" />
+                  <span className="text-[8px] font-black text-gray-400 uppercase tracking-wider mt-0.5">Photo</span>
+                </div>
+              )}
             </div>
           )}
 

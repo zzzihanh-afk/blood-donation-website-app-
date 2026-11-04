@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import QRCode from 'qrcode';
 import { useLanguage } from '@/components/LanguageContext';
@@ -33,7 +33,10 @@ import {
   Phone,
   MessageCircle,
   XCircle,
-  Trash2
+  Trash2,
+  Camera,
+  Upload,
+  User
 } from 'lucide-react';
 
 interface IncomingContactRequest {
@@ -74,6 +77,44 @@ export default function DonorDashboardPage() {
   const [availabilityStatus, setAvailabilityStatus] = useState<AvailabilityStatus>('available');
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
   const [incomingRequests, setIncomingRequests] = useState<IncomingContactRequest[]>(INITIAL_DONOR_CONTACT_REQUESTS);
+  const donorPhotoInputRef = useRef<HTMLInputElement>(null);
+
+  const handleUploadDonorPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      alert(lang === 'bn' ? 'অনুগ্রহ করে একটি ছবি ফাইল (.jpg, .png, .webp) নির্বাচন করুন।' : 'Please select a valid image file (.jpg, .png, .webp).');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      setDonor(prev => ({ ...prev, avatar_url: dataUrl }));
+
+      try {
+        const activeRaw = localStorage.getItem('lalbindu_active_donor_profile');
+        const activeProfile = activeRaw ? JSON.parse(activeRaw) : {};
+        activeProfile.avatar_url = dataUrl;
+        localStorage.setItem('lalbindu_active_donor_profile', JSON.stringify(activeProfile));
+
+        const accountsRaw = localStorage.getItem('lalbindu_registered_accounts_v1');
+        if (accountsRaw) {
+          const accounts = JSON.parse(accountsRaw);
+          const idx = accounts.findIndex((a: any) => a.id === donor.id || a.cardId === donor.donor_id_number);
+          if (idx >= 0) {
+            accounts[idx].avatarUrl = dataUrl;
+            localStorage.setItem('lalbindu_registered_accounts_v1', JSON.stringify(accounts));
+          }
+        }
+
+        window.dispatchEvent(new Event('lalbindu_session_changed'));
+        alert(lang === 'bn' ? 'আইডি কার্ডের ছবি সফলভাবে যুক্ত হয়েছে!' : 'ID Card Photograph updated successfully!');
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   // Hydrate custom donor profile from registration / login session
   useEffect(() => {
@@ -213,13 +254,39 @@ export default function DonorDashboardPage() {
         {/* Header Profile Bar */}
         <div className="bg-white rounded-3xl p-6 sm:p-8 card-shadow border border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex items-center space-x-5">
-            <div className="relative w-20 h-20 rounded-3xl overflow-hidden bg-brand-light border-2 border-brand-red/30 shrink-0">
-              <Image
-                src={donor.avatar_url || ''}
-                alt={donor.full_name}
-                fill
-                className="object-cover"
-              />
+            <div className="relative w-20 h-20 rounded-3xl overflow-hidden bg-brand-light border-2 border-brand-red/30 shrink-0 group">
+              {donor.avatar_url ? (
+                donor.avatar_url.startsWith('data:') ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={donor.avatar_url}
+                    alt={donor.full_name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <Image
+                    src={donor.avatar_url}
+                    alt={donor.full_name}
+                    fill
+                    className="object-cover"
+                  />
+                )
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center text-brand-red">
+                  <User className="w-9 h-9 opacity-60" />
+                  <span className="text-[8px] font-bold mt-0.5 uppercase tracking-wider text-gray-500">No Photo</span>
+                </div>
+              )}
+              {/* Overlay edit button */}
+              <button
+                type="button"
+                onClick={() => donorPhotoInputRef.current?.click()}
+                className="absolute inset-0 bg-black/50 text-white flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                title="Upload or Change ID Photo"
+              >
+                <Camera className="w-5 h-5 text-white" />
+                <span className="text-[8px] font-bold mt-0.5">Edit Photo</span>
+              </button>
             </div>
             <div>
               <div className="flex items-center space-x-2">
@@ -236,6 +303,33 @@ export default function DonorDashboardPage() {
                   ? `${donor.district_name_en} জেলা, ${donor.division_name_en} বিভাগ` 
                   : `${donor.district_name_en} District, ${donor.division_name_en} Division`}
               </p>
+              <div className="mt-1 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => donorPhotoInputRef.current?.click()}
+                  className="text-[11px] font-bold text-brand-red hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <Camera className="w-3 h-3" />
+                  <span>{donor.avatar_url ? (lang === 'bn' ? 'ছবি পরিবর্তন করুন' : 'Change ID Photo') : (lang === 'bn' ? 'কার্ডের ছবি যুক্ত করুন' : 'Add Image for ID')}</span>
+                </button>
+                {donor.avatar_url && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDonor(prev => ({ ...prev, avatar_url: '' }));
+                      try {
+                        const activeRaw = localStorage.getItem('lalbindu_active_donor_profile');
+                        const activeProfile = activeRaw ? JSON.parse(activeRaw) : {};
+                        activeProfile.avatar_url = '';
+                        localStorage.setItem('lalbindu_active_donor_profile', JSON.stringify(activeProfile));
+                      } catch (e) {}
+                    }}
+                    className="text-[11px] font-bold text-gray-400 hover:text-red-600 transition-colors cursor-pointer"
+                  >
+                    • {lang === 'bn' ? 'ছবি মুছুন' : 'Remove Photo'}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
@@ -493,7 +587,16 @@ export default function DonorDashboardPage() {
               </h2>
             </div>
 
-            <div className="flex items-center space-x-3">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+              <button
+                type="button"
+                onClick={() => donorPhotoInputRef.current?.click()}
+                className="px-3.5 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold transition-all flex items-center space-x-1.5 cursor-pointer shadow-xs"
+              >
+                <Camera className="w-3.5 h-3.5 text-amber-700" />
+                <span>{donor.avatar_url ? (lang === 'bn' ? 'ছবি পরিবর্তন' : 'Change ID Photo') : (lang === 'bn' ? 'কার্ডে ছবি দিন' : 'Add Image for ID')}</span>
+              </button>
+
               <button
                 onClick={() => {
                   const exportBtn = document.getElementById('btn-export-cr80-png');
@@ -503,7 +606,7 @@ export default function DonorDashboardPage() {
                     document.getElementById('id-card')?.scrollIntoView({ behavior: 'smooth' });
                   }
                 }}
-                className="px-4 py-2 rounded-xl bg-brand-red hover:bg-brand-crimson text-white text-xs font-bold shadow-md transition-all flex items-center space-x-1.5"
+                className="px-4 py-2 rounded-xl bg-brand-red hover:bg-brand-crimson text-white text-xs font-bold shadow-md transition-all flex items-center space-x-1.5 cursor-pointer"
               >
                 <Download className="w-3.5 h-3.5" />
                 <span>{t.donorDashboard.downloadPng}</span>
@@ -514,13 +617,22 @@ export default function DonorDashboardPage() {
                   navigator.clipboard.writeText(verificationUrl);
                   alert(lang === 'bn' ? "পাবলিক কিউআর ভেরিফিকেশন লিংক ক্লিপবোর্ডে কপি হয়েছে!" : "Public QR verification link copied to clipboard!");
                 }}
-                className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-bold transition-all flex items-center space-x-1.5"
+                className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-bold transition-all flex items-center space-x-1.5 cursor-pointer"
               >
                 <Share2 className="w-3.5 h-3.5" />
                 <span>{t.donorDashboard.shareLink}</span>
               </button>
             </div>
           </div>
+
+          {/* Hidden File Input for ID Card Photo */}
+          <input
+            ref={donorPhotoInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleUploadDonorPhoto}
+            className="hidden"
+          />
 
           {/* Professional CR80 Digital ID Card with Interactive 3D/Side Flip */}
           <div className="py-6 px-4 bg-[#F9FBFC] rounded-3xl border border-gray-100 flex flex-col items-center justify-center">

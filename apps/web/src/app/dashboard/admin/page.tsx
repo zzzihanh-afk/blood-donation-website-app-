@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '@/components/LanguageContext';
 import { CR80IDCard } from '@/components/id-card/CR80IDCard';
@@ -41,7 +41,9 @@ import {
   ExternalLink,
   Crown,
   Bell,
-  Megaphone
+  Megaphone,
+  Camera,
+  Upload
 } from 'lucide-react';
 import { CreateCampaignModal } from '@/components/campaigns/CreateCampaignModal';
 import { AdminAccessGate } from '@/components/admin/AdminAccessGate';
@@ -205,6 +207,8 @@ export default function AdminDashboardPage() {
   const [isCreateAccountModalOpen, setIsCreateAccountModalOpen] = useState(false);
   const [accountSubTab, setAccountSubTab] = useState<'appointments' | 'roster' | 'pending'>('appointments');
 
+  const accountPhotoRef = useRef<HTMLInputElement>(null);
+
   // Account creation form state
   const [newAccountForm, setNewAccountForm] = useState({
     name: '',
@@ -216,8 +220,24 @@ export default function AdminDashboardPage() {
     email: '',
     bloodGroup: 'O+',
     division: 'Dhaka',
-    district: 'Dhaka'
+    district: 'Dhaka',
+    avatarUrl: ''
   });
+
+  const handleAccountPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      alert('Please select a valid image file (.jpg, .png, .webp).');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      setNewAccountForm(prev => ({ ...prev, avatarUrl: dataUrl }));
+    };
+    reader.readAsDataURL(file);
+  };
 
   const isSuperAdmin = isHighestAuthority(session);
 
@@ -530,7 +550,8 @@ export default function AdminDashboardPage() {
         role: newAccountForm.role,
         bloodGroup: newAccountForm.bloodGroup,
         division: newAccountForm.division,
-        district: newAccountForm.district
+        district: newAccountForm.district,
+        avatarUrl: newAccountForm.avatarUrl || ''
       },
       session.role,
       session.id
@@ -562,7 +583,7 @@ export default function AdminDashboardPage() {
         status: 'Active',
         appointedDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
         validUntil: '31 Dec 2026',
-        avatarUrl: res.account.avatarUrl || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80',
+        avatarUrl: res.account.avatarUrl || newAccountForm.avatarUrl || '',
         isEqualSuperAdmin: isCoSuper
       };
       const updated = [newAppointment, ...appointments];
@@ -586,7 +607,8 @@ export default function AdminDashboardPage() {
       email: '',
       bloodGroup: 'O+',
       division: 'Dhaka',
-      district: 'Dhaka'
+      district: 'Dhaka',
+      avatarUrl: ''
     });
   };
 
@@ -1946,6 +1968,78 @@ export default function AdminDashboardPage() {
                     This delegates executive authority as a Co-Admin to verify donors, dispatch alerts, and oversee platform tasks.
                   </p>
                 )}
+              </div>
+
+              {/* ID Card Photograph Upload */}
+              <div className="bg-amber-50/40 border border-dashed border-amber-300 rounded-2xl p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block font-bold text-gray-800 text-xs">
+                    {lang === 'bn' ? 'আইডি কার্ডের ছবি (ছবি নির্বাচন করুন)' : 'ID Card Photograph (Add Image for ID)'}
+                  </label>
+                  {newAccountForm.avatarUrl ? (
+                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-green-100 text-green-800 border border-green-300">
+                      ✓ Photo Attached
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-semibold text-gray-500">
+                      Optional
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center space-x-3">
+                  {newAccountForm.avatarUrl ? (
+                    <div className="relative w-14 h-16 rounded-xl overflow-hidden border-2 border-brand-burgundy shadow-sm shrink-0">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img 
+                        src={newAccountForm.avatarUrl} 
+                        alt="ID Photo Preview" 
+                        className="w-full h-full object-cover" 
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-14 h-16 rounded-xl bg-gray-100 border border-gray-300 flex flex-col items-center justify-center text-gray-400 shrink-0">
+                      <Camera className="w-5 h-5 text-gray-400" />
+                      <span className="text-[8px] font-bold text-gray-400 mt-0.5 uppercase">No Photo</span>
+                    </div>
+                  )}
+
+                  <div className="flex-1 min-w-0 space-y-1.5">
+                    <button
+                      type="button"
+                      onClick={() => accountPhotoRef.current?.click()}
+                      className="px-3 py-1.5 rounded-xl bg-white hover:bg-amber-50 text-brand-burgundy border border-brand-burgundy/40 text-xs font-bold transition-all flex items-center space-x-1.5 shadow-xs cursor-pointer"
+                    >
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>{newAccountForm.avatarUrl ? (lang === 'bn' ? 'ছবি পরিবর্তন করুন' : 'Change ID Photo') : (lang === 'bn' ? 'ছবি আপলোড করুন' : 'Upload ID Photo')}</span>
+                    </button>
+
+                    {newAccountForm.avatarUrl ? (
+                      <button
+                        type="button"
+                        onClick={() => setNewAccountForm(prev => ({ ...prev, avatarUrl: '' }))}
+                        className="text-[11px] font-bold text-red-600 hover:text-red-700 transition-colors flex items-center space-x-1 cursor-pointer"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        <span>{lang === 'bn' ? 'ছবি মুছুন' : 'Remove Photo'}</span>
+                      </button>
+                    ) : (
+                      <p className="text-[10px] text-gray-500 leading-tight">
+                        {lang === 'bn' 
+                          ? 'পাসপোর্ট সাইজ বা স্পষ্ট পোট্রেট ছবি আপলোড করুন। ছবি না দিলে কোনো অচেনা ছবি যোগ হবে না।' 
+                          : 'Upload an authentic portrait photo. If omitted, no random picture is assigned.'}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <input
+                  ref={accountPhotoRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAccountPhotoUpload}
+                  className="hidden"
+                />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

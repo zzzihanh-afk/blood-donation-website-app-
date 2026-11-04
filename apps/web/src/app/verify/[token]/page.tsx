@@ -63,7 +63,7 @@ export default function VerifyIdCardPage({
             fullName={card.full_name}
             designation={lang === 'bn' ? (card.designation_bn || card.role_title_bn) : (card.designation_en || card.role_title_en)}
             uniqueId={card.card_number}
-            avatarUrl={card.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=300&q=80'}
+            avatarUrl={card.avatar_url || ''}
             jurisdictionName={lang === 'bn' ? card.jurisdiction_bn || undefined : card.jurisdiction_en || undefined}
             bloodGroup={detectedRoleId === 'donor' ? 'O+' : undefined}
             donationCount={detectedRoleId === 'donor' ? 5 : undefined}

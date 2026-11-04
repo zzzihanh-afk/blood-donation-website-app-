@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useLanguage } from '@/components/LanguageContext';
@@ -23,6 +23,8 @@ import {
   AlertCircle
 } from 'lucide-react';
 
+import { getCurrentSession } from '@/lib/session';
+
 export default function MyIdCardPage() {
   const { lang } = useLanguage();
   const [viewMode, setViewMode] = useState<'side-by-side' | 'front' | 'back' | 'flip'>('side-by-side');
@@ -31,13 +33,13 @@ export default function MyIdCardPage() {
   const [reissueToast, setReissueToast] = useState<string | null>(null);
 
   // Authenticated User Digital Identity Credentials
-  const userCardData = {
+  const [userCardData, setUserCardData] = useState({
     fullName: 'Ahmed Rahman',
     fullNameBn: 'আহমেদ রহমান',
     designation: 'Voluntary Blood Donor',
     designationBn: 'স্বেচ্ছাসেবী রক্তদাতা সদস্য',
     uniqueId: 'LB-0004278',
-    avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=300&q=80',
+    avatarUrl: '',
     jurisdictionName: 'Dhaka District, Dhaka Division',
     jurisdictionNameBn: 'ঢাকা জেলা, ঢাকা বিভাগ',
     bloodGroup: 'O+',
@@ -47,7 +49,45 @@ export default function MyIdCardPage() {
     verificationToken: 'LB-TOKEN-DNR-0004278',
     status: 'Active',
     roleId: 'donor'
-  };
+  });
+
+  useEffect(() => {
+    try {
+      const activeRaw = localStorage.getItem('lalbindu_active_donor_profile');
+      if (activeRaw) {
+        const parsed = JSON.parse(activeRaw);
+        if (parsed && (parsed.full_name || parsed.name)) {
+          const uId = parsed.donor_id_number || parsed.cardId || 'LB-0004278';
+          setUserCardData(prev => ({
+            ...prev,
+            fullName: parsed.full_name || parsed.name,
+            fullNameBn: parsed.fullNameBn || parsed.nameBn || parsed.full_name || parsed.name,
+            uniqueId: uId,
+            avatarUrl: parsed.avatar_url || parsed.avatarUrl || '',
+            bloodGroup: parsed.blood_group || parsed.bloodGroup || 'O+',
+            jurisdictionName: `${parsed.district_name_en || parsed.district || 'Dhaka'} District`,
+            jurisdictionNameBn: `${parsed.district_name_en || parsed.district || 'ঢাকা'} জেলা`,
+            verificationToken: `LB-TOKEN-DNR-${uId.replace(/[^a-zA-Z0-9]/g, '')}`
+          }));
+          return;
+        }
+      }
+
+      const session = getCurrentSession();
+      if (session && session.role === 'donor') {
+        const uId = session.donorId || 'LB-0004278';
+        setUserCardData(prev => ({
+          ...prev,
+          fullName: session.name,
+          fullNameBn: session.name,
+          uniqueId: uId,
+          avatarUrl: session.avatarUrl || '',
+          bloodGroup: session.bloodGroup || 'O+',
+          verificationToken: `LB-TOKEN-DNR-${uId.replace(/[^a-zA-Z0-9]/g, '')}`
+        }));
+      }
+    } catch (e) {}
+  }, []);
 
   const verificationUrl = typeof window !== 'undefined'
     ? `${window.location.origin}/verify/${userCardData.verificationToken}`

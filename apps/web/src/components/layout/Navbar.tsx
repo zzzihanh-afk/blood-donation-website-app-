@@ -350,15 +350,28 @@ export const Navbar: React.FC = () => {
                 }`}
               >
                 <div className={`relative w-8 h-8 rounded-full overflow-hidden border flex items-center justify-center ${
-                  isAdmin ? 'border-amber-400 bg-amber-100' : 'border-brand-red/30 bg-brand-light'
+                  isAdmin ? 'border-amber-400 bg-amber-100 text-amber-900' : 'border-brand-red/30 bg-brand-light text-brand-red'
                 }`}>
-                  <Image
-                    src={session.avatarUrl || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80"}
-                    alt={session.name}
-                    width={32}
-                    height={32}
-                    className="object-cover"
-                  />
+                  {session.avatarUrl ? (
+                    session.avatarUrl.startsWith('data:') ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={session.avatarUrl}
+                        alt={session.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <Image
+                        src={session.avatarUrl}
+                        alt={session.name}
+                        width={32}
+                        height={32}
+                        className="object-cover"
+                      />
+                    )
+                  ) : (
+                    <User className="w-4 h-4 opacity-70" />
+                  )}
                 </div>
                 <div className="text-left text-xs leading-tight">
                   <div className="font-bold text-gray-900">{session.name}</div>

@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { BANGLADESH_DIVISIONS, BANGLADESH_KEY_DISTRICTS } from '@lalbindu/api-client';
-import { Droplet, ArrowRight, ShieldCheck, CheckCircle2, Crown, AlertCircle, Lock, UserPlus, Sparkles } from 'lucide-react';
+import { Droplet, ArrowRight, ShieldCheck, CheckCircle2, Crown, AlertCircle, Lock, UserPlus, Sparkles, Camera, Upload, Trash2 } from 'lucide-react';
 import { getCurrentSession, setCurrentSession, UserSession } from '@/lib/session';
 import { getStoredAccounts, saveStoredAccounts, createAccountByAuthority, AccountUser } from '@/lib/accounts';
 
@@ -17,6 +17,7 @@ export default function RegisterPage() {
   const [adminMode, setAdminMode] = useState<'donor' | 'executive'>('donor');
 
   // Form State
+  const photoInputRef = useRef<HTMLInputElement>(null);
   const [roleToCreate, setRoleToCreate] = useState<'donor' | 'co_super_admin' | 'division_admin'>('donor');
   const [formData, setFormData] = useState({
     fullName: '',
@@ -28,8 +29,24 @@ export default function RegisterPage() {
     bloodGroup: 'O+',
     divisionId: 'Dhaka',
     districtId: 'Dhaka',
+    avatarUrl: '',
     termsAccepted: false
   });
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      alert('Please select a valid image file (.jpg, .png, .webp).');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      setFormData(prev => ({ ...prev, avatarUrl: dataUrl }));
+    };
+    reader.readAsDataURL(file);
+  };
 
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
@@ -95,7 +112,8 @@ export default function RegisterPage() {
             role: roleToCreate,
             bloodGroup: formData.bloodGroup,
             division: formData.divisionId,
-            district: formData.districtId
+            district: formData.districtId,
+            avatarUrl: formData.avatarUrl || ''
           },
           session.role,
           session.id
@@ -154,7 +172,7 @@ export default function RegisterPage() {
           canManageIDCards: false
         },
         createdAt: new Date().toISOString(),
-        avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80'
+        avatarUrl: formData.avatarUrl || ''
       };
 
       // 1. Save to registered accounts list (allowing login in future)
@@ -173,7 +191,7 @@ export default function RegisterPage() {
         fullNameBn: formData.fullNameBn.trim() || formData.fullName.trim(),
         phone: formData.phone.trim(),
         email: formData.email.trim() || `${username}@lalbindu.bd`,
-        avatar_url: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80',
+        avatar_url: formData.avatarUrl || '',
         donor_id_number: donorCardId,
         blood_group: formData.bloodGroup,
         division_name_en: formData.divisionId,
@@ -323,6 +341,76 @@ export default function RegisterPage() {
                 value={formData.fullName}
                 onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-burgundy/20 font-medium text-xs text-gray-900 transition-all"
+              />
+            </div>
+
+            {/* ID Card Photograph (Option to Add Image for ID) */}
+            <div className="bg-red-50/40 border border-dashed border-red-200 rounded-2xl p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="block font-bold text-gray-800 text-xs">
+                  ID Card Photograph (ছবি নির্বাচন করুন)
+                </label>
+                {formData.avatarUrl ? (
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-green-100 text-green-800 border border-green-300">
+                    ✓ Photo Attached
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-semibold text-gray-500">
+                    Optional
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center space-x-3">
+                {formData.avatarUrl ? (
+                  <div className="relative w-14 h-16 rounded-xl overflow-hidden border-2 border-brand-red shadow-sm shrink-0">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img 
+                      src={formData.avatarUrl} 
+                      alt="ID Photo Preview" 
+                      className="w-full h-full object-cover" 
+                    />
+                  </div>
+                ) : (
+                  <div className="w-14 h-16 rounded-xl bg-gray-100 border border-gray-300 flex flex-col items-center justify-center text-gray-400 shrink-0">
+                    <Camera className="w-5 h-5 text-gray-400" />
+                    <span className="text-[8px] font-bold text-gray-400 mt-0.5 uppercase">No Photo</span>
+                  </div>
+                )}
+
+                <div className="flex-1 min-w-0 space-y-1.5">
+                  <button
+                    type="button"
+                    onClick={() => photoInputRef.current?.click()}
+                    className="px-3 py-1.5 rounded-xl bg-white hover:bg-red-50 text-brand-red border border-brand-red/30 text-xs font-bold transition-all flex items-center space-x-1.5 shadow-xs cursor-pointer"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>{formData.avatarUrl ? 'Change ID Photo' : 'Upload ID Photo'}</span>
+                  </button>
+
+                  {formData.avatarUrl ? (
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, avatarUrl: '' }))}
+                      className="text-[11px] font-bold text-red-600 hover:text-red-700 transition-colors flex items-center space-x-1 cursor-pointer"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                      <span>Remove Photo</span>
+                    </button>
+                  ) : (
+                    <p className="text-[10px] text-gray-500 leading-tight">
+                      Portrait photo for digital CR80 ID Card. If left blank, no random picture is assigned.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <input
+                ref={photoInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handlePhotoUpload}
+                className="hidden"
               />
             </div>
 
