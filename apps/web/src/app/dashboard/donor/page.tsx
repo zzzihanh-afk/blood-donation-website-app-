@@ -15,6 +15,7 @@ import {
   evaluateAvailabilityStatus 
 } from '@lalbindu/business-rules';
 import { AvailabilityStatus } from '@lalbindu/shared-types';
+import { getCurrentSession } from '@/lib/session';
 import { 
   Droplet, 
   Calendar, 
@@ -65,10 +66,59 @@ const INITIAL_DONOR_CONTACT_REQUESTS: IncomingContactRequest[] = [
 
 export default function DonorDashboardPage() {
   const { t, lang } = useLanguage();
-  const donor = SAMPLE_DONORS[0]; // Ahmed Rahman
-  const [availabilityStatus, setAvailabilityStatus] = useState<AvailabilityStatus>(donor.availability_status);
+  const [donor, setDonor] = useState({
+    ...SAMPLE_DONORS[0],
+    fullNameBn: 'আহমেদ রহমান'
+  });
+  const [originUrl, setOriginUrl] = useState('');
+  const [availabilityStatus, setAvailabilityStatus] = useState<AvailabilityStatus>('available');
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
   const [incomingRequests, setIncomingRequests] = useState<IncomingContactRequest[]>(INITIAL_DONOR_CONTACT_REQUESTS);
+
+  // Hydrate custom donor profile from registration / login session
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setOriginUrl(window.location.origin);
+    }
+    try {
+      const activeRaw = localStorage.getItem('lalbindu_active_donor_profile');
+      if (activeRaw) {
+        const parsed = JSON.parse(activeRaw);
+        if (parsed && (parsed.full_name || parsed.name)) {
+          setDonor(prev => ({
+            ...prev,
+            ...parsed,
+            full_name: parsed.full_name || parsed.name,
+            fullNameBn: parsed.fullNameBn || parsed.nameBn || parsed.full_name || parsed.name,
+            donor_id_number: parsed.donor_id_number || parsed.cardId || prev.donor_id_number,
+            blood_group: parsed.blood_group || parsed.bloodGroup || prev.blood_group,
+            district_name_en: parsed.district_name_en || parsed.district || prev.district_name_en,
+            division_name_en: parsed.division_name_en || parsed.division || prev.division_name_en,
+            avatar_url: parsed.avatar_url || parsed.avatarUrl || prev.avatar_url,
+            verified_donation_count: typeof parsed.verified_donation_count === 'number' ? parsed.verified_donation_count : prev.verified_donation_count
+          }));
+          if (parsed.availability_status) {
+            setAvailabilityStatus(parsed.availability_status);
+          }
+          return;
+        }
+      }
+
+      const session = getCurrentSession();
+      if (session && session.role === 'donor' && session.name) {
+        setDonor(prev => ({
+          ...prev,
+          full_name: session.name,
+          fullNameBn: session.name,
+          donor_id_number: session.donorId || prev.donor_id_number,
+          blood_group: (session.bloodGroup as any) || prev.blood_group,
+          avatar_url: session.avatarUrl || prev.avatar_url
+        }));
+      }
+    } catch (e) {
+      console.error('Error hydrating donor data:', e);
+    }
+  }, []);
 
   // Load incoming contact requests from localStorage and sync across tabs
   const loadRequests = () => {
@@ -128,9 +178,11 @@ export default function DonorDashboardPage() {
   const lastDonationDate = '2026-08-10';
   const nextEligibleDate = calculateNextEligibleDate(lastDonationDate, 3); // 2026-11-10
 
-  const verificationUrl = typeof window !== 'undefined' 
-    ? `${window.location.origin}/verify/LB-TOKEN-DNR-0004278` 
-    : 'https://lalbindu.bd/verify/LB-TOKEN-DNR-0004278';
+  const tokenCleanId = (donor.donor_id_number || 'LB-0004278').replace(/[^a-zA-Z0-9]/g, '');
+  const verificationToken = `LB-TOKEN-DNR-${tokenCleanId}`;
+  const verificationUrl = originUrl 
+    ? `${originUrl}/verify/${verificationToken}` 
+    : `https://lalbindu.bd/verify/${verificationToken}`;
 
   // Generate QR Code
   useEffect(() => {
@@ -180,7 +232,9 @@ export default function DonorDashboardPage() {
                 {t.donorDashboard.donorIdLabel} {donor.donor_id_number}
               </p>
               <p className="text-xs text-gray-500 mt-1">
-                {lang === 'bn' ? 'ঢাকা জেলা, ঢাকা বিভাগ' : `${donor.district_name_en} District, ${donor.division_name_en} Division`}
+                {lang === 'bn' 
+                  ? `${donor.district_name_en} জেলা, ${donor.division_name_en} বিভাগ` 
+                  : `${donor.district_name_en} District, ${donor.division_name_en} Division`}
               </p>
             </div>
           </div>
@@ -473,15 +527,15 @@ export default function DonorDashboardPage() {
             <CR80IDCard
               roleId="donor"
               fullName={donor.full_name}
-              fullNameBn="আহমেদ রহমান"
+              fullNameBn={donor.fullNameBn || donor.full_name}
               designation={lang === 'bn' ? 'স্বেচ্ছাসেবী রক্তদাতা সদস্য' : 'Donor Member'}
               uniqueId={donor.donor_id_number}
               avatarUrl={donor.avatar_url || ''}
-              jurisdictionName={lang === 'bn' ? 'ঢাকা জেলা, ঢাকা বিভাগ' : `${donor.district_name_en} District`}
+              jurisdictionName={lang === 'bn' ? `${donor.district_name_en} জেলা, ${donor.division_name_en} বিভাগ` : `${donor.district_name_en} District`}
               bloodGroup={donor.blood_group}
-              donationCount={donor.verified_donation_count}
+              donationCount={donor.verified_donation_count || 0}
               validUntil="31 Dec 2026"
-              verificationToken="LB-TOKEN-DNR-0004278"
+              verificationToken={verificationToken}
               verificationUrl={verificationUrl}
               interactiveFlip={true}
               showActions={true}

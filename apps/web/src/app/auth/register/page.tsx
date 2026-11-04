@@ -5,15 +5,16 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { BANGLADESH_DIVISIONS, BANGLADESH_KEY_DISTRICTS } from '@lalbindu/api-client';
-import { Droplet, ArrowRight, ShieldCheck, CheckCircle2, Lock, Crown, AlertCircle, KeyRound, UserPlus } from 'lucide-react';
-import { getCurrentSession, UserSession } from '@/lib/session';
-import { createAccountByAuthority, submitPendingApplication } from '@/lib/accounts';
+import { Droplet, ArrowRight, ShieldCheck, CheckCircle2, Crown, AlertCircle, Lock, UserPlus, Sparkles } from 'lucide-react';
+import { getCurrentSession, setCurrentSession, UserSession } from '@/lib/session';
+import { getStoredAccounts, saveStoredAccounts, createAccountByAuthority, AccountUser } from '@/lib/accounts';
 
 export default function RegisterPage() {
   const router = useRouter();
   const [session, setSession] = useState<UserSession | null>(null);
   const [mounted, setMounted] = useState(false);
   const [isSuperAdminMode, setIsSuperAdminMode] = useState(false);
+  const [adminMode, setAdminMode] = useState<'donor' | 'executive'>('donor');
 
   // Form State
   const [roleToCreate, setRoleToCreate] = useState<'donor' | 'co_super_admin' | 'division_admin'>('donor');
@@ -25,7 +26,6 @@ export default function RegisterPage() {
     email: '',
     password: '',
     bloodGroup: 'O+',
-    dateOfBirth: '2000-01-01',
     divisionId: 'Dhaka',
     districtId: 'Dhaka',
     termsAccepted: false
@@ -38,7 +38,8 @@ export default function RegisterPage() {
     setMounted(true);
     const activeSession = getCurrentSession();
     setSession(activeSession);
-    setIsSuperAdminMode(activeSession.role === 'super_admin' || activeSession.id === 'superadmin' || activeSession.canCreateAccounts === true);
+    const hasHighestPower = activeSession.role === 'super_admin' || activeSession.id === 'superadmin' || activeSession.canCreateAccounts === true;
+    setIsSuperAdminMode(hasHighestPower);
 
     const handleSessionChange = () => {
       const s = getCurrentSession();
@@ -50,12 +51,28 @@ export default function RegisterPage() {
     return () => window.removeEventListener('lalbindu_session_changed', handleSessionChange);
   }, []);
 
+  // Filter districts dynamically based on selected division
+  const currentDivisionObj = BANGLADESH_DIVISIONS.find(d => d.name_en === formData.divisionId);
+  const filteredDistricts = BANGLADESH_KEY_DISTRICTS.filter(d => 
+    currentDivisionObj ? d.division_id === currentDivisionObj.id : true
+  );
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setStatusMessage(null);
 
+    if (!formData.fullName.trim()) {
+      setStatusMessage({ type: 'error', text: 'Please enter your full legal name.' });
+      return;
+    }
+
+    if (!formData.phone.trim() || formData.phone.trim().length < 8) {
+      setStatusMessage({ type: 'error', text: 'Please enter a valid mobile number (+880).' });
+      return;
+    }
+
     if (!formData.termsAccepted) {
-      setStatusMessage({ type: 'error', text: 'Please agree to the LalBindu verification and patient safety charter.' });
+      setStatusMessage({ type: 'error', text: 'Please agree to the voluntary blood donation terms and clinical guidelines.' });
       return;
     }
 
@@ -64,17 +81,17 @@ export default function RegisterPage() {
     setTimeout(() => {
       setLoading(false);
 
-      // Path A: Super Admin or Delegated Co-Admin Provisioning
-      if (isSuperAdminMode && session) {
-        const username = formData.username.trim() || formData.email.split('@')[0] || `usr-${Date.now().toString(36)}`;
+      // Path A: Super Admin Provisioning Executive Official (Co-Admin)
+      if (isSuperAdminMode && adminMode === 'executive' && session) {
+        const username = formData.username.trim() || formData.email.split('@')[0] || `adm-${Date.now().toString(36)}`;
         const result = createAccountByAuthority(
           {
-            name: formData.fullName,
-            nameBn: formData.fullNameBn,
+            name: formData.fullName.trim(),
+            nameBn: formData.fullNameBn.trim(),
             username: username,
-            password: formData.password || (roleToCreate === 'co_super_admin' ? 'coadmin' : 'donor123'),
-            phone: formData.phone,
-            email: formData.email || `${username}@lalbindu.bd`,
+            password: formData.password || (roleToCreate === 'co_super_admin' ? 'coadmin' : 'admin123'),
+            phone: formData.phone.trim(),
+            email: formData.email.trim() || `${username}@lalbindu.bd`,
             role: roleToCreate,
             bloodGroup: formData.bloodGroup,
             division: formData.divisionId,
@@ -85,50 +102,106 @@ export default function RegisterPage() {
         );
 
         if (!result.success || !result.account) {
-          setStatusMessage({ type: 'error', text: result.error || 'Failed to create account.' });
+          setStatusMessage({ type: 'error', text: result.error || 'Failed to provision administrative account.' });
           return;
         }
 
         setStatusMessage({
           type: 'success',
-          text: `Account "${result.account.name}" (${result.account.role.toUpperCase()}) successfully provisioned with ID ${result.account.cardId}! Temporary Password: ${result.account.password}`
+          text: `Administrative Account "${result.account.name}" (${result.account.role.toUpperCase()}) provisioned successfully! ID: ${result.account.cardId}, Password: ${result.account.password}`
         });
 
         setTimeout(() => {
           router.push('/dashboard/admin');
-        }, 2000);
+        }, 1200);
         return;
       }
 
-      // Path B: Public Guest Submission for Super Admin Approval
-      submitPendingApplication({
-        fullName: formData.fullName,
-        phone: formData.phone,
-        email: formData.email || '',
+      // Path B: Voluntary Blood Donor Registration -> Immediate Provisioning & Open Dashboard
+      const rand4Digits = Math.floor(1000 + Math.random() * 9000);
+      const donorCardId = `LB-000${rand4Digits}`;
+      const newAccountId = `usr-donor-${Date.now().toString(36)}-${rand4Digits}`;
+      const cleanPhone = formData.phone.replace(/[^0-9]/g, '');
+      const rawUsername = formData.email 
+        ? formData.email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '') 
+        : `donor_${cleanPhone.slice(-6) || rand4Digits}`;
+      const username = rawUsername || `donor_${rand4Digits}`;
+
+      const newAccount: AccountUser = {
+        id: newAccountId,
+        username: username,
+        password: formData.password || 'donor123',
+        name: formData.fullName.trim(),
+        nameBn: formData.fullNameBn.trim() || formData.fullName.trim(),
+        email: formData.email.trim() || `${username}@lalbindu.bd`,
+        phone: formData.phone.trim(),
+        role: 'donor',
+        authorityLevel: 'standard',
+        status: 'Active',
         bloodGroup: formData.bloodGroup,
-        divisionId: formData.divisionId,
-        districtId: formData.districtId
-      });
+        division: formData.divisionId,
+        district: formData.districtId,
+        cardId: donorCardId,
+        isSuperAdmin: false,
+        canCreateAccounts: false,
+        canDelegateAuthority: false,
+        delegatedPermissions: {
+          canCreateDonors: false,
+          canCreateCoAdmins: false,
+          canManageVerifications: false,
+          canBroadcastAlerts: false,
+          canApproveCampaigns: false,
+          canManageIDCards: false
+        },
+        createdAt: new Date().toISOString(),
+        avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80'
+      };
 
+      // 1. Save to registered accounts list (allowing login in future)
+      const accounts = getStoredAccounts();
+      const existingIdx = accounts.findIndex(a => a.username.toLowerCase() === username.toLowerCase());
+      if (existingIdx >= 0) {
+        newAccount.username = `${username}_${rand4Digits}`;
+      }
+      accounts.push(newAccount);
+      saveStoredAccounts(accounts);
+
+      // 2. Save active donor profile for instant dashboard & ID card hydration
+      const activeDonorProfile = {
+        id: newAccountId,
+        full_name: formData.fullName.trim(),
+        fullNameBn: formData.fullNameBn.trim() || formData.fullName.trim(),
+        phone: formData.phone.trim(),
+        email: formData.email.trim() || `${username}@lalbindu.bd`,
+        avatar_url: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80',
+        donor_id_number: donorCardId,
+        blood_group: formData.bloodGroup,
+        division_name_en: formData.divisionId,
+        district_name_en: formData.districtId,
+        upazila_name_en: 'Sadar',
+        verified_donation_count: 0,
+        availability_status: 'available',
+        is_ready_to_donate: true,
+        is_profile_verified: true,
+        is_phone_verified: true,
+        blood_group_verified: true,
+        created_at: new Date().toISOString()
+      };
+      localStorage.setItem('lalbindu_active_donor_profile', JSON.stringify(activeDonorProfile));
+
+      // 3. Immediately switch active session to new donor account
+      setCurrentSession(newAccountId);
+
+      // 4. Provide instant feedback & open donor dashboard
       setStatusMessage({
-        type: 'info',
-        text: 'Application submitted! Under the LalBindu Governance Charter, only the National Super Admin (superadmin) can approve and provision accounts. Your request is queued for Super Admin signoff.'
+        type: 'success',
+        text: `Registration successful! Welcome, ${formData.fullName.trim()}. Opening your Official LalBindu Donor Portal & CR80 Digital ID Card (${donorCardId})...`
       });
 
-      setFormData({
-        fullName: '',
-        fullNameBn: '',
-        username: '',
-        phone: '',
-        email: '',
-        password: '',
-        bloodGroup: 'O+',
-        dateOfBirth: '2000-01-01',
-        divisionId: 'Dhaka',
-        districtId: 'Dhaka',
-        termsAccepted: false
-      });
-    }, 700);
+      setTimeout(() => {
+        router.push('/dashboard/donor');
+      }, 400);
+    }, 450);
   };
 
   if (!mounted) return null;
@@ -149,53 +222,50 @@ export default function RegisterPage() {
             />
           </Link>
           <h1 className="text-2xl font-black text-gray-900 tracking-tight">
-            {isSuperAdminMode ? 'Account Provisioning Center' : 'Request Official Donor Account'}
+            {isSuperAdminMode && adminMode === 'executive' 
+              ? 'Executive Authority Provisioning' 
+              : 'Register as a Voluntary Donor'}
           </h1>
           <p className="text-xs text-gray-500 mt-1">
-            Authoritative Healthcare Identity Provisioning for Bangladesh
+            {isSuperAdminMode && adminMode === 'executive'
+              ? 'Supreme Administrator Portal: Appoint Co-Admins and Regional Coordinators'
+              : 'Join thousands of lifesavers across Bangladesh. Receive your verified digital ID card.'}
           </p>
         </div>
 
-        {/* Security Directive Banner */}
-        {isSuperAdminMode ? (
-          <div className="p-4 rounded-3xl bg-gradient-to-r from-brand-burgundy to-[#30080E] text-white shadow-lg border border-amber-500/40 flex items-start space-x-3">
-            <div className="w-10 h-10 rounded-2xl bg-amber-400/20 text-amber-300 flex items-center justify-center shrink-0 mt-0.5 border border-amber-400/30">
-              <Crown className="w-5 h-5 text-amber-300" />
-            </div>
-            <div>
-              <div className="flex items-center space-x-2">
-                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-400 text-gray-950">
-                  Highest Authority Active
-                </span>
-                <span className="text-[10px] font-mono text-amber-200">ID: {session?.adminId || 'superadmin'}</span>
+        {/* Super Admin Control Bar (Only appears if Super Admin is logged in) */}
+        {isSuperAdminMode && (
+          <div className="p-4 rounded-3xl bg-gradient-to-r from-brand-burgundy to-[#30080E] text-white shadow-lg border border-amber-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center space-x-3">
+              <div className="w-9 h-9 rounded-2xl bg-amber-400/20 text-amber-300 flex items-center justify-center shrink-0 border border-amber-400/30">
+                <Crown className="w-5 h-5 text-amber-300" />
               </div>
-              <p className="text-xs font-bold text-white mt-1">
-                You hold exclusive authority to provision new donor, coordinator, or Co-Admin accounts.
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="p-4 rounded-3xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start space-x-3">
-            <div className="w-9 h-9 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 mt-0.5">
-              <Lock className="w-5 h-5" />
-            </div>
-            <div>
-              <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-200 text-amber-900">
-                Security Policy: Super Admin Clearance
-              </span>
-              <p className="font-semibold mt-1 leading-relaxed">
-                To guarantee zero blood fraud, direct self-registration is closed. Accounts are strictly provisioned by the <strong>National Super Admin (ID: superadmin)</strong> or delegated Co-Admins.
-              </p>
-              <div className="mt-2 flex items-center gap-3">
-                <span className="text-[11px] text-amber-800">Are you the Super Admin?</span>
-                <Link
-                  href="/auth/login"
-                  className="inline-flex items-center space-x-1 font-black text-brand-burgundy hover:underline"
-                >
-                  <KeyRound className="w-3.5 h-3.5" />
-                  <span>Log in as Super Admin (superadmin / superadmin)</span>
-                </Link>
+              <div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-400 text-gray-950">
+                    Super Admin Active
+                  </span>
+                  <span className="text-[10px] font-mono text-amber-200">ID: superadmin</span>
+                </div>
+                <p className="text-xs text-white/90 mt-0.5">
+                  Mode: <span className="font-bold text-amber-300">{adminMode === 'donor' ? 'Voluntary Donor Registration' : 'Executive Co-Admin Delegation'}</span>
+                </p>
               </div>
+            </div>
+            <div className="flex items-center space-x-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setAdminMode(adminMode === 'donor' ? 'executive' : 'donor')}
+                className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all border border-white/20 cursor-pointer"
+              >
+                {adminMode === 'donor' ? 'Switch to Co-Admin Mode' : 'Switch to Donor Mode'}
+              </button>
+              <Link
+                href="/dashboard/admin"
+                className="px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-gray-950 text-xs font-black transition-all shadow-sm"
+              >
+                Admin Suite
+              </Link>
             </div>
           </div>
         )}
@@ -216,92 +286,93 @@ export default function RegisterPage() {
           </div>
         )}
 
-        {/* Card */}
+        {/* Main Card */}
         <div className="bg-white rounded-3xl p-6 sm:p-8 card-shadow border border-gray-100">
           <form onSubmit={handleSubmit} className="space-y-4 text-xs">
             
-            {/* If Super Admin, allow selecting role to provision */}
-            {isSuperAdminMode && (
-              <div className="p-3.5 rounded-2xl bg-gray-50 border border-gray-200 space-y-1.5">
+            {/* If Super Admin in Executive Mode, allow selecting role & password */}
+            {isSuperAdminMode && adminMode === 'executive' && (
+              <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-2">
                 <label className="block font-black text-gray-900 text-xs">
-                  Provision Account Role & Power Level
+                  Provision Authority Role & Power Level
                 </label>
                 <select
                   value={roleToCreate}
                   onChange={(e) => setRoleToCreate(e.target.value as any)}
                   className="w-full px-3 py-2.5 rounded-xl border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-brand-burgundy font-bold text-brand-burgundy"
                 >
-                  <option value="donor">Voluntary Blood Donor (Verified Digital ID)</option>
-                  <option value="co_super_admin">👑 Co-Super Administrator (Delegated Authority)</option>
+                  <option value="co_super_admin">👑 Co-Super Administrator (Delegated Executive Authority)</option>
                   <option value="division_admin">Division Administrator / Regional Coordinator</option>
+                  <option value="donor">Voluntary Blood Donor</option>
                 </select>
-                {roleToCreate === 'co_super_admin' && (
-                  <p className="text-[11px] text-amber-800 font-medium">
-                    This delegates administrative authority to the new Co-Admin, enabling them to verify donors, approve hospital requests, and dispatch alerts.
-                  </p>
-                )}
+                <p className="text-[11px] text-amber-800 font-medium">
+                  {roleToCreate === 'co_super_admin'
+                    ? 'Delegates administrative authority to oversee operations, verify donors, and dispatch alerts.'
+                    : 'Assigns regional coordination privileges under Super Admin oversight.'}
+                </p>
               </div>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block font-bold text-gray-700 mb-1">Full Legal Name (English) *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Kamal Uddin"
-                  value={formData.fullName}
-                  onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                  className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-burgundy/20 font-semibold"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-gray-700 mb-1">Full Name (Bangla)</label>
-                <input
-                  type="text"
-                  placeholder="উদাঃ কামাল উদ্দিন"
-                  value={formData.fullNameBn}
-                  onChange={(e) => setFormData({ ...formData, fullNameBn: e.target.value })}
-                  className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-burgundy/20 font-semibold"
-                />
-              </div>
+            {/* Full Legal Name */}
+            <div>
+              <label className="block font-bold text-gray-700 mb-1 text-xs">Full Legal Name *</label>
+              <input
+                type="text"
+                required
+                placeholder="Ahmed Rahman"
+                value={formData.fullName}
+                onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-burgundy/20 font-medium text-xs text-gray-900 transition-all"
+              />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            {/* Mobile (+880) and Blood Group */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block font-bold text-gray-700 mb-1">Mobile (+880) *</label>
+                <label className="block font-bold text-gray-700 mb-1 text-xs">Mobile (+880) *</label>
                 <input
                   type="tel"
                   required
                   placeholder="017XXXXXXXX"
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-burgundy/20 font-semibold"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-burgundy/20 font-medium text-xs text-gray-900 transition-all"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-gray-700 mb-1">Blood Group *</label>
+                <label className="block font-bold text-gray-700 mb-1 text-xs">Blood Group *</label>
                 <select
                   value={formData.bloodGroup}
                   onChange={(e) => setFormData({ ...formData, bloodGroup: e.target.value })}
-                  className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-burgundy/20 font-bold text-brand-red"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-burgundy/20 font-bold text-xs text-brand-red transition-all cursor-pointer"
                 >
-                  {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Unknown'].map(bg => (
+                  {['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'].map(bg => (
                     <option key={bg} value={bg}>{bg}</option>
                   ))}
                 </select>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            {/* Division and District */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block font-bold text-gray-700 mb-1">Division *</label>
+                <label className="block font-bold text-gray-700 mb-1 text-xs">Division *</label>
                 <select
                   value={formData.divisionId}
-                  onChange={(e) => setFormData({ ...formData, divisionId: e.target.value })}
-                  className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white font-semibold"
+                  onChange={(e) => {
+                    const newDiv = e.target.value;
+                    const firstDistrict = BANGLADESH_KEY_DISTRICTS.find(d => {
+                      const div = BANGLADESH_DIVISIONS.find(x => x.name_en === newDiv);
+                      return div ? d.division_id === div.id : false;
+                    });
+                    setFormData({ 
+                      ...formData, 
+                      divisionId: newDiv, 
+                      districtId: firstDistrict ? firstDistrict.name_en : newDiv 
+                    });
+                  }}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-burgundy/20 font-medium text-xs text-gray-900 transition-all cursor-pointer"
                 >
                   {BANGLADESH_DIVISIONS.map(d => (
                     <option key={d.id} value={d.name_en}>{d.name_en}</option>
@@ -310,93 +381,90 @@ export default function RegisterPage() {
               </div>
 
               <div>
-                <label className="block font-bold text-gray-700 mb-1">District</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Dhaka, Gazipur"
+                <label className="block font-bold text-gray-700 mb-1 text-xs">District *</label>
+                <select
                   value={formData.districtId}
                   onChange={(e) => setFormData({ ...formData, districtId: e.target.value })}
-                  className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white font-semibold"
-                />
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-burgundy/20 font-medium text-xs text-gray-900 transition-all cursor-pointer"
+                >
+                  {filteredDistricts.length > 0 ? (
+                    filteredDistricts.map(d => (
+                      <option key={d.id} value={d.name_en}>{d.name_en}</option>
+                    ))
+                  ) : (
+                    <option value={formData.divisionId}>{formData.divisionId}</option>
+                  )}
+                </select>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Email Address (Optional) */}
+            <div>
+              <label className="block font-bold text-gray-700 mb-1 text-xs">Email Address (Optional)</label>
+              <input
+                type="email"
+                placeholder="your.email@example.com"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-burgundy/20 font-medium text-xs text-gray-900 transition-all"
+              />
+            </div>
+
+            {/* If in executive mode, allow setting temporary password */}
+            {isSuperAdminMode && adminMode === 'executive' && (
               <div>
-                <label className="block font-bold text-gray-700 mb-1">Email Address</label>
+                <label className="block font-bold text-gray-700 mb-1 text-xs">Temporary Password</label>
                 <input
-                  type="email"
-                  placeholder="user@lalbindu.bd"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white font-semibold"
+                  type="text"
+                  placeholder="e.g. coadmin or admin123"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white font-mono text-xs"
                 />
               </div>
+            )}
 
-              {isSuperAdminMode ? (
-                <div>
-                  <label className="block font-bold text-gray-700 mb-1">Assign Initial Password</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. donor123 or coadmin"
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white font-mono"
-                  />
-                </div>
-              ) : (
-                <div>
-                  <label className="block font-bold text-gray-700 mb-1">Preferred Username (Optional)</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. kamal.donor"
-                    value={formData.username}
-                    onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white font-semibold font-mono"
-                  />
-                </div>
-              )}
-            </div>
-
-            <div className="p-3 bg-red-50 rounded-2xl border border-red-100 space-y-2">
-              <label className="flex items-start space-x-2 cursor-pointer">
+            {/* Terms and Clinical Screening Guidelines */}
+            <div className="p-3.5 rounded-2xl bg-red-50/60 border border-red-100/70 text-xs text-gray-700">
+              <label className="flex items-start space-x-2.5 cursor-pointer select-none">
                 <input
                   type="checkbox"
                   required
                   checked={formData.termsAccepted}
                   onChange={(e) => setFormData({ ...formData, termsAccepted: e.target.checked })}
-                  className="mt-0.5 rounded text-brand-burgundy focus:ring-brand-burgundy"
+                  className="mt-0.5 rounded text-brand-red focus:ring-brand-red w-4 h-4 cursor-pointer"
                 />
-                <span className="text-[11px] text-gray-700 leading-relaxed">
-                  I certify compliance with the LalBindu National Blood Security Charter, confirmed donor health standards, and Super Admin oversight regulations.
+                <span className="text-[11px] leading-relaxed text-gray-700">
+                  I agree to the LalBindu terms of voluntary blood donation, confirm that I am aged 18+ and weigh at least 45kg, and agree to follow clinical screening guidelines.
                 </span>
               </label>
             </div>
 
+            {/* Submit Action Button */}
             <button
               type="submit"
               disabled={loading}
-              className={`w-full py-3.5 rounded-xl font-bold text-xs shadow-md transition-all flex items-center justify-center space-x-2 mt-4 text-white ${
-                isSuperAdminMode 
-                  ? 'bg-gradient-to-r from-brand-burgundy to-brand-red hover:from-[#400B13] hover:to-[#6a0b17]'
+              className={`w-full py-3.5 rounded-2xl font-black text-xs shadow-md transition-all flex items-center justify-center space-x-2 active:scale-[0.99] cursor-pointer text-white ${
+                isSuperAdminMode && adminMode === 'executive'
+                  ? 'bg-gradient-to-r from-brand-burgundy to-[#30080E] hover:opacity-95'
                   : 'bg-brand-red hover:bg-brand-crimson'
               }`}
             >
-              <UserPlus className="w-4 h-4" />
               <span>
                 {loading 
-                  ? 'Processing Authority Clearance...' 
-                  : isSuperAdminMode 
-                  ? 'Provision Account with Super Admin Authority' 
-                  : 'Submit Application for Super Admin Approval'}
+                  ? 'Activating Donor Account & Generating ID...' 
+                  : isSuperAdminMode && adminMode === 'executive'
+                  ? 'Provision Official Administrative Account'
+                  : 'Complete Registration & Get ID Card ->'}
               </span>
             </button>
           </form>
 
+          {/* Footer Link */}
           <div className="mt-6 pt-4 border-t border-gray-100 text-center text-xs text-gray-500">
-            Already have an authorized account?{' '}
-            <Link href="/auth/login" className="font-bold text-brand-burgundy hover:underline">
-              Sign In (superadmin / coadmin)
+            Already registered?{' '}
+            <Link href="/auth/login" className="font-bold text-brand-red hover:underline">
+              Sign In
             </Link>
           </div>
 

@@ -69,11 +69,34 @@ export default function LoginPage() {
           router.push('/dashboard/admin');
         }, 600);
       } else {
-        setCurrentSession('donor');
+        const donorProfile = {
+          id: acc.id,
+          full_name: acc.name,
+          fullNameBn: acc.nameBn || acc.name,
+          phone: acc.phone,
+          email: acc.email,
+          avatar_url: acc.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80',
+          donor_id_number: acc.cardId,
+          blood_group: acc.bloodGroup || 'O+',
+          division_name_en: acc.division || 'Dhaka',
+          district_name_en: acc.district || 'Dhaka',
+          upazila_name_en: 'Sadar',
+          verified_donation_count: 0,
+          availability_status: 'available',
+          is_ready_to_donate: true,
+          is_profile_verified: true,
+          is_phone_verified: true,
+          blood_group_verified: true,
+          created_at: acc.createdAt || new Date().toISOString()
+        };
+        try {
+          localStorage.setItem('lalbindu_active_donor_profile', JSON.stringify(donorProfile));
+        } catch (e) {}
+        setCurrentSession(acc.id);
         setSuccessMessage(`Welcome back, ${acc.name}! Entering Donor Dashboard...`);
         setTimeout(() => {
           router.push('/dashboard/donor');
-        }, 600);
+        }, 500);
       }
     }, 500);
   };
@@ -95,6 +118,40 @@ export default function LoginPage() {
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
+      try {
+        const rawAccounts = localStorage.getItem('lalbindu_registered_accounts_v1');
+        if (rawAccounts) {
+          const accounts = JSON.parse(rawAccounts);
+          const cleanInput = phone.replace(/[^0-9]/g, '');
+          const match = accounts.find((a: any) => a.role === 'donor' && a.phone.replace(/[^0-9]/g, '').endsWith(cleanInput));
+          if (match) {
+            const donorProfile = {
+              id: match.id,
+              full_name: match.name,
+              fullNameBn: match.nameBn || match.name,
+              phone: match.phone,
+              email: match.email,
+              avatar_url: match.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80',
+              donor_id_number: match.cardId,
+              blood_group: match.bloodGroup || 'O+',
+              division_name_en: match.division || 'Dhaka',
+              district_name_en: match.district || 'Dhaka',
+              upazila_name_en: 'Sadar',
+              verified_donation_count: 0,
+              availability_status: 'available',
+              is_ready_to_donate: true,
+              is_profile_verified: true,
+              is_phone_verified: true,
+              blood_group_verified: true,
+              created_at: match.createdAt || new Date().toISOString()
+            };
+            localStorage.setItem('lalbindu_active_donor_profile', JSON.stringify(donorProfile));
+            setCurrentSession(match.id);
+            router.push('/dashboard/donor');
+            return;
+          }
+        }
+      } catch (e) {}
       setCurrentSession('donor');
       router.push('/dashboard/donor');
     }, 800);
