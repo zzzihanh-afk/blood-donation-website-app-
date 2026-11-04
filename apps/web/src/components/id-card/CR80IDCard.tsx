@@ -32,7 +32,10 @@ import {
   DonorHeartDropSVG,
   BangladeshMapSVG, 
   drawBangladeshMapOnCanvas,
-  RoleBadgeEmblem 
+  RoleBadgeEmblem,
+  getBangladeshMapSvgString,
+  getLandmarkSvgString,
+  getRoleBadgeHtml
 } from './LandmarkIllustrations';
 
 export interface CR80IDCardProps {
@@ -363,6 +366,66 @@ export const CR80IDCard: React.FC<CR80IDCardProps> = ({
         ctx.fillText(bloodGroup || 'O+', canvas.width - 120, 248);
       }
 
+      // Architectural Landmark Watermark Graphic on Canvas
+      if (front.watermarkType && front.watermarkType !== 'none') {
+        const landmarkSvg = getLandmarkSvgString(front.watermarkType, primaryColor);
+        if (landmarkSvg) {
+          try {
+            const blob = new Blob([landmarkSvg], { type: 'image/svg+xml;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const img = new window.Image();
+            img.src = url;
+            await new Promise((res) => { img.onload = res; img.onerror = res; setTimeout(res, 400); });
+            if (img.complete && img.naturalWidth > 0) {
+              ctx.save();
+              ctx.globalAlpha = 0.85;
+              ctx.drawImage(img, canvas.width - 440, canvas.height - 310, 420, 300);
+              ctx.restore();
+            }
+            URL.revokeObjectURL(url);
+          } catch (e) {}
+        }
+      }
+
+      // Role Badge Emblem on Canvas (Top Right)
+      if (front.showBadge) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(canvas.width - 75, 75, 30, 0, Math.PI * 2);
+        const bGrad = ctx.createLinearGradient(canvas.width - 105, 45, canvas.width - 45, 105);
+        if (roleId === 'super_admin') {
+          bGrad.addColorStop(0, '#F59E0B');
+          bGrad.addColorStop(0.5, '#FCD34D');
+          bGrad.addColorStop(1, '#FEF3C7');
+        } else if (roleId === 'division_admin') {
+          bGrad.addColorStop(0, '#2563EB');
+          bGrad.addColorStop(1, '#60A5FA');
+        } else {
+          bGrad.addColorStop(0, '#059669');
+          bGrad.addColorStop(1, '#34D399');
+        }
+        ctx.fillStyle = bGrad;
+        ctx.fill();
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        ctx.fillStyle = roleId === 'super_admin' ? '#B45309' : '#FFFFFF';
+        ctx.beginPath();
+        const cx = canvas.width - 75, cy = 75, outerR = 16, innerR = 7;
+        for (let i = 0; i < 10; i++) {
+          const angle = (i * Math.PI) / 5 - Math.PI / 2;
+          const r = i % 2 === 0 ? outerR : innerR;
+          const x = cx + Math.cos(angle) * r;
+          const y = cy + Math.sin(angle) * r;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+
     } else {
       // BACK SIDE
       ctx.fillStyle = '#C8102E';
@@ -383,10 +446,11 @@ export const CR80IDCard: React.FC<CR80IDCardProps> = ({
         }
       } catch (e) {}
 
-      // Draw 100% Authentic Geographically Accurate 8-Division Bangladesh Map Watermark
-      await drawBangladeshMapOnCanvas(ctx, primaryColor, 570, 45, 390, 525);
+      // Draw 100% Authentic Geographically Accurate 8-Division Bangladesh Map Watermark on Right
+      await drawBangladeshMapOnCanvas(ctx, primaryColor, 580, 50, 380, 520);
 
-      // QR Code
+      // QR Code on Left-Center
+      const qrCenter = 240;
       let activeQr = qrDataUrl;
       if (!activeQr) {
         try {
@@ -403,36 +467,46 @@ export const CR80IDCard: React.FC<CR80IDCardProps> = ({
         qrImg.src = activeQr;
         await new Promise((res) => { qrImg.onload = res; qrImg.onerror = res; setTimeout(res, 400); });
         if (qrImg.complete) {
-          ctx.drawImage(qrImg, (canvas.width - 200) / 2, 135, 200, 200);
+          ctx.save();
+          ctx.fillStyle = '#FFFFFF';
+          ctx.beginPath();
+          ctx.roundRect(qrCenter - 105, 135, 210, 210, 16);
+          ctx.fill();
+          ctx.strokeStyle = '#E5E7EB';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          ctx.drawImage(qrImg, qrCenter - 95, 145, 190, 190);
+          ctx.restore();
         }
       }
 
       // "SCAN TO VERIFY" badge
       ctx.fillStyle = '#171717';
       ctx.beginPath();
-      ctx.roundRect((canvas.width - 220) / 2, 355, 220, 34, 17);
+      ctx.roundRect(qrCenter - 105, 365, 210, 34, 17);
       ctx.fill();
       ctx.fillStyle = '#FFFFFF';
       ctx.font = '900 15px "Inter", sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('SCAN TO VERIFY', canvas.width / 2, 378);
+      ctx.fillText('SCAN TO VERIFY', qrCenter, 388);
 
       // Verification URL
       ctx.fillStyle = '#374151';
-      ctx.font = 'bold 16px monospace';
+      ctx.font = 'bold 15px monospace';
       ctx.textAlign = 'center';
-      ctx.fillText(`https://lalbindu.bd/verify/${uniqueId}`, canvas.width / 2, 415);
+      ctx.fillText(`https://lalbindu.bd/verify/${uniqueId}`, qrCenter, 422);
 
       // Issue & Valid
       ctx.fillStyle = '#6B7280';
       ctx.font = '600 14px "Inter", sans-serif';
-      ctx.fillText(`Issued: ${issueDate} | Valid: Active`, canvas.width / 2, 440);
+      ctx.fillText(`Issued: ${issueDate} | Valid: Active`, qrCenter, 448);
 
       // Slogan wave footer
       ctx.fillStyle = primaryColor;
       ctx.fillRect(0, canvas.height - 48, canvas.width, 48);
       ctx.fillStyle = '#FFFFFF';
       ctx.font = 'bold 16px "Inter", sans-serif';
+      ctx.textAlign = 'center';
       ctx.fillText('Together for a Blood-Safe Bangladesh ❤️', canvas.width / 2, canvas.height - 18);
     }
 
@@ -457,7 +531,7 @@ export const CR80IDCard: React.FC<CR80IDCardProps> = ({
     }
   };
 
-  // Dedicated Print-Ready 1-Page PDF Generator (Isolates CR80 Cards and Redacts Background UI)
+  // Dedicated Print-Ready 1-Page PDF Generator (Isolates CR80 Cards with 100% Vector Fidelity)
   const handlePrintPDF = async () => {
     // Open isolated window immediately to prevent popup blocking in modern browsers
     const printWin = typeof window !== 'undefined' ? window.open('', '_blank', 'width=950,height=1000') : null;
@@ -465,11 +539,343 @@ export const CR80IDCard: React.FC<CR80IDCardProps> = ({
       printWin.document.write(`<!DOCTYPE html><html><head><title>Preparing CR80 ID Card...</title></head><body style="font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:90vh;margin:0;background:#FFF8F8;"><div style="text-align:center;"><h2 style="color:#C8102E;margin-bottom:8px;">LalBindu Bangladesh</h2><p style="color:#555;font-size:13px;font-weight:600;">Generating High-Resolution CR80 Print Sheet (85.6mm × 54.0mm)...</p></div></body></html>`);
     }
 
-    // Generate high-resolution 300 DPI canvases for Front & Back
-    const frontCanvas = await generateCardCanvas('front');
-    const backCanvas = await generateCardCanvas('back');
-    const frontImg = frontCanvas.toDataURL('image/png');
-    const backImg = backCanvas.toDataURL('image/png');
+    // Generate high-resolution QR data URL if not yet created
+    let activeQr = qrDataUrl;
+    if (!activeQr) {
+      try {
+        activeQr = await QRCode.toDataURL(targetVerifyUrl, {
+          width: 320,
+          margin: 1,
+          color: { dark: '#171717', light: '#FFFFFF' }
+        });
+      } catch (e) {}
+    }
+
+    // Extract exact SVG strings for Landmarks, Role Emblem Badge, and 8-Division Bangladesh Map
+    const badgeHtml = front.showBadge ? getRoleBadgeHtml(roleId, front.badgeIcon, primaryColor) : '';
+    const landmarkSvg = front.watermarkType && front.watermarkType !== 'none'
+      ? getLandmarkSvgString(front.watermarkType, primaryColor)
+      : '';
+    const bdMapSvg = getBangladeshMapSvgString(primaryColor);
+
+    // Front Card Vector HTML (Physical standard CR80: 85.6mm × 54.0mm)
+    const frontCardHtml = `
+      <div class="cr80-card cr80-front" style="
+        width: 85.6mm;
+        height: 54.0mm;
+        border-radius: 3.18mm;
+        position: relative;
+        overflow: hidden;
+        background: linear-gradient(135deg, #FFFFFF 0%, #FCFDFE 70%, #F7FAFC 100%);
+        border: 0.3mm solid #D1D5DB;
+        box-shadow: 0 1mm 3mm rgba(0,0,0,0.12);
+        box-sizing: border-box;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      ">
+        <!-- Top Floating Role Header Ribbon -->
+        <div style="
+          position: absolute;
+          top: 0;
+          left: 50%;
+          transform: translateX(-50%);
+          background-color: ${primaryColor};
+          color: #FFFFFF;
+          padding: 0.8mm 5mm;
+          border-radius: 0 0 2mm 2mm;
+          font-size: 2.5mm;
+          font-weight: 900;
+          letter-spacing: 0.3mm;
+          text-transform: uppercase;
+          z-index: 30;
+          white-space: nowrap;
+          border: 0.2mm solid rgba(255,255,255,0.25);
+          box-shadow: 0 0.5mm 1mm rgba(0,0,0,0.15);
+        ">
+          ${ribbonLabel}
+        </div>
+
+        <!-- Top Bar: Logo & Role Badge Emblem -->
+        <div style="
+          position: absolute;
+          top: 2.2mm;
+          left: 3.5mm;
+          right: 3.5mm;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          z-index: 20;
+        ">
+          <div style="height: 5.5mm; display: flex; align-items: center;">
+            <img src="/branding/lalbindu-logo.png" style="height: 5.5mm; width: auto; object-fit: contain;" alt="LalBindu" />
+          </div>
+          <div style="display: flex; align-items: center;">
+            ${badgeHtml}
+          </div>
+        </div>
+
+        <!-- Middle Section: Photo & Cardholder Information -->
+        <div style="
+          position: absolute;
+          top: 9.5mm;
+          left: 3.5mm;
+          right: 3.5mm;
+          display: flex;
+          align-items: center;
+          gap: 3mm;
+          z-index: 20;
+        ">
+          <!-- Photo Frame with colored border -->
+          ${front.showPhoto ? `
+          <div style="
+            width: 14mm;
+            height: 18mm;
+            border-radius: 2mm;
+            border: 0.5mm solid ${primaryColor};
+            overflow: hidden;
+            background: #F3F4F6;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0.5mm 1.5mm rgba(0,0,0,0.1);
+          ">
+            ${avatarUrl ? `
+              <img src="${avatarUrl}" style="width: 100%; height: 100%; object-fit: cover;" alt="${fullName}" />
+            ` : `
+              <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; color: #9CA3AF; font-size: 1.8mm; font-weight: bold;">
+                <svg viewBox="0 0 24 24" style="width: 6mm; height: 6mm; fill: #9CA3AF;">
+                  <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                </svg>
+                <span>PHOTO</span>
+              </div>
+            `}
+          </div>` : ''}
+
+          <!-- Bio & Credentials -->
+          <div style="flex: 1; min-width: 0; overflow: hidden;">
+            <h3 style="margin: 0; font-size: 3.2mm; font-weight: 900; color: #111827; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+              ${fullName}
+            </h3>
+            <p style="margin: 0.4mm 0 0 0; font-size: 2.4mm; font-weight: 900; color: ${primaryColor}; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+              ${designation}
+            </p>
+            <p style="margin: 0.4mm 0 0 0; font-size: 2.1mm; font-weight: bold; font-family: monospace; color: #374151;">
+              ID: ${uniqueId}
+            </p>
+            ${front.showJurisdiction ? `
+              <p style="margin: 0.4mm 0 0 0; font-size: 1.9mm; font-weight: 600; color: #6B7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                ${organizationName || jurisdictionName || 'LalBindu Bangladesh'}
+              </p>
+            ` : ''}
+            ${front.showDonations ? `
+              <p style="margin: 0.4mm 0 0 0; font-size: 1.9mm; font-weight: bold; color: #374151;">
+                Total Donations: ${donationCount !== undefined ? donationCount : 5}
+              </p>
+            ` : ''}
+            ${front.showValidity ? `
+              <p style="margin: 0.3mm 0 0 0; font-size: 1.7mm; font-weight: 500; color: #9CA3AF;">
+                Valid Until: ${validUntil || '31 Dec 2026'}
+              </p>
+            ` : ''}
+          </div>
+
+          <!-- Blood Group Badge for Donors -->
+          ${front.showBloodGroup ? `
+            <div style="
+              flex-shrink: 0;
+              width: 8.5mm;
+              height: 8.5mm;
+              border-radius: 50%;
+              background: linear-gradient(135deg, #C8102E, #9B0D23);
+              color: #FFFFFF;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              border: 0.4mm solid #FFFFFF;
+              box-shadow: 0 0.5mm 1mm rgba(0,0,0,0.2);
+              z-index: 20;
+            ">
+              <svg viewBox="0 0 24 24" style="width: 2.5mm; height: 2.5mm; fill: #FFFFFF;">
+                <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
+              </svg>
+              <span style="font-size: 2.4mm; font-weight: 900; line-height: 1;">${bloodGroup || 'O+'}</span>
+            </div>
+          ` : ''}
+        </div>
+
+        <!-- Architectural Landmark Graphic Watermark (Bottom-Right) -->
+        ${landmarkSvg ? `
+          <div style="
+            position: absolute;
+            right: 0;
+            bottom: 1.5mm;
+            width: 38mm;
+            height: 25mm;
+            pointer-events: none;
+            z-index: 10;
+            opacity: 0.85;
+            display: flex;
+            align-items: flex-end;
+            justify-content: flex-end;
+          ">
+            ${landmarkSvg}
+          </div>
+        ` : ''}
+
+        <!-- Bottom Sweeping Brand Wave Ribbon -->
+        <div style="
+          position: absolute;
+          bottom: -0.2mm;
+          left: -0.5mm;
+          right: -0.5mm;
+          height: 7.5mm;
+          pointer-events: none;
+          z-index: 12;
+        ">
+          <svg viewBox="0 0 500 70" preserveAspectRatio="none" style="width: 100%; height: 100%; display: block;">
+            <path d="M0,35 C150,60 320,15 500,40 L500,70 L0,70 Z" fill="${primaryColor}" />
+            <path d="M0,45 C180,68 350,28 500,52 L500,70 L0,70 Z" fill="${secondaryColor}" opacity="0.85" />
+          </svg>
+        </div>
+      </div>
+    `;
+
+    // Back Card Vector HTML (Physical standard CR80: 85.6mm × 54.0mm)
+    const backCardHtml = `
+      <div class="cr80-card cr80-back" style="
+        width: 85.6mm;
+        height: 54.0mm;
+        border-radius: 3.18mm;
+        position: relative;
+        overflow: hidden;
+        background: linear-gradient(135deg, #FCFDFE 0%, #FFFFFF 60%, #F5F8FA 100%);
+        border: 0.3mm solid #D1D5DB;
+        box-shadow: 0 1mm 3mm rgba(0,0,0,0.12);
+        box-sizing: border-box;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      ">
+        <!-- Top Centered LalBindu Logo -->
+        <div style="
+          position: absolute;
+          top: 2.2mm;
+          left: 0;
+          right: 0;
+          display: flex;
+          justify-content: center;
+          z-index: 20;
+        ">
+          <img src="/branding/lalbindu-logo.png" style="height: 5.5mm; width: auto; object-fit: contain;" alt="LalBindu" />
+        </div>
+
+        <!-- Left-Center Verification QR Code Block -->
+        <div style="
+          position: absolute;
+          top: 9mm;
+          left: 7mm;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          z-index: 20;
+          width: 36mm;
+        ">
+          <!-- QR Container -->
+          <div style="
+            padding: 0.8mm;
+            background: #FFFFFF;
+            border-radius: 1.5mm;
+            box-shadow: 0 0.5mm 1mm rgba(0,0,0,0.1);
+            border: 0.2mm solid #E5E7EB;
+          ">
+            <img src="${activeQr}" style="width: 17mm; height: 17mm; display: block;" alt="Verification QR" />
+          </div>
+
+          <!-- "SCAN TO VERIFY" Pill -->
+          <div style="
+            margin-top: 1.2mm;
+            padding: 0.4mm 3mm;
+            border-radius: 2mm;
+            background: #171717;
+            color: #FFFFFF;
+            font-size: 1.8mm;
+            font-weight: 900;
+            letter-spacing: 0.2mm;
+            text-transform: uppercase;
+            box-shadow: 0 0.3mm 0.8mm rgba(0,0,0,0.15);
+          ">
+            SCAN TO VERIFY
+          </div>
+
+          <!-- Verification URL -->
+          <p style="
+            margin: 0.8mm 0 0 0;
+            font-size: 1.8mm;
+            font-family: monospace;
+            font-weight: bold;
+            color: #1F2937;
+            text-align: center;
+            line-height: 1.1;
+            word-break: break-all;
+          ">
+            https://lalbindu.bd/verify/${uniqueId}
+          </p>
+
+          <!-- Issue & Valid -->
+          <p style="
+            margin: 0.4mm 0 0 0;
+            font-size: 1.6mm;
+            font-weight: 600;
+            color: #6B7280;
+            text-align: center;
+          ">
+            Issued: ${issueDate} | Valid: Active
+          </p>
+        </div>
+
+        <!-- High-Clarity 8-Division Bangladesh Map Vector Watermark (Right Side) -->
+        <div style="
+          position: absolute;
+          right: 2.5mm;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 34mm;
+          height: 42mm;
+          pointer-events: none;
+          opacity: 0.85;
+          z-index: 10;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        ">
+          ${bdMapSvg}
+        </div>
+
+        <!-- Bottom Slogan Ribbon -->
+        <div style="
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          background-color: ${primaryColor};
+          color: #FFFFFF;
+          padding: 1.1mm 2mm;
+          text-align: center;
+          z-index: 20;
+          box-shadow: 0 -0.3mm 0.8mm rgba(0,0,0,0.1);
+        ">
+          <p style="
+            margin: 0;
+            font-size: 2.1mm;
+            font-weight: bold;
+            letter-spacing: 0.1mm;
+          ">
+            Together for a Blood-Safe Bangladesh ❤️
+          </p>
+        </div>
+      </div>
+    `;
 
     const printDocHtml = `<!DOCTYPE html>
 <html lang="en">
@@ -591,13 +997,7 @@ export const CR80IDCard: React.FC<CR80IDCardProps> = ({
       border: 1.5px dashed #9ca3af;
       border-radius: 4.5mm;
       background: #ffffff;
-    }
-    .card-img {
-      width: 85.6mm;
-      height: 54.0mm;
-      display: block;
-      border-radius: 3.18mm;
-      box-shadow: 0 1mm 3mm rgba(0,0,0,0.12);
+      display: inline-block;
     }
     .meta-grid {
       margin-top: 25px;
@@ -676,14 +1076,14 @@ export const CR80IDCard: React.FC<CR80IDCardProps> = ({
       <div class="card-block">
         <div class="card-label">Front Side (85.6 × 54.0 mm)</div>
         <div class="card-cut-guide">
-          <img class="card-img" src="${frontImg}" alt="Front Card" />
+          ${frontCardHtml}
         </div>
       </div>
 
       <div class="card-block">
         <div class="card-label">Back Side (85.6 × 54.0 mm)</div>
         <div class="card-cut-guide">
-          <img class="card-img" src="${backImg}" alt="Back Card" />
+          ${backCardHtml}
         </div>
       </div>
     </div>

@@ -427,40 +427,306 @@ export const BangladeshMapSVG: React.FC<{ color?: string; className?: string }> 
 
 // Generates complete standalone SVG markup for Bangladesh map
 export function getBangladeshMapSvgString(color = '#C8102E'): string {
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="659" height="929" viewBox="170 35 659 929" fill="none">
-    <path id="div-BDA" d="${BD_DIVISION_PATHS.barisal}" fill="${color}" fill-opacity="0.16" stroke="${color}" stroke-width="1.2" stroke-opacity="0.75" stroke-linejoin="round" stroke-linecap="round" />
-    <path id="div-BDB" d="${BD_DIVISION_PATHS.chittagong}" fill="${color}" fill-opacity="0.16" stroke="${color}" stroke-width="1.2" stroke-opacity="0.75" stroke-linejoin="round" stroke-linecap="round" />
-    <path id="div-BDC" d="${BD_DIVISION_PATHS.dhaka}" fill="${color}" fill-opacity="0.16" stroke="${color}" stroke-width="1.2" stroke-opacity="0.75" stroke-linejoin="round" stroke-linecap="round" />
-    <path id="div-BDD" d="${BD_DIVISION_PATHS.khulna}" fill="${color}" fill-opacity="0.16" stroke="${color}" stroke-width="1.2" stroke-opacity="0.75" stroke-linejoin="round" stroke-linecap="round" />
-    <path id="div-BDH" d="${BD_DIVISION_PATHS.mymensingh}" fill="${color}" fill-opacity="0.16" stroke="${color}" stroke-width="1.2" stroke-opacity="0.75" stroke-linejoin="round" stroke-linecap="round" />
-    <path id="div-BDE" d="${BD_DIVISION_PATHS.rajshahi}" fill="${color}" fill-opacity="0.16" stroke="${color}" stroke-width="1.2" stroke-opacity="0.75" stroke-linejoin="round" stroke-linecap="round" />
-    <path id="div-BDF" d="${BD_DIVISION_PATHS.rangpur}" fill="${color}" fill-opacity="0.16" stroke="${color}" stroke-width="1.2" stroke-opacity="0.75" stroke-linejoin="round" stroke-linecap="round" />
-    <path id="div-BDG" d="${BD_DIVISION_PATHS.sylhet}" fill="${color}" fill-opacity="0.16" stroke="${color}" stroke-width="1.2" stroke-opacity="0.75" stroke-linejoin="round" stroke-linecap="round" />
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="170 35 659 929" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" fill="none">
+    <path id="div-BDA" d="${BD_DIVISION_PATHS.barisal}" fill="${color}" fill-opacity="0.22" stroke="${color}" stroke-width="1.6" stroke-opacity="0.85" stroke-linejoin="round" stroke-linecap="round" />
+    <path id="div-BDB" d="${BD_DIVISION_PATHS.chittagong}" fill="${color}" fill-opacity="0.22" stroke="${color}" stroke-width="1.6" stroke-opacity="0.85" stroke-linejoin="round" stroke-linecap="round" />
+    <path id="div-BDC" d="${BD_DIVISION_PATHS.dhaka}" fill="${color}" fill-opacity="0.22" stroke="${color}" stroke-width="1.6" stroke-opacity="0.85" stroke-linejoin="round" stroke-linecap="round" />
+    <path id="div-BDD" d="${BD_DIVISION_PATHS.khulna}" fill="${color}" fill-opacity="0.22" stroke="${color}" stroke-width="1.6" stroke-opacity="0.85" stroke-linejoin="round" stroke-linecap="round" />
+    <path id="div-BDH" d="${BD_DIVISION_PATHS.mymensingh}" fill="${color}" fill-opacity="0.22" stroke="${color}" stroke-width="1.6" stroke-opacity="0.85" stroke-linejoin="round" stroke-linecap="round" />
+    <path id="div-BDE" d="${BD_DIVISION_PATHS.rajshahi}" fill="${color}" fill-opacity="0.22" stroke="${color}" stroke-width="1.6" stroke-opacity="0.85" stroke-linejoin="round" stroke-linecap="round" />
+    <path id="div-BDF" d="${BD_DIVISION_PATHS.rangpur}" fill="${color}" fill-opacity="0.22" stroke="${color}" stroke-width="1.6" stroke-opacity="0.85" stroke-linejoin="round" stroke-linecap="round" />
+    <path id="div-BDG" d="${BD_DIVISION_PATHS.sylhet}" fill="${color}" fill-opacity="0.22" stroke="${color}" stroke-width="1.6" stroke-opacity="0.85" stroke-linejoin="round" stroke-linecap="round" />
     <g transform="translate(538, 510)">
-      <circle cx="0" cy="0" r="14" fill="#FFFFFF" stroke="${color}" stroke-width="3" />
+      <circle cx="0" cy="0" r="14" fill="#FFFFFF" stroke="${color}" stroke-width="3.5" />
       <circle cx="0" cy="0" r="7" fill="${color}" />
     </g>
-    <circle cx="370" cy="210" r="5" fill="${color}" fill-opacity="0.8" />
-    <circle cx="310" cy="410" r="5" fill="${color}" fill-opacity="0.8" />
-    <circle cx="535" cy="360" r="5" fill="${color}" fill-opacity="0.8" />
-    <circle cx="715" cy="340" r="5" fill="${color}" fill-opacity="0.8" />
-    <circle cx="380" cy="680" r="5" fill="${color}" fill-opacity="0.8" />
-    <circle cx="510" cy="720" r="5" fill="${color}" fill-opacity="0.8" />
-    <circle cx="700" cy="720" r="5" fill="${color}" fill-opacity="0.8" />
-    <text x="805" y="500" fill="${color}" fill-opacity="0.45" font-size="18" font-weight="900" letter-spacing="6" transform="rotate(90 805 500)" font-family="sans-serif">BANGLADESH</text>
+    <circle cx="370" cy="210" r="5" fill="${color}" fill-opacity="0.85" />
+    <circle cx="310" cy="410" r="5" fill="${color}" fill-opacity="0.85" />
+    <circle cx="535" cy="360" r="5" fill="${color}" fill-opacity="0.85" />
+    <circle cx="715" cy="340" r="5" fill="${color}" fill-opacity="0.85" />
+    <circle cx="380" cy="680" r="5" fill="${color}" fill-opacity="0.85" />
+    <circle cx="510" cy="720" r="5" fill="${color}" fill-opacity="0.85" />
+    <circle cx="700" cy="720" r="5" fill="${color}" fill-opacity="0.85" />
+    <text x="805" y="500" fill="${color}" fill-opacity="0.50" font-size="18" font-weight="900" letter-spacing="6" transform="rotate(90 805 500)" font-family="sans-serif">BANGLADESH</text>
   </svg>`;
+}
+
+// Standalone SVG markup generator for CR80 front side architectural landmark watermark
+export function getLandmarkSvgString(type: string, primaryColor = '#580F1A'): string {
+  switch (type) {
+    case 'smriti_soudho':
+      return `<svg viewBox="0 0 160 130" width="100%" height="100%" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="smritiGradPrint" x1="80" y1="5" x2="80" y2="125" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stop-color="${primaryColor}" stop-opacity="0.85" />
+        <stop offset="100%" stop-color="${primaryColor}" stop-opacity="0.25" />
+      </linearGradient>
+    </defs>
+    <path d="M10 125 L150 125 L145 120 L15 120 Z" fill="${primaryColor}" fill-opacity="0.4" />
+    <path d="M20 120 L140 120 L135 116 L25 116 Z" fill="${primaryColor}" fill-opacity="0.5" />
+    <path d="M30 116 L130 116 L125 112 L35 112 Z" fill="${primaryColor}" fill-opacity="0.6" />
+    <polygon points="80,45 25,115 42,115" fill="${primaryColor}" fill-opacity="0.22" />
+    <polygon points="80,45 135,115 118,115" fill="${primaryColor}" fill-opacity="0.26" />
+    <polygon points="80,36 38,115 52,115" fill="${primaryColor}" fill-opacity="0.30" />
+    <polygon points="80,36 122,115 108,115" fill="${primaryColor}" fill-opacity="0.35" />
+    <polygon points="80,28 48,115 60,115" fill="${primaryColor}" fill-opacity="0.40" />
+    <polygon points="80,28 112,115 100,115" fill="${primaryColor}" fill-opacity="0.45" />
+    <polygon points="80,20 56,115 67,115" fill="${primaryColor}" fill-opacity="0.50" />
+    <polygon points="80,20 104,115 93,115" fill="${primaryColor}" fill-opacity="0.55" />
+    <polygon points="80,14 63,115 72,115" fill="${primaryColor}" fill-opacity="0.60" />
+    <polygon points="80,14 97,115 88,115" fill="${primaryColor}" fill-opacity="0.65" />
+    <polygon points="80,8 69,115 76,115" fill="${primaryColor}" fill-opacity="0.75" />
+    <polygon points="80,8 91,115 84,115" fill="${primaryColor}" fill-opacity="0.80" />
+    <polygon points="80,2 75,115 85,115" fill="url(#smritiGradPrint)" />
+    <line x1="80" y1="2" x2="80" y2="115" stroke="#FFFFFF" stroke-width="1" stroke-opacity="0.7" />
+  </svg>`;
+    case 'sangsad_bhaban':
+      return `<svg viewBox="0 0 170 120" width="100%" height="100%" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M5 115 C50 112 120 118 165 115" stroke="${primaryColor}" stroke-width="1.5" stroke-opacity="0.4" />
+    <path d="M15 118 C60 115 110 120 155 118" stroke="${primaryColor}" stroke-width="1" stroke-opacity="0.3" />
+    <rect x="55" y="30" width="60" height="85" rx="3" fill="${primaryColor}" fill-opacity="0.45" />
+    <rect x="62" y="22" width="46" height="15" rx="2" fill="${primaryColor}" fill-opacity="0.6" />
+    <polygon points="85,10 65,22 105,22" fill="${primaryColor}" fill-opacity="0.75" />
+    <circle cx="85" cy="52" r="13" fill="#FFFFFF" fill-opacity="0.9" />
+    <circle cx="85" cy="52" r="9" fill="${primaryColor}" fill-opacity="0.5" />
+    <polygon points="85,74 72,96 98,96" fill="#FFFFFF" fill-opacity="0.95" />
+    <rect x="81" y="96" width="8" height="19" fill="#FFFFFF" fill-opacity="0.95" />
+    <rect x="22" y="45" width="38" height="70" rx="3" fill="${primaryColor}" fill-opacity="0.35" />
+    <circle cx="41" cy="62" r="8" fill="#FFFFFF" fill-opacity="0.85" />
+    <rect x="36" y="80" width="10" height="35" rx="2" fill="#FFFFFF" fill-opacity="0.9" />
+    <rect x="110" y="45" width="38" height="70" rx="3" fill="${primaryColor}" fill-opacity="0.35" />
+    <circle cx="129" cy="62" r="8" fill="#FFFFFF" fill-opacity="0.85" />
+    <rect x="124" y="80" width="10" height="35" rx="2" fill="#FFFFFF" fill-opacity="0.9" />
+    <rect x="8" y="60" width="18" height="55" rx="2" fill="${primaryColor}" fill-opacity="0.25" />
+    <rect x="144" y="60" width="18" height="55" rx="2" fill="${primaryColor}" fill-opacity="0.25" />
+  </svg>`;
+    case 'ahsan_manzil':
+      return `<svg viewBox="0 0 170 120" width="100%" height="100%" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="10" y="100" width="150" height="16" rx="2" fill="${primaryColor}" fill-opacity="0.4" />
+    <polygon points="85,82 55,116 115,116" fill="${primaryColor}" fill-opacity="0.6" />
+    <line x1="60" y1="112" x2="110" y2="112" stroke="#FFFFFF" stroke-width="1" stroke-opacity="0.7" />
+    <line x1="65" y1="106" x2="105" y2="106" stroke="#FFFFFF" stroke-width="1" stroke-opacity="0.7" />
+    <line x1="70" y1="100" x2="100" y2="100" stroke="#FFFFFF" stroke-width="1" stroke-opacity="0.7" />
+    <line x1="75" y1="94" x2="95" y2="94" stroke="#FFFFFF" stroke-width="1" stroke-opacity="0.7" />
+    <rect x="18" y="55" width="134" height="46" rx="2" fill="${primaryColor}" fill-opacity="0.35" />
+    <rect x="70" y="32" width="30" height="24" fill="${primaryColor}" fill-opacity="0.5" />
+    <path d="M68 32 Q85 8 102 32 Z" fill="${primaryColor}" fill-opacity="0.8" />
+    <line x1="85" y1="8" x2="85" y2="2" stroke="${primaryColor}" stroke-width="1.5" />
+    <circle cx="85" cy="2" r="1.5" fill="${primaryColor}" />
+    <path d="M26 80 Q32 70 38 80 L38 98 L26 98 Z" fill="#FFFFFF" fill-opacity="0.9" />
+    <path d="M43 80 Q49 70 55 80 L55 98 L43 98 Z" fill="#FFFFFF" fill-opacity="0.9" />
+    <path d="M26 62 Q32 56 38 62 L38 74 L26 74 Z" fill="#FFFFFF" fill-opacity="0.9" />
+    <path d="M43 62 Q49 56 55 62 L55 74 L43 74 Z" fill="#FFFFFF" fill-opacity="0.9" />
+    <path d="M115 80 Q121 70 127 80 L127 98 L115 98 Z" fill="#FFFFFF" fill-opacity="0.9" />
+    <path d="M132 80 Q138 70 144 80 L144 98 L132 98 Z" fill="#FFFFFF" fill-opacity="0.9" />
+    <path d="M115 62 Q121 56 127 62 L127 74 L115 74 Z" fill="#FFFFFF" fill-opacity="0.9" />
+    <path d="M132 62 Q138 56 144 62 L144 74 L132 74 Z" fill="#FFFFFF" fill-opacity="0.9" />
+    <rect x="65" y="55" width="40" height="44" fill="${primaryColor}" fill-opacity="0.5" />
+    <path d="M72 82 Q85 70 98 82 L98 100 L72 100 Z" fill="#FFFFFF" fill-opacity="0.95" />
+  </svg>`;
+    case 'shat_gombuj':
+      return `<svg viewBox="0 0 170 120" width="100%" height="100%" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="15" y="55" width="140" height="58" rx="2" fill="${primaryColor}" fill-opacity="0.35" />
+    <path d="M10 113 L17 48 L27 48 L24 113 Z" fill="${primaryColor}" fill-opacity="0.75" />
+    <path d="M146 113 L143 48 L153 48 L160 113 Z" fill="${primaryColor}" fill-opacity="0.75" />
+    <circle cx="22" cy="45" r="5" fill="${primaryColor}" fill-opacity="0.85" />
+    <circle cx="148" cy="45" r="5" fill="${primaryColor}" fill-opacity="0.85" />
+    <path d="M30 55 Q42 38 54 55 Z" fill="${primaryColor}" fill-opacity="0.7" />
+    <path d="M52 55 Q64 35 76 55 Z" fill="${primaryColor}" fill-opacity="0.8" />
+    <path d="M74 55 Q85 30 96 55 Z" fill="${primaryColor}" fill-opacity="0.9" />
+    <path d="M94 55 Q106 35 118 55 Z" fill="${primaryColor}" fill-opacity="0.8" />
+    <path d="M116 55 Q128 38 140 55 Z" fill="${primaryColor}" fill-opacity="0.7" />
+    <path d="M32 102 L32 82 Q42 70 52 82 L52 102 Z" fill="#FFFFFF" fill-opacity="0.9" />
+    <path d="M58 102 L58 82 Q68 68 78 82 L78 102 Z" fill="#FFFFFF" fill-opacity="0.9" />
+    <path d="M84 102 L84 78 Q96 64 108 78 L108 102 Z" fill="#FFFFFF" fill-opacity="0.95" />
+    <path d="M114 102 L114 82 Q124 70 134 82 L134 102 Z" fill="#FFFFFF" fill-opacity="0.9" />
+  </svg>`;
+    case 'thana_skyline':
+      return `<svg viewBox="0 0 170 120" width="100%" height="100%" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M5 110 C45 95 125 95 165 110" stroke="${primaryColor}" stroke-width="3" stroke-opacity="0.6" />
+    <path d="M5 118 C45 105 125 105 165 118" stroke="${primaryColor}" stroke-width="2" stroke-opacity="0.4" />
+    <line x1="50" y1="98" x2="50" y2="120" stroke="${primaryColor}" stroke-width="2" stroke-opacity="0.5" />
+    <line x1="85" y1="95" x2="85" y2="120" stroke="${primaryColor}" stroke-width="2.5" stroke-opacity="0.6" />
+    <line x1="120" y1="98" x2="120" y2="120" stroke="${primaryColor}" stroke-width="2" stroke-opacity="0.5" />
+    <rect x="25" y="45" width="22" height="60" rx="2" fill="${primaryColor}" fill-opacity="0.3" />
+    <rect x="52" y="30" width="28" height="75" rx="2" fill="${primaryColor}" fill-opacity="0.45" />
+    <polygon points="66,15 52,30 80,30" fill="${primaryColor}" fill-opacity="0.6" />
+    <rect x="85" y="20" width="32" height="85" rx="2" fill="${primaryColor}" fill-opacity="0.55" />
+    <line x1="101" y1="20" x2="101" y2="6" stroke="${primaryColor}" stroke-width="2" stroke-opacity="0.7" />
+    <rect x="122" y="50" width="24" height="55" rx="2" fill="${primaryColor}" fill-opacity="0.35" />
+    <circle cx="101" cy="40" r="4" fill="#FFFFFF" fill-opacity="0.85" />
+    <circle cx="101" cy="55" r="4" fill="#FFFFFF" fill-opacity="0.85" />
+    <rect x="58" y="42" width="5" height="8" rx="1" fill="#FFFFFF" fill-opacity="0.8" />
+    <rect x="68" y="42" width="5" height="8" rx="1" fill="#FFFFFF" fill-opacity="0.8" />
+    <rect x="58" y="58" width="5" height="8" rx="1" fill="#FFFFFF" fill-opacity="0.8" />
+    <rect x="68" y="58" width="5" height="8" rx="1" fill="#FFFFFF" fill-opacity="0.8" />
+  </svg>`;
+    case 'shaheed_minar':
+      return `<svg viewBox="0 0 170 120" width="100%" height="100%" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="20" y="105" width="130" height="12" rx="2" fill="${primaryColor}" fill-opacity="0.4" />
+    <circle cx="85" cy="55" r="28" fill="#C8102E" fill-opacity="0.75" />
+    <path d="M78 105 L78 28 C78 20 92 20 92 28 L92 105 Z" fill="${primaryColor}" fill-opacity="0.75" />
+    <rect x="82" y="32" width="6" height="70" fill="#FFFFFF" fill-opacity="0.85" />
+    <path d="M52 105 L52 48 C52 42 64 42 64 48 L64 105 Z" fill="${primaryColor}" fill-opacity="0.55" />
+    <rect x="56" y="52" width="4" height="50" fill="#FFFFFF" fill-opacity="0.8" />
+    <path d="M30 105 L30 65 C30 60 40 60 40 65 L40 105 Z" fill="${primaryColor}" fill-opacity="0.4" />
+    <path d="M106 105 L106 48 C106 42 118 42 118 48 L118 105 Z" fill="${primaryColor}" fill-opacity="0.55" />
+    <rect x="110" y="52" width="4" height="50" fill="#FFFFFF" fill-opacity="0.8" />
+    <path d="M130 105 L130 65 C130 60 140 60 140 65 L140 105 Z" fill="${primaryColor}" fill-opacity="0.4" />
+  </svg>`;
+    case 'volunteers':
+      return `<svg viewBox="0 0 170 100" width="100%" height="100%" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <g fill="${primaryColor}" fill-opacity="0.55">
+      <circle cx="28" cy="40" r="7" />
+      <path d="M18 75 C18 58 38 58 38 75 L36 95 L20 95 Z" />
+      <circle cx="55" cy="32" r="8" />
+      <path d="M43 72 C43 52 67 52 67 72 L64 95 L46 95 Z" />
+      <circle cx="85" cy="24" r="9" fill-opacity="0.8" />
+      <path d="M71 68 C71 45 99 45 99 68 L95 95 L75 95 Z" fill-opacity="0.8" />
+      <circle cx="115" cy="32" r="8" />
+      <path d="M103 72 C103 52 127 52 127 72 L124 95 L106 95 Z" />
+      <circle cx="142" cy="40" r="7" />
+      <path d="M132 75 C132 58 152 58 152 75 L150 95 L134 95 Z" />
+      <path d="M32 60 Q55 68 75 58 Q95 68 115 58 Q135 68 142 60" stroke="${primaryColor}" stroke-width="3.5" stroke-opacity="0.6" fill="none" />
+    </g>
+  </svg>`;
+    case 'blood_drop':
+      return `<svg viewBox="0 0 140 120" width="100%" height="100%" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M70 12 C70 12 35 48 35 78 C35 98 50 112 70 112 C90 112 105 98 105 78 C105 48 70 12 70 12 Z" fill="${primaryColor}" fill-opacity="0.45" />
+    <path d="M70 45 C62 38 48 42 48 55 C48 70 70 85 70 85 C70 85 92 70 92 55 C92 42 78 38 70 45 Z" fill="#FFFFFF" fill-opacity="0.9" />
+    <path d="M70 48 C63 42 52 46 52 56 C52 68 70 80 70 80 C70 80 88 68 88 56 C88 46 77 42 70 48 Z" fill="${primaryColor}" fill-opacity="0.8" />
+  </svg>`;
+    case 'bd_map':
+      return getBangladeshMapSvgString(primaryColor);
+    case 'none':
+      return '';
+    default:
+      return getLandmarkSvgString('smriti_soudho', primaryColor);
+  }
+}
+
+// Standalone HTML/SVG generator for Role Badge Emblem
+export function getRoleBadgeHtml(roleId: string, badgeIcon?: string, primaryColor = '#580F1A'): string {
+  const effectiveIcon = badgeIcon || (
+    roleId === 'super_admin' ? 'gold_star' :
+    roleId === 'division_admin' ? 'blue_star' :
+    roleId === 'district_admin' ? 'fort' :
+    roleId === 'upazila_admin' ? 'arch' :
+    roleId === 'thana_admin' ? 'building' :
+    roleId === 'union_admin' ? 'purple_star' :
+    roleId === 'volunteer' ? 'user' :
+    'community'
+  );
+
+  if (effectiveIcon === 'gold_star') {
+    return `<div style="width: 7.5mm; height: 7.5mm; border-radius: 50%; background: linear-gradient(135deg, #F59E0B, #FCD34D, #FEF3C7); display: flex; align-items: center; justify-content: center; border: 0.4mm solid #FDE68A; position: relative; box-shadow: 0 0.5mm 1mm rgba(0,0,0,0.15);">
+      <svg viewBox="0 0 24 24" style="width: 4.8mm; height: 4.8mm; fill: #B45309;">
+        <polygon points="12,2 15,8.5 22,9.3 17,14 18.5,21 12,17.3 5.5,21 7,14 2,9.3 9,8.5" />
+      </svg>
+      <div style="position: absolute; bottom: -1.4mm; display: flex; gap: 0.3mm;">
+        <div style="width: 1.2mm; height: 1.8mm; background: #D97706; transform: rotate(-12deg); border-radius: 0 0 0.4mm 0.4mm;"></div>
+        <div style="width: 1.2mm; height: 1.8mm; background: #D97706; transform: rotate(12deg); border-radius: 0 0 0.4mm 0.4mm;"></div>
+      </div>
+    </div>`;
+  }
+
+  if (effectiveIcon === 'blue_star' || effectiveIcon === 'star') {
+    return `<div style="width: 7.5mm; height: 7.5mm; border-radius: 50%; background: linear-gradient(135deg, #2563EB, #3B82F6, #BAE6FD); display: flex; align-items: center; justify-content: center; border: 0.4mm solid #BFDBFE; position: relative; box-shadow: 0 0.5mm 1mm rgba(0,0,0,0.15);">
+      <svg viewBox="0 0 24 24" style="width: 4.8mm; height: 4.8mm; fill: #FFFFFF;">
+        <polygon points="12,2 15,8.5 22,9.3 17,14 18.5,21 12,17.3 5.5,21 7,14 2,9.3 9,8.5" />
+      </svg>
+      <div style="position: absolute; bottom: -1.4mm; display: flex; gap: 0.3mm;">
+        <div style="width: 1.2mm; height: 1.8mm; background: #1D4ED8; transform: rotate(-12deg); border-radius: 0 0 0.4mm 0.4mm;"></div>
+        <div style="width: 1.2mm; height: 1.8mm; background: #1D4ED8; transform: rotate(12deg); border-radius: 0 0 0.4mm 0.4mm;"></div>
+      </div>
+    </div>`;
+  }
+
+  if (effectiveIcon === 'fort') {
+    return `<div style="width: 7.5mm; height: 7.5mm; border-radius: 50%; background: linear-gradient(135deg, #059669, #34D399); display: flex; align-items: center; justify-content: center; border: 0.4mm solid #A7F3D0; box-shadow: 0 0.5mm 1mm rgba(0,0,0,0.15);">
+      <svg viewBox="0 0 24 24" style="width: 4.8mm; height: 4.8mm; fill: #FFFFFF;">
+        <path d="M2 20h20v-4H2v4zm2-6h2v-2H4v2zm4 0h2v-2H8v2zm4 0h2v-2h-2v2zm4 0h2v-2h-2v2zm4 0h2v-2h-2v2zM3 10h18l-9-7-9 7z" />
+      </svg>
+    </div>`;
+  }
+
+  if (effectiveIcon === 'arch' || effectiveIcon === 'mosque') {
+    return `<div style="width: 7.5mm; height: 7.5mm; border-radius: 50%; background: linear-gradient(135deg, #EA580C, #FBBF24); display: flex; align-items: center; justify-content: center; border: 0.4mm solid #FED7AA; box-shadow: 0 0.5mm 1mm rgba(0,0,0,0.15);">
+      <svg viewBox="0 0 24 24" style="width: 4.8mm; height: 4.8mm; fill: #FFFFFF;">
+        <path d="M12 2C8 6 4 10 4 14v6h16v-6c0-4-4-8-8-12zm0 16c-2.2 0-4-1.8-4-4 0-1.5 1-3 4-5 3 2 4 3.5 4 5 0 2.2-1.8 4-4 4z" />
+      </svg>
+    </div>`;
+  }
+
+  if (effectiveIcon === 'building') {
+    return `<div style="width: 7.5mm; height: 7.5mm; border-radius: 50%; background: linear-gradient(135deg, #0D9488, #22D3EE); display: flex; align-items: center; justify-content: center; border: 0.4mm solid #99F6E4; box-shadow: 0 0.5mm 1mm rgba(0,0,0,0.15);">
+      <svg viewBox="0 0 24 24" style="width: 4.8mm; height: 4.8mm; fill: #FFFFFF;">
+        <path d="M19 2H5c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-7 2h2v2h-2V4zm0 4h2v2h-2V8zm0 4h2v2h-2v-2zm-4-8h2v2H8V4zm0 4h2v2H8V8zm0 4h2v2H8v-2zm-4-8h2v2H4V4zm0 4h2v2H4V8zm0 4h2v2H4v-2zm12 8H4v-2h12v2zm4 0h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V8h2v2zm0-4h-2V4h2v2z" />
+      </svg>
+    </div>`;
+  }
+
+  if (effectiveIcon === 'purple_star') {
+    return `<div style="width: 7.5mm; height: 7.5mm; border-radius: 50%; background: linear-gradient(135deg, #7E22CE, #C084FC); display: flex; align-items: center; justify-content: center; border: 0.4mm solid #E9D5FF; box-shadow: 0 0.5mm 1mm rgba(0,0,0,0.15);">
+      <svg viewBox="0 0 24 24" style="width: 4.8mm; height: 4.8mm; fill: #FFFFFF;">
+        <polygon points="12,2 15,8.5 22,9.3 17,14 18.5,21 12,17.3 5.5,21 7,14 2,9.3 9,8.5" />
+      </svg>
+    </div>`;
+  }
+
+  if (effectiveIcon === 'user' || effectiveIcon === 'shield') {
+    return `<div style="width: 7.5mm; height: 7.5mm; border-radius: 50%; background: linear-gradient(135deg, #065F46, #059669); display: flex; align-items: center; justify-content: center; border: 0.4mm solid #6EE7B7; box-shadow: 0 0.5mm 1mm rgba(0,0,0,0.15);">
+      <svg viewBox="0 0 24 24" style="width: 4.8mm; height: 4.8mm; fill: #FFFFFF;">
+        <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z" />
+      </svg>
+    </div>`;
+  }
+
+  return `<div style="width: 7.5mm; height: 7.5mm; border-radius: 50%; background: linear-gradient(135deg, #059669, #2DD4BF); display: flex; align-items: center; justify-content: center; border: 0.4mm solid #A7F3D0; box-shadow: 0 0.5mm 1mm rgba(0,0,0,0.15);">
+    <svg viewBox="0 0 24 24" style="width: 4.8mm; height: 4.8mm; fill: #FFFFFF;">
+      <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+    </svg>
+  </div>`;
 }
 
 // Ultra high-clarity 300 DPI canvas rasterizer for CR80 ID Card back side
 export async function drawBangladeshMapOnCanvas(
   ctx: CanvasRenderingContext2D,
   color: string,
-  targetX = 570,
+  targetX = 580,
   targetY = 45,
-  targetW = 390,
-  targetH = 525
+  targetW = 380,
+  targetH = 520
 ): Promise<void> {
-  // Primary: Native Path2D rendering (100% synchronous, zero taint, vector crispness)
+  // Primary: Native high-clarity SVG Image rasterization (zero clipping, complete vector accuracy)
+  if (typeof window !== 'undefined') {
+    try {
+      const svgStr = getBangladeshMapSvgString(color);
+      const svgBlob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(svgBlob);
+      const img = new window.Image();
+      img.crossOrigin = 'anonymous';
+      img.src = url;
+      await new Promise((res) => {
+        img.onload = res;
+        img.onerror = res;
+        setTimeout(res, 500);
+      });
+      if (img.complete && img.naturalWidth > 0) {
+        ctx.save();
+        ctx.globalAlpha = 0.90;
+        ctx.drawImage(img, targetX, targetY, targetW, targetH);
+        ctx.restore();
+        URL.revokeObjectURL(url);
+        return;
+      }
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.warn('SVG image raster fallback to Path2D:', e);
+    }
+  }
+
+  // Fallback: Path2D rendering
   if (typeof window !== 'undefined' && typeof window.Path2D !== 'undefined') {
     ctx.save();
     const scale = Math.min(targetW / 659, targetH / 929);
@@ -472,10 +738,10 @@ export async function drawBangladeshMapOnCanvas(
     for (const d of paths) {
       const p = new window.Path2D(d);
       ctx.fillStyle = color;
-      ctx.globalAlpha = 0.18;
+      ctx.globalAlpha = 0.22;
       ctx.fill(p);
       ctx.strokeStyle = color;
-      ctx.globalAlpha = 0.75;
+      ctx.globalAlpha = 0.85;
       ctx.lineWidth = 2.4;
       ctx.stroke(p);
     }
@@ -506,7 +772,7 @@ export async function drawBangladeshMapOnCanvas(
       [700, 720]
     ];
     ctx.fillStyle = color;
-    ctx.globalAlpha = 0.8;
+    ctx.globalAlpha = 0.85;
     for (const [hx, hy] of hqPoints) {
       ctx.beginPath();
       ctx.arc(hx, hy, 6, 0, Math.PI * 2);
@@ -518,38 +784,13 @@ export async function drawBangladeshMapOnCanvas(
     ctx.translate(805, 500);
     ctx.rotate(Math.PI / 2);
     ctx.fillStyle = color;
-    ctx.globalAlpha = 0.45;
+    ctx.globalAlpha = 0.50;
     ctx.font = '900 18px "Inter", -apple-system, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('B A N G L A D E S H', 0, 0);
     ctx.restore();
 
     ctx.restore();
-    return;
-  }
-
-  // Fallback: draw via SVG Image
-  try {
-    const svgStr = getBangladeshMapSvgString(color);
-    const svgBlob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
-    const url = URL.createObjectURL(svgBlob);
-    const img = new window.Image();
-    img.crossOrigin = 'anonymous';
-    img.src = url;
-    await new Promise((res) => {
-      img.onload = res;
-      img.onerror = res;
-      setTimeout(res, 500);
-    });
-    if (img.complete && img.naturalWidth > 0) {
-      ctx.save();
-      ctx.globalAlpha = 0.90;
-      ctx.drawImage(img, targetX, targetY, targetW, targetH);
-      ctx.restore();
-    }
-    URL.revokeObjectURL(url);
-  } catch (e) {
-    console.error('Failed to draw BD map on canvas:', e);
   }
 }
 
