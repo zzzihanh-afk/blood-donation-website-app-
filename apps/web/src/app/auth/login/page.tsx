@@ -405,11 +405,16 @@ export default function LoginPage() {
             </div>
           )}
 
-          <div className="mt-6 pt-4 border-t border-gray-100 text-center text-xs text-gray-500">
-            Account registration is governed by Super Admin authority.{' '}
-            <Link href="/auth/register" className="font-bold text-brand-burgundy hover:underline">
-              Request or Provision Account
-            </Link>
+          <div className="mt-6 pt-4 border-t border-gray-100 text-center text-xs text-gray-500 space-y-1">
+            <p>
+              Want to donate blood and get your official digital ID card?{' '}
+              <Link href="/auth/register" className="font-bold text-brand-red hover:underline">
+                Create Donor Account (Public)
+              </Link>
+            </p>
+            <p className="text-[10px] text-gray-400">
+              * Note: Public registration creates Voluntary Donor accounts only. Administrative and Co-Admin roles are exclusively provisioned under Super Admin authority.
+            </p>
           </div>
 
         </div>

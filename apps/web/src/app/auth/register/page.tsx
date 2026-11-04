@@ -247,15 +247,23 @@ export default function RegisterPage() {
               priority
             />
           </Link>
+          {!isSuperAdminMode && (
+            <div>
+              <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-red-100 text-brand-red text-[11px] font-black mb-2 border border-red-200">
+                <Droplet className="w-3.5 h-3.5 fill-brand-red" />
+                <span>Public Portal • Voluntary Blood Donor Registration Only</span>
+              </span>
+            </div>
+          )}
           <h1 className="text-2xl font-black text-gray-900 tracking-tight">
             {isSuperAdminMode && adminMode === 'executive' 
               ? 'Executive Authority Provisioning' 
               : 'Register as a Voluntary Donor'}
           </h1>
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-gray-500 mt-1 max-w-md mx-auto">
             {isSuperAdminMode && adminMode === 'executive'
               ? 'Supreme Administrator Portal: Appoint Co-Admins and Regional Coordinators'
-              : 'Join thousands of lifesavers across Bangladesh. Receive your verified digital ID card.'}
+              : 'Join thousands of lifesavers across Bangladesh. Receive your verified digital ID card. Administrative accounts are strictly provisioned by Super Admin authority.'}
           </p>
         </div>
 

@@ -25,7 +25,8 @@ import {
   Smartphone, 
   CheckCircle2, 
   Search,
-  Sparkles
+  Sparkles,
+  UserPlus
 } from 'lucide-react';
 
 export default function HomePage() {
@@ -92,12 +93,30 @@ export default function HomePage() {
                   <span>{t.hero.requestBloodBtn}</span>
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </Link>
+
+                {/* Direct Public Option: Create Donor Account */}
+                <Link
+                  href="/auth/register"
+                  className="inline-flex items-center justify-center px-6 py-3.5 rounded-full bg-gradient-to-r from-brand-burgundy to-brand-red hover:from-[#400B13] hover:to-[#6a0b17] text-white font-bold text-sm shadow-lg shadow-brand-burgundy/25 hover:shadow-xl transition-all space-x-2 group"
+                  title={lang === 'bn' ? 'শুধুমাত্র রক্তদাতা অ্যাকাউন্ট তৈরি করুন' : 'Create Donor Account (Public Portal)'}
+                >
+                  <UserPlus className="w-4 h-4" />
+                  <span>{lang === 'bn' ? 'রক্তদাতা অ্যাকাউন্ট খুলুন' : 'Create Donor Account'}</span>
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </Link>
               </div>
 
-              {/* Slogan pill */}
-              <div className="pt-2 flex items-center space-x-2 text-xs font-semibold text-brand-green">
-                <ShieldCheck className="w-4 h-4" />
-                <span>{t.hero.slogan}</span>
+              {/* Slogan and Public Policy Notice */}
+              <div className="pt-2 flex flex-wrap items-center gap-3 text-xs font-semibold text-brand-green">
+                <div className="flex items-center space-x-2">
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>{t.hero.slogan}</span>
+                </div>
+                <span className="text-gray-300 hidden sm:inline">•</span>
+                <div className="flex items-center space-x-1.5 text-gray-500 font-medium">
+                  <span className="w-1.5 h-1.5 rounded-full bg-brand-green"></span>
+                  <span>{lang === 'bn' ? 'পাবলিক পোর্টালে শুধুমাত্র রক্তদাতা অ্যাকাউন্ট তৈরি প্রযোজ্য' : 'Public portal creates Voluntary Donor accounts only'}</span>
+                </div>
               </div>
 
             </div>

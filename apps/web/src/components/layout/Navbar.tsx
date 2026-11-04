@@ -25,6 +25,7 @@ import {
   KeyRound,
   Lock,
   Plus,
+  UserPlus,
   Megaphone,
   Calendar,
   Crown
@@ -189,6 +190,16 @@ export const Navbar: React.FC = () => {
               <Globe className="w-3.5 h-3.5 text-brand-green" />
               <span>{lang === 'bn' ? 'English' : 'বাংলা'}</span>
             </button>
+
+            {/* Public Option: Create Donor Account */}
+            <Link
+              href="/auth/register"
+              className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-brand-burgundy to-brand-red hover:from-[#400B13] hover:to-[#6a0b17] text-white text-xs font-black shadow-sm hover:shadow transition-all group shrink-0"
+              title={lang === 'bn' ? 'শুধুমাত্র রক্তদাতা অ্যাকাউন্ট তৈরি করুন (পাবলিক পোর্টাল)' : 'Create Donor Account (Public Portal)'}
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              <span>{lang === 'bn' ? 'রক্তদাতা অ্যাকাউন্ট' : 'Create Donor Account'}</span>
+            </Link>
 
             {/* Notification Bell & Dropdown */}
             <div className="relative" ref={notifRef}>
@@ -512,6 +523,16 @@ export const Navbar: React.FC = () => {
                         <CreditCard className="w-4 h-4 mr-2.5 text-brand-green" />
                         {t.nav.myIdCard}
                       </Link>
+
+                      {/* Public Option to Create Donor Account */}
+                      <Link
+                        href="/auth/register"
+                        onClick={() => setUserDropdownOpen(false)}
+                        className="flex items-center px-4 py-2 text-xs font-bold text-brand-red hover:bg-red-50 transition-colors"
+                      >
+                        <UserPlus className="w-4 h-4 mr-2.5 text-brand-red" />
+                        {lang === 'bn' ? 'রক্তদাতা অ্যাকাউন্ট তৈরি' : 'Create Donor Account'}
+                      </Link>
                     </>
                   )}
 
@@ -613,6 +634,19 @@ export const Navbar: React.FC = () => {
               </Link>
             )}
           </div>
+
+          {!isAdmin && (
+            <div className="pt-2">
+              <Link
+                href="/auth/register"
+                onClick={() => setMobileMenuOpen(false)}
+                className="w-full flex items-center justify-center space-x-2 py-2.5 px-3 rounded-xl bg-gradient-to-r from-brand-burgundy to-brand-red text-white text-xs font-black shadow-sm"
+              >
+                <UserPlus className="w-4 h-4" />
+                <span>{lang === 'bn' ? 'রক্তদাতা অ্যাকাউন্ট তৈরি করুন' : 'Create Donor Account (Public)'}</span>
+              </Link>
+            </div>
+          )}
         </div>
       )}
 
