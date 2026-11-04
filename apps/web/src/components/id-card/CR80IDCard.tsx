@@ -993,53 +993,17 @@ export const CR80IDCard: React.FC<CR80IDCardProps> = ({
     }
     .card-cut-guide {
       position: relative;
-      padding: 2.5mm;
-      border: 1.5px dashed #9ca3af;
-      border-radius: 4.5mm;
+      padding: 0;
+      border: 1px dashed #cbd5e1;
+      border-radius: 3.18mm;
       background: #ffffff;
       display: inline-block;
-    }
-    .meta-grid {
-      margin-top: 25px;
-      background: #f9fafb;
-      border: 1px solid #e5e7eb;
-      border-radius: 10px;
-      padding: 14px 18px;
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
-      font-size: 11px;
-    }
-    .meta-grid strong {
-      color: #111827;
-      display: block;
-      margin-bottom: 2px;
-    }
-    .meta-grid span {
-      color: #4b5563;
-      font-weight: 600;
-    }
-    .cut-instructions {
-      margin-top: 22px;
-      padding: 12px 16px;
-      background: #fef2f2;
-      border: 1px solid #fee2e2;
-      border-radius: 8px;
-      text-align: center;
-      font-size: 10.5px;
-      color: #991b1b;
-      line-height: 1.5;
-    }
-    .print-footer {
-      margin-top: 20px;
-      text-align: center;
-      font-size: 9px;
-      color: #6b7280;
     }
     @media print {
       body {
         background: #ffffff !important;
         padding: 0 !important;
+        margin: 0 !important;
       }
       .print-bar {
         display: none !important;
@@ -1049,6 +1013,15 @@ export const CR80IDCard: React.FC<CR80IDCardProps> = ({
         border: none !important;
         box-shadow: none !important;
         max-width: 100% !important;
+        margin: 0 auto !important;
+      }
+      .sheet-header,
+      .card-label {
+        display: none !important;
+      }
+      .cards-row {
+        margin: 35mm auto 0 auto !important;
+        gap: 12mm !important;
       }
     }
   </style>
@@ -1086,41 +1059,6 @@ export const CR80IDCard: React.FC<CR80IDCardProps> = ({
           ${backCardHtml}
         </div>
       </div>
-    </div>
-
-    <div class="meta-grid">
-      <div>
-        <strong>Cardholder Name</strong>
-        <span>${fullName} ${fullNameBn ? '(' + fullNameBn + ')' : ''}</span>
-      </div>
-      <div>
-        <strong>Role Designation</strong>
-        <span>${designation}</span>
-      </div>
-      <div>
-        <strong>Unique ID Number</strong>
-        <span style="font-family: monospace; font-weight: bold;">${uniqueId}</span>
-      </div>
-      <div>
-        <strong>Jurisdiction / Org</strong>
-        <span>${organizationName || jurisdictionName || 'LalBindu Bangladesh'}</span>
-      </div>
-      <div>
-        <strong>Issued & Status</strong>
-        <span>${issueDate} • Active Verified</span>
-      </div>
-      <div>
-        <strong>Validity Expiration</strong>
-        <span>${validUntil}</span>
-      </div>
-    </div>
-
-    <div class="cut-instructions">
-      ✂️ <strong>Printing & Cutting Guide:</strong> In your browser print dialog, select Destination <strong>"Save as PDF"</strong> (or Microsoft Print to PDF), set Scale to <strong>100% (Actual Size)</strong>, and enable <strong>"Background graphics"</strong>. Cut along the outer dashed lines for exact physical CR80 card dimensions (300+ GSM cardstock or PVC substrate recommended).
-    </div>
-
-    <div class="print-footer">
-      LalBindu Foundation Bangladesh • Verification Portal: ${targetVerifyUrl} • Every Drop Connects a Life ❤️
     </div>
   </div>
 
