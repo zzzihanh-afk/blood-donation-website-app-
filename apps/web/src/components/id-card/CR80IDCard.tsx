@@ -30,6 +30,7 @@ import {
   VolunteersSVG, 
   DonorHeartDropSVG,
   BangladeshMapSVG, 
+  drawBangladeshMapOnCanvas,
   RoleBadgeEmblem 
 } from './LandmarkIllustrations';
 
@@ -141,7 +142,7 @@ export const CR80IDCard: React.FC<CR80IDCardProps> = ({
     showQr: backConfig.showQr ?? true,
     showVerifyBadge: backConfig.showVerifyBadge ?? true,
     showSlogan: backConfig.showSlogan ?? true,
-    watermarkType: backConfig.watermarkType ?? (roleId === 'donor' ? 'blood_drop' : 'bd_map')
+    watermarkType: backConfig.watermarkType ?? 'bd_map'
   };
 
   // Default Color Settings by role
@@ -366,45 +367,8 @@ export const CR80IDCard: React.FC<CR80IDCardProps> = ({
         }
       } catch (e) {}
 
-      // Draw Bangladesh Map Watermark on Canvas
-      ctx.save();
-      ctx.strokeStyle = primaryColor;
-      ctx.fillStyle = primaryColor;
-      ctx.globalAlpha = 0.22;
-      ctx.lineWidth = 3;
-      const ox = 700;
-      const oy = 110;
-      const ms = 1.6;
-      ctx.beginPath();
-      const mapPts: [number, number][] = [
-        [86,14],[92,20],[96,28],[104,32],[112,42],[110,48],[104,54],[114,58],
-        [126,56],[138,54],[152,54],[165,52],[174,56],[182,64],[185,76],
-        [178,86],[168,90],[158,92],[150,96],[145,104],[142,114],[144,124],
-        [152,132],[164,142],[175,154],[184,168],[188,185],[184,204],[180,222],
-        [176,238],[172,248],[168,254],[165,248],[162,238],[160,224],[154,208],
-        [148,194],[140,182],[134,174],[126,170],[118,172],[112,176],[104,180],
-        [96,184],[88,188],[78,190],[68,190],[58,188],[48,184],[40,178],
-        [38,168],[42,156],[44,144],[38,136],[30,126],[28,116],[34,106],
-        [38,98],[30,90],[22,82],[26,72],[34,64],[42,54],[52,42],
-        [62,30],[72,20],[80,14]
-      ];
-      ctx.moveTo(ox + mapPts[0][0] * ms, oy + mapPts[0][1] * ms);
-      for (let i = 1; i < mapPts.length; i++) {
-        ctx.lineTo(ox + mapPts[i][0] * ms, oy + mapPts[i][1] * ms);
-      }
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-
-      // Islands
-      ctx.beginPath();
-      ctx.arc(ox + 109 * ms, oy + 195 * ms, 8, 0, Math.PI * 2);
-      ctx.arc(ox + 123 * ms, oy + 196 * ms, 6, 0, Math.PI * 2);
-      ctx.arc(ox + 134 * ms, oy + 185 * ms, 5, 0, Math.PI * 2);
-      ctx.arc(ox + 170 * ms, oy + 262 * ms, 3, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-      ctx.restore();
+      // Draw 100% Authentic Geographically Accurate 8-Division Bangladesh Map Watermark
+      await drawBangladeshMapOnCanvas(ctx, primaryColor, 570, 45, 390, 525);
 
       // QR Code
       let activeQr = qrDataUrl;
@@ -1024,12 +988,8 @@ export const CR80IDCard: React.FC<CR80IDCardProps> = ({
         </div>
 
         {/* High-Clarity Bangladesh Map Vector Watermark */}
-        <div className="absolute right-1 sm:right-3 top-1/2 -translate-y-1/2 w-32 sm:w-38 h-36 sm:h-44 pointer-events-none opacity-90 z-10 flex items-center justify-center">
-          {back.watermarkType === 'blood_drop' ? (
-            <DonorHeartDropSVG primaryColor="#C8102E" className="w-full h-full" />
-          ) : (
-            <BangladeshMapSVG color={primaryColor} className="w-full h-full" />
-          )}
+        <div className="absolute right-1 sm:right-3 top-1/2 -translate-y-1/2 w-34 sm:w-42 h-38 sm:h-46 pointer-events-none opacity-85 z-10 flex items-center justify-center">
+          <BangladeshMapSVG color={primaryColor} className="w-full h-full" />
         </div>
 
         {/* Bottom Curved Wave Ribbon with Official Slogan */}
@@ -1108,6 +1068,7 @@ export const CR80IDCard: React.FC<CR80IDCardProps> = ({
 
           {/* Export PNG */}
           <button
+            id="btn-export-cr80-png"
             onClick={() => handleExportPNG(activeLayout === 'side-by-side' ? 'both' : currentSide)}
             className="px-3.5 py-1.5 rounded-full bg-brand-light hover:bg-brand-red text-brand-red hover:text-white border border-brand-red/30 text-xs font-bold transition-all flex items-center space-x-1.5 shadow-sm"
           >
@@ -1117,6 +1078,7 @@ export const CR80IDCard: React.FC<CR80IDCardProps> = ({
 
           {/* Print PDF */}
           <button
+            id="btn-print-cr80-pdf"
             onClick={handlePrintPDF}
             className="px-3.5 py-1.5 rounded-full bg-white border border-gray-300 hover:border-gray-400 text-gray-700 text-xs font-bold transition-all flex items-center space-x-1.5 shadow-sm"
             title="Generate high-resolution 1-page CR80 PDF print sheet"

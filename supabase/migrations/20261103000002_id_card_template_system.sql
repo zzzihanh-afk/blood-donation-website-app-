@@ -163,7 +163,7 @@ VALUES
     1,
     'v1.0.0',
     '{"showLogo": true, "showPhoto": true, "showBadge": true, "showBloodGroup": true, "showDonations": true, "showValidity": true, "watermarkType": "blood_drop", "badgeIcon": "community"}'::jsonb,
-    '{"showQr": true, "showVerifyBadge": true, "showSlogan": true, "watermarkType": "blood_drop"}'::jsonb,
+    '{"showQr": true, "showVerifyBadge": true, "showSlogan": true, "watermarkType": "bd_map"}'::jsonb,
     '{"primaryColor": "#006A4E", "secondaryColor": "#C8102E", "accentColor": "#C8102E", "textColor": "#171717", "borderRadius": "24px", "ribbonLabel": "Donor"}'::jsonb,
     '["full_name", "unique_id", "role_name", "blood_group", "verified_donation_count", "issued_at", "expires_at", "verification_qr"]'::jsonb,
     'published',

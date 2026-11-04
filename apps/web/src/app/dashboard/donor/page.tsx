@@ -441,7 +441,14 @@ export default function DonorDashboardPage() {
 
             <div className="flex items-center space-x-3">
               <button
-                onClick={() => alert("Downloading ID Card Image (PNG)...")}
+                onClick={() => {
+                  const exportBtn = document.getElementById('btn-export-cr80-png');
+                  if (exportBtn) {
+                    exportBtn.click();
+                  } else {
+                    document.getElementById('id-card')?.scrollIntoView({ behavior: 'smooth' });
+                  }
+                }}
                 className="px-4 py-2 rounded-xl bg-brand-red hover:bg-brand-crimson text-white text-xs font-bold shadow-md transition-all flex items-center space-x-1.5"
               >
                 <Download className="w-3.5 h-3.5" />

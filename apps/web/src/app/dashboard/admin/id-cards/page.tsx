@@ -284,7 +284,7 @@ const INITIAL_ROLE_TEMPLATES: Record<string, RoleTemplateState> = {
       showQr: true,
       showVerifyBadge: true,
       showSlogan: true,
-      watermarkType: 'blood_drop'
+      watermarkType: 'bd_map'
     },
     settings: {
       primaryColor: '#006A4E',
