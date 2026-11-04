@@ -232,15 +232,17 @@ export default function CampaignsPage() {
               )}
             </button>
 
-            {/* Quick Link to Main Admin Portal */}
-            <Link
-              href="/dashboard/admin"
-              className="px-4 py-3 rounded-2xl border border-gray-200 bg-white hover:bg-gray-50 text-xs font-bold text-brand-burgundy flex items-center space-x-1.5 transition-colors shadow-sm"
-            >
-              <ShieldCheck className="w-4 h-4 text-brand-burgundy" />
-              <span>{t.campaignsPage.adminPortalBtn}</span>
-              <ExternalLink className="w-3 h-3 text-gray-400" />
-            </Link>
+            {/* Quick Link to Main Admin Portal (Strictly visible only for authorized administrators) */}
+            {accessStatus.allowed && (
+              <Link
+                href="/dashboard/admin"
+                className="px-4 py-3 rounded-2xl border border-gray-200 bg-white hover:bg-gray-50 text-xs font-bold text-brand-burgundy flex items-center space-x-1.5 transition-colors shadow-sm"
+              >
+                <ShieldCheck className="w-4 h-4 text-brand-burgundy" />
+                <span>{t.campaignsPage.adminPortalBtn}</span>
+                <ExternalLink className="w-3 h-3 text-gray-400" />
+              </Link>
+            )}
           </div>
         </div>
 

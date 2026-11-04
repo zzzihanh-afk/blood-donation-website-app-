@@ -21,8 +21,11 @@ import {
   CheckCircle,
   Clock,
   ExternalLink,
-  Check
+  Check,
+  KeyRound,
+  Lock
 } from 'lucide-react';
+import { getCurrentSession, setCurrentSession, isAuthorizedAdmin, UserSession } from '@/lib/session';
 
 interface NotificationItem {
   id: string;
@@ -98,9 +101,24 @@ export const Navbar: React.FC = () => {
   const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);
   const [searchQuery, setSearchQuery] = useState('');
+  const [session, setSession] = useState<UserSession>(() => getCurrentSession());
 
   const notifRef = useRef<HTMLDivElement>(null);
   const userRef = useRef<HTMLDivElement>(null);
+
+  // Sync session reactively
+  useEffect(() => {
+    setSession(getCurrentSession());
+    const handleSessionChange = () => {
+      setSession(getCurrentSession());
+    };
+    window.addEventListener('lalbindu_session_changed', handleSessionChange);
+    return () => {
+      window.removeEventListener('lalbindu_session_changed', handleSessionChange);
+    };
+  }, []);
+
+  const isAdmin = isAuthorizedAdmin(session);
 
   // Close dropdowns on click outside
   useEffect(() => {
@@ -128,6 +146,7 @@ export const Navbar: React.FC = () => {
     router.push(item.link);
   };
 
+  // Strictly filter out Admin Portal for donors and public website viewers
   const navLinks = [
     { href: '/', label: t.nav.home },
     { href: '/find-donor', label: t.nav.findDonor },
@@ -136,7 +155,7 @@ export const Navbar: React.FC = () => {
     { href: '/achievements', label: t.nav.achievements },
     { href: '/id-cards', label: lang === 'bn' ? 'ডিজিটাল আইডি কার্ড' : 'Digital ID Cards' },
     { href: '/dashboard/donor', label: t.nav.donorDashboard },
-    { href: '/dashboard/admin', label: t.nav.adminDashboard },
+    ...(isAdmin ? [{ href: '/dashboard/admin', label: t.nav.adminDashboard, isAdminPill: true }] : [])
   ];
 
   return (
@@ -326,64 +345,135 @@ export const Navbar: React.FC = () => {
                 }}
                 className={`flex items-center space-x-2 pl-1 pr-3 py-1 rounded-full border transition-all ${
                   userDropdownOpen 
-                    ? 'border-brand-red bg-brand-light/30 ring-2 ring-brand-red/20' 
+                    ? isAdmin 
+                      ? 'border-brand-burgundy bg-amber-50/50 ring-2 ring-brand-burgundy/20' 
+                      : 'border-brand-red bg-brand-light/30 ring-2 ring-brand-red/20' 
+                    : isAdmin 
+                    ? 'border-amber-300 bg-amber-50/30 hover:border-brand-burgundy' 
                     : 'border-gray-200 hover:border-brand-red bg-white hover:bg-gray-50'
                 }`}
               >
-                <div className="relative w-8 h-8 rounded-full overflow-hidden bg-brand-light border border-brand-red/30 flex items-center justify-center">
+                <div className={`relative w-8 h-8 rounded-full overflow-hidden border flex items-center justify-center ${
+                  isAdmin ? 'border-amber-400 bg-amber-100' : 'border-brand-red/30 bg-brand-light'
+                }`}>
                   <Image
-                    src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80"
-                    alt="Ahmed Rahman Avatar"
+                    src={session.avatarUrl || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80"}
+                    alt={session.name}
                     width={32}
                     height={32}
                     className="object-cover"
                   />
                 </div>
                 <div className="text-left text-xs leading-tight">
-                  <div className="font-bold text-gray-900">Ahmed Rahman</div>
-                  <div className="text-[10px] text-brand-red font-medium flex items-center">
-                    <Droplet className="w-2.5 h-2.5 mr-0.5 fill-brand-red" /> O+ Donor
+                  <div className="font-bold text-gray-900">{session.name}</div>
+                  <div className={`text-[10px] font-medium flex items-center ${
+                    isAdmin ? 'text-brand-burgundy font-bold' : 'text-brand-red'
+                  }`}>
+                    {isAdmin ? (
+                      <>
+                        <ShieldCheck className="w-2.5 h-2.5 mr-0.5 text-brand-burgundy" /> {session.roleLabelEn}
+                      </>
+                    ) : (
+                      <>
+                        <Droplet className="w-2.5 h-2.5 mr-0.5 fill-brand-red" /> {session.roleLabelEn}
+                      </>
+                    )}
                   </div>
                 </div>
                 <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
               </button>
 
               {userDropdownOpen && (
-                <div className="absolute right-0 mt-3 w-56 bg-white rounded-3xl shadow-xl border border-gray-100 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                <div className="absolute right-0 mt-3 w-64 bg-white rounded-3xl shadow-xl border border-gray-100 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
                   <div className="px-4 py-2 border-b border-gray-100">
                     <p className="text-xs text-gray-500">{lang === 'bn' ? 'লগইন আছেন' : 'Signed in as'}</p>
-                    <p className="text-xs font-bold text-gray-900">ahmed.rahman@lalbindu.bd</p>
-                    <p className="text-[10px] text-brand-green font-semibold">
-                      {lang === 'bn' ? 'যাচাইকৃত দাতা আইডি: LB-0004278' : 'Verified Donor ID: LB-0004278'}
+                    <p className="text-xs font-bold text-gray-900">{session.email}</p>
+                    <p className={`text-[10px] font-semibold ${isAdmin ? 'text-brand-burgundy' : 'text-brand-green'}`}>
+                      {isAdmin 
+                        ? (lang === 'bn' ? `জাতীয় সুপার অ্যাডমিন আইডি: ${session.adminId}` : `National Super Admin ID: ${session.adminId}`)
+                        : (lang === 'bn' ? `যাচাইকৃত দাতা আইডি: ${session.donorId}` : `Verified Donor ID: ${session.donorId}`)}
                     </p>
                   </div>
 
-                  <Link
-                    href="/dashboard/donor"
-                    onClick={() => setUserDropdownOpen(false)}
-                    className="flex items-center px-4 py-2 text-xs text-gray-700 hover:bg-brand-light hover:text-brand-red transition-colors"
-                  >
-                    <User className="w-4 h-4 mr-2.5 text-brand-red" />
-                    {t.nav.donorDashboard}
-                  </Link>
+                  {isAdmin ? (
+                    <>
+                      <Link
+                        href="/dashboard/admin"
+                        onClick={() => setUserDropdownOpen(false)}
+                        className="flex items-center px-4 py-2 text-xs font-bold text-brand-burgundy hover:bg-brand-light transition-colors"
+                      >
+                        <ShieldCheck className="w-4 h-4 mr-2.5 text-brand-burgundy" />
+                        {t.nav.adminDashboard}
+                      </Link>
 
-                  <Link
-                    href="/dashboard/donor#id-card"
-                    onClick={() => setUserDropdownOpen(false)}
-                    className="flex items-center px-4 py-2 text-xs text-gray-700 hover:bg-brand-light hover:text-brand-red transition-colors"
-                  >
-                    <CreditCard className="w-4 h-4 mr-2.5 text-brand-green" />
-                    {t.nav.myIdCard}
-                  </Link>
+                      <Link
+                        href="/dashboard/admin/id-cards"
+                        onClick={() => setUserDropdownOpen(false)}
+                        className="flex items-center px-4 py-2 text-xs text-gray-700 hover:bg-brand-light hover:text-brand-burgundy transition-colors"
+                      >
+                        <CreditCard className="w-4 h-4 mr-2.5 text-amber-600" />
+                        {lang === 'bn' ? 'আইডি কার্ড স্টুডিও' : 'ID Card Template Studio'}
+                      </Link>
 
-                  <Link
-                    href="/dashboard/admin"
-                    onClick={() => setUserDropdownOpen(false)}
-                    className="flex items-center px-4 py-2 text-xs text-gray-700 hover:bg-brand-light hover:text-brand-red transition-colors"
-                  >
-                    <ShieldCheck className="w-4 h-4 mr-2.5 text-brand-burgundy" />
-                    {t.nav.adminDashboard}
-                  </Link>
+                      <Link
+                        href="/dashboard/donor"
+                        onClick={() => setUserDropdownOpen(false)}
+                        className="flex items-center px-4 py-2 text-xs text-gray-700 hover:bg-brand-light hover:text-brand-red transition-colors"
+                      >
+                        <User className="w-4 h-4 mr-2.5 text-brand-red" />
+                        {t.nav.donorDashboard}
+                      </Link>
+
+                      {/* Switch to Public Donor View Option */}
+                      <div className="border-t border-gray-100 my-1"></div>
+                      <button
+                        onClick={() => {
+                          setCurrentSession('donor');
+                          setUserDropdownOpen(false);
+                          router.push('/');
+                        }}
+                        className="w-full text-left flex items-center px-4 py-2 text-xs text-gray-600 hover:bg-gray-50 transition-colors"
+                      >
+                        <User className="w-4 h-4 mr-2.5 text-gray-400" />
+                        <span>{lang === 'bn' ? 'সাধারণ দাতা মোডে পরিবর্তন' : 'Switch to Public Donor View'}</span>
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      {/* DONOR / WEBSITE VIEWER LINKS ONLY (Admin Portal is strictly hidden) */}
+                      <Link
+                        href="/dashboard/donor"
+                        onClick={() => setUserDropdownOpen(false)}
+                        className="flex items-center px-4 py-2 text-xs text-gray-700 hover:bg-brand-light hover:text-brand-red transition-colors"
+                      >
+                        <User className="w-4 h-4 mr-2.5 text-brand-red" />
+                        {t.nav.donorDashboard}
+                      </Link>
+
+                      <Link
+                        href="/dashboard/donor#id-card"
+                        onClick={() => setUserDropdownOpen(false)}
+                        className="flex items-center px-4 py-2 text-xs text-gray-700 hover:bg-brand-light hover:text-brand-red transition-colors"
+                      >
+                        <CreditCard className="w-4 h-4 mr-2.5 text-brand-green" />
+                        {t.nav.myIdCard}
+                      </Link>
+
+                      {/* Executive / Staff Portal Login Option for authorized testing */}
+                      <div className="border-t border-gray-100 my-1"></div>
+                      <button
+                        onClick={() => {
+                          setCurrentSession('super_admin');
+                          setUserDropdownOpen(false);
+                          router.push('/dashboard/admin');
+                        }}
+                        className="w-full text-left flex items-center px-4 py-2 text-xs font-semibold text-brand-burgundy bg-amber-50/50 hover:bg-amber-100/70 transition-colors"
+                      >
+                        <KeyRound className="w-4 h-4 mr-2.5 text-amber-600" />
+                        <span>{lang === 'bn' ? 'সুপার অ্যাডমিন লগইন (স্টাফ)' : 'Switch to Super Admin View (Staff)'}</span>
+                      </button>
+                    </>
+                  )}
 
                   <div className="border-t border-gray-100 my-1"></div>
 
@@ -439,19 +529,38 @@ export const Navbar: React.FC = () => {
           <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <div className="w-8 h-8 rounded-full bg-brand-light flex items-center justify-center text-xs font-bold text-brand-red">
-                AR
+                {session.name.substring(0, 2).toUpperCase()}
               </div>
               <div className="text-xs">
-                <p className="font-bold text-gray-900">Ahmed Rahman</p>
-                <p className="text-[10px] text-brand-red">Donor ID: LB-0004278</p>
+                <p className="font-bold text-gray-900">{session.name}</p>
+                <p className="text-[10px] text-brand-red">
+                  {isAdmin ? `Admin ID: ${session.adminId}` : `Donor ID: ${session.donorId}`}
+                </p>
               </div>
             </div>
-            <Link
-              href="/auth/login"
-              className="px-3 py-1.5 text-xs font-bold text-brand-red border border-brand-red rounded-full"
-            >
-              {lang === 'bn' ? 'লগইন' : 'Sign In'}
-            </Link>
+            {isAdmin ? (
+              <button
+                onClick={() => {
+                  setCurrentSession('donor');
+                  setMobileMenuOpen(false);
+                  router.push('/');
+                }}
+                className="px-3 py-1.5 text-xs font-bold text-gray-600 border border-gray-300 rounded-full"
+              >
+                {lang === 'bn' ? 'দাতা মোড' : 'Donor Mode'}
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  setCurrentSession('super_admin');
+                  setMobileMenuOpen(false);
+                  router.push('/dashboard/admin');
+                }}
+                className="px-3 py-1.5 text-xs font-bold text-brand-burgundy bg-amber-50 border border-amber-300 rounded-full"
+              >
+                {lang === 'bn' ? 'অ্যাডমিন লগইন' : 'Admin Login'}
+              </button>
+            )}
           </div>
         </div>
       )}

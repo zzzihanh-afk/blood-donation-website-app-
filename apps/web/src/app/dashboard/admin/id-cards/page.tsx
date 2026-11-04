@@ -47,6 +47,7 @@ import {
   Camera,
   Trash2
 } from 'lucide-react';
+import { AdminAccessGate } from '@/components/admin/AdminAccessGate';
 
 interface RoleTemplateState {
   id: string;
@@ -516,7 +517,8 @@ export default function IdCardTemplateDesignerPage() {
   };
 
   return (
-    <div className="bg-[#FFF8F8] min-h-screen py-6 sm:py-8">
+    <AdminAccessGate>
+      <div className="bg-[#FFF8F8] min-h-screen py-6 sm:py-8">
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
 
         {/* Top Header & Breadcrumb */}
@@ -1353,6 +1355,7 @@ export default function IdCardTemplateDesignerPage() {
         </div>
       )}
 
-    </div>
+      </div>
+    </AdminAccessGate>
   );
 }

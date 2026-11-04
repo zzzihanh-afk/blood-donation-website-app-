@@ -42,6 +42,7 @@ import {
   Crown
 } from 'lucide-react';
 import { CreateCampaignModal } from '@/components/campaigns/CreateCampaignModal';
+import { AdminAccessGate } from '@/components/admin/AdminAccessGate';
 import { 
   CampaignItem, 
   CampaignDelegation, 
@@ -430,7 +431,8 @@ export default function AdminDashboardPage() {
   };
 
   return (
-    <div className="bg-[#FFF8F8] min-h-screen py-10">
+    <AdminAccessGate>
+      <div className="bg-[#FFF8F8] min-h-screen py-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
         
         {/* Global Action Toast Notification */}
@@ -1570,6 +1572,7 @@ export default function AdminDashboardPage() {
         approverRole="Super Administrator"
       />
 
-    </div>
+      </div>
+    </AdminAccessGate>
   );
 }

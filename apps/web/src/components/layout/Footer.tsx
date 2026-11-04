@@ -162,6 +162,10 @@ export const Footer: React.FC = () => {
             |{' '}
             <Link href="/terms" className="hover:text-white underline">
               {t.footer.termsConditions}
+            </Link>{' '}
+            |{' '}
+            <Link href="/dashboard/admin" className="hover:text-white underline opacity-75 hover:opacity-100">
+              Official Staff Portal
             </Link>
           </div>
 
