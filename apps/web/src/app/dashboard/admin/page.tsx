@@ -39,7 +39,9 @@ import {
   Trash2,
   Calendar,
   ExternalLink,
-  Crown
+  Crown,
+  Bell,
+  Megaphone
 } from 'lucide-react';
 import { CreateCampaignModal } from '@/components/campaigns/CreateCampaignModal';
 import { AdminAccessGate } from '@/components/admin/AdminAccessGate';
@@ -52,6 +54,12 @@ import {
   getCampaignDelegations, 
   toggleDelegationPermission 
 } from '@/lib/campaigns';
+import { 
+  NotificationItem, 
+  getStoredNotifications, 
+  deleteNotification 
+} from '@/lib/notifications';
+import { CreateNotificationModal } from '@/components/notifications/CreateNotificationModal';
 
 export interface SubordinateAppointment {
   id: string;
@@ -163,16 +171,29 @@ export default function AdminDashboardPage() {
   const [selectedJurisdiction, setSelectedJurisdiction] = useState<'national' | 'division' | 'district' | 'upazila'>('national');
   const [selectedDivision, setSelectedDivision] = useState('div-dha');
   const [selectedDistrict, setSelectedDistrict] = useState('dist-dhaka');
-  const [activeTab, setActiveTab] = useState<'overview' | 'verifications' | 'admins' | 'id-cards' | 'campaigns'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'verifications' | 'admins' | 'id-cards' | 'campaigns' | 'notifications'>('overview');
 
   // Campaigns & Super Admin Delegations state
   const [campaigns, setCampaigns] = useState<CampaignItem[]>([]);
   const [delegations, setDelegations] = useState<CampaignDelegation[]>([]);
   const [isCreateCampaignModalOpen, setIsCreateCampaignModalOpen] = useState(false);
 
+  // Broadcast & Notifications state
+  const [notificationsList, setNotificationsList] = useState<NotificationItem[]>([]);
+  const [isCreateNotifModalOpen, setIsCreateNotifModalOpen] = useState(false);
+
   useEffect(() => {
     setCampaigns(getStoredCampaigns());
     setDelegations(getCampaignDelegations());
+    setNotificationsList(getStoredNotifications());
+
+    const handleNotifsUpdate = () => {
+      setNotificationsList(getStoredNotifications());
+    };
+    window.addEventListener('lalbindu_notifications_updated', handleNotifsUpdate);
+    return () => {
+      window.removeEventListener('lalbindu_notifications_updated', handleNotifsUpdate);
+    };
   }, []);
 
   // Subordinate appointments state with localStorage persistence
@@ -517,6 +538,7 @@ export default function AdminDashboardPage() {
             { id: 'verifications', label: `${t.adminDashboard.tabVerifications} (${pendingVerifications.length})` },
             { id: 'admins', label: t.adminDashboard.tabAdmins },
             { id: 'campaigns', label: lang === 'bn' ? `রক্তদান কর্মসূচি (${campaigns.length})` : `Campaigns (${campaigns.length})` },
+            { id: 'notifications', label: lang === 'bn' ? `বিজ্ঞপ্তি ও অ্যালার্ট (${notificationsList.length})` : `Alerts & Broadcasts (${notificationsList.length})` },
             { id: 'id-cards', label: lang === 'bn' ? 'প্রশাসনিক আইডি কার্ড টেমপ্লেট' : 'Administrative ID Card Templates' }
           ].map(tab => (
             <button
@@ -1150,6 +1172,243 @@ export default function AdminDashboardPage() {
           </div>
         )}
 
+        {/* =========================================================================
+            TAB 5: NATIONWIDE ALERTS & BROADCAST CONSOLE (ADMIN ONLY)
+           ========================================================================= */}
+        {activeTab === 'notifications' && (
+          <div className="space-y-8 animate-in fade-in duration-200">
+            {/* Top Control Bar */}
+            <div className="bg-gradient-to-r from-red-900 via-brand-burgundy to-[#400B13] rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden shadow-xl">
+              <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="space-y-2 max-w-2xl">
+                  <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs font-bold text-red-200">
+                    <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
+                    <span>{lang === 'bn' ? 'প্রশাসনিক কেন্দ্রীয় ব্রডকাস্ট ইঞ্জিন' : 'Central Administrative Broadcast Engine'}</span>
+                  </div>
+                  <h3 className="text-xl sm:text-2xl font-black">
+                    {lang === 'bn' ? 'জরুরি রক্তের চাহিদা ও জাতীয় বিজ্ঞপ্তি সম্প্রচার কনসোল' : 'Nationwide Emergency Alert & Notification Broadcast Console'}
+                  </h3>
+                  <p className="text-xs sm:text-sm text-red-100/90 leading-relaxed">
+                    {lang === 'bn' 
+                      ? 'শুধুমাত্র সুপার অ্যাডমিন ও অনুমোদিত সমন্বয়কদের মাধ্যমে সমগ্র বাংলাদেশে বা নির্দিষ্ট রক্তের গ্রুপ ও বিভাগে সরাসরি লাইভ নোটিফিকেশন অ্যালার্ট প্রেরণ করুন।' 
+                      : 'Dispatch live, real-time emergency blood alerts, campaign announcements, and administrative broadcasts directly to donors across all 8 divisions of Bangladesh.'}
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setIsCreateNotifModalOpen(true)}
+                  className="px-5 py-3 rounded-2xl bg-white text-brand-burgundy hover:bg-gray-100 font-black text-xs sm:text-sm shadow-xl flex items-center justify-center space-x-2 transition-all transform hover:scale-[1.02] shrink-0"
+                >
+                  <Plus className="w-4 h-4 stroke-[3]" />
+                  <span>{lang === 'bn' ? '+ নতুন বিজ্ঞপ্তি সম্প্রচার করুন' : '+ Dispatch New Alert / Notification'}</span>
+                </button>
+              </div>
+
+              {/* Background ambient pattern */}
+              <div className="absolute right-0 top-0 bottom-0 w-96 bg-gradient-to-l from-white/5 to-transparent pointer-events-none" />
+            </div>
+
+            {/* Metrics Overview */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-white p-5 rounded-2xl border border-gray-100 card-shadow flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold text-gray-500 uppercase">{lang === 'bn' ? 'মোট সম্প্রচার' : 'Total Broadcasts'}</p>
+                  <h4 className="text-2xl font-black text-gray-900 mt-1">{notificationsList.length}</h4>
+                  <p className="text-[10px] text-gray-400 mt-0.5">{lang === 'bn' ? 'সিস্টেম স্টোরেজে সংরক্ষিত' : 'Persisted in Live Registry'}</p>
+                </div>
+                <div className="p-3 bg-red-50 text-brand-red rounded-xl">
+                  <Bell className="w-5 h-5" />
+                </div>
+              </div>
+
+              <div className="bg-white p-5 rounded-2xl border border-gray-100 card-shadow flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold text-gray-500 uppercase">{lang === 'bn' ? 'সংকটাপন্ন জরুরি আবেদন' : 'Critical Emergencies'}</p>
+                  <h4 className="text-2xl font-black text-red-600 mt-1">
+                    {notificationsList.filter(n => n.type === 'emergency' || n.priority === 'urgent').length}
+                  </h4>
+                  <p className="text-[10px] text-red-400 mt-0.5">{lang === 'bn' ? 'উচ্চ অগ্রাধিকার অ্যালার্ট' : 'High Urgency Level'}</p>
+                </div>
+                <div className="p-3 bg-red-100 text-red-600 rounded-xl">
+                  <Droplet className="w-5 h-5 fill-red-600" />
+                </div>
+              </div>
+
+              <div className="bg-white p-5 rounded-2xl border border-gray-100 card-shadow flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold text-gray-500 uppercase">{lang === 'bn' ? 'ক্যাম্পেইন ও কর্মসূচি' : 'Campaign Alerts'}</p>
+                  <h4 className="text-2xl font-black text-purple-600 mt-1">
+                    {notificationsList.filter(n => n.type === 'campaign').length}
+                  </h4>
+                  <p className="text-[10px] text-purple-400 mt-0.5">{lang === 'bn' ? 'রক্তদান ইভেন্ট প্রচার' : 'Donation Drives'}</p>
+                </div>
+                <div className="p-3 bg-purple-50 text-purple-600 rounded-xl">
+                  <Calendar className="w-5 h-5" />
+                </div>
+              </div>
+
+              <div className="bg-white p-5 rounded-2xl border border-gray-100 card-shadow flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold text-gray-500 uppercase">{lang === 'bn' ? 'টার্গেটেড ব্রডকাস্ট' : 'Targeted Broadcasts'}</p>
+                  <h4 className="text-2xl font-black text-brand-green mt-1">
+                    {notificationsList.filter(n => n.targetGroup && n.targetGroup !== 'all').length}
+                  </h4>
+                  <p className="text-[10px] text-emerald-500 mt-0.5">{lang === 'bn' ? 'নির্দিষ্ট গ্রুপ / অঞ্চলভিত্তিক' : 'Specific Group / Division'}</p>
+                </div>
+                <div className="p-3 bg-emerald-50 text-brand-green rounded-xl">
+                  <Users className="w-5 h-5" />
+                </div>
+              </div>
+            </div>
+
+            {/* Broadcast History Table / List */}
+            <div className="bg-white rounded-3xl p-6 sm:p-8 card-shadow border border-gray-100 space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-4">
+                <div>
+                  <h3 className="text-lg font-black text-gray-900">
+                    {lang === 'bn' ? 'সম্প্রচারিত বিজ্ঞপ্তির তালিকা ও ব্যবস্থাপনা' : 'Dispatched Notifications & Broadcast Registry'}
+                  </h3>
+                  <p className="text-xs text-gray-500">
+                    {lang === 'bn' 
+                      ? 'এখান থেকে সকল সম্প্রচারিত বিজ্ঞপ্তির বিবরণ দেখুন, অবস্থা ট্র্যাক করুন অথবা প্রয়োজনে অপসারন করুন।' 
+                      : 'Monitor all live alerts currently visible to donors, inspect targeting rules, and delete inactive broadcasts.'}
+                  </p>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <span className="text-xs font-bold text-gray-500">
+                    {lang === 'bn' ? `মোট ${notificationsList.length}টি সক্রিয়` : `${notificationsList.length} Active`}
+                  </span>
+                </div>
+              </div>
+
+              {notificationsList.length === 0 ? (
+                <div className="text-center py-12 space-y-3">
+                  <div className="w-12 h-12 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center mx-auto">
+                    <Bell className="w-6 h-6" />
+                  </div>
+                  <h4 className="text-sm font-bold text-gray-700">
+                    {lang === 'bn' ? 'কোনো সক্রিয় বিজ্ঞপ্তি পাওয়া যায়নি' : 'No active notifications found'}
+                  </h4>
+                  <p className="text-xs text-gray-500 max-w-sm mx-auto">
+                    {lang === 'bn' 
+                      ? 'নতুন বিজ্ঞপ্তি সম্প্রচার করতে উপরের "+ নতুন বিজ্ঞপ্তি সম্প্রচার করুন" বাটনে ক্লিক করুন।' 
+                      : 'Click "+ Dispatch New Alert / Notification" above to send an emergency alert.'}
+                  </p>
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-100">
+                  {notificationsList.map((item) => (
+                    <div 
+                      key={item.id} 
+                      className="py-4 flex flex-col md:flex-row md:items-start justify-between gap-4 hover:bg-gray-50/50 p-3 rounded-2xl transition-colors"
+                    >
+                      <div className="flex items-start space-x-3.5 flex-1 min-w-0">
+                        {/* Icon */}
+                        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 mt-0.5 ${
+                          item.type === 'emergency' 
+                            ? 'bg-red-100 text-brand-red' 
+                            : item.type === 'achievement'
+                            ? 'bg-amber-100 text-amber-600'
+                            : item.type === 'verification'
+                            ? 'bg-green-100 text-brand-green'
+                            : item.type === 'campaign'
+                            ? 'bg-purple-100 text-purple-600'
+                            : item.type === 'system'
+                            ? 'bg-rose-100 text-brand-burgundy'
+                            : 'bg-blue-100 text-blue-600'
+                        }`}>
+                          {item.type === 'emergency' && <Droplet className="w-5 h-5 fill-brand-red" />}
+                          {item.type === 'achievement' && <Award className="w-5 h-5" />}
+                          {item.type === 'verification' && <ShieldCheck className="w-5 h-5" />}
+                          {item.type === 'id_card' && <CreditCard className="w-5 h-5" />}
+                          {item.type === 'campaign' && <Calendar className="w-5 h-5 text-purple-600" />}
+                          {item.type === 'system' && <Megaphone className="w-5 h-5 text-brand-burgundy" />}
+                        </div>
+
+                        {/* Content */}
+                        <div className="space-y-1 flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                              item.priority === 'urgent'
+                                ? 'bg-red-100 text-brand-red border border-red-200'
+                                : item.priority === 'high'
+                                ? 'bg-amber-100 text-amber-700 border border-amber-200'
+                                : 'bg-gray-100 text-gray-600'
+                            }`}>
+                              {item.priority === 'urgent' 
+                                ? (lang === 'bn' ? 'সংকটাপন্ন জরুরি' : 'Critical / Urgent')
+                                : item.priority === 'high'
+                                ? (lang === 'bn' ? 'উচ্চ অগ্রাধিকার' : 'High Priority')
+                                : (lang === 'bn' ? 'সাধারণ' : 'Normal')}
+                            </span>
+
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                              {lang === 'bn' ? 'টার্গেট: ' : 'Target: '}
+                              {item.targetGroup === 'specific_blood_group'
+                                ? `${item.targetValue} Donors`
+                                : item.targetGroup === 'division'
+                                ? `${item.targetValue} Division`
+                                : item.targetGroup === 'admins_only'
+                                ? 'Admins Only'
+                                : (lang === 'bn' ? 'সকল দাতা ও ভিজিটর' : 'All Donors & Viewers')}
+                            </span>
+
+                            <span className="text-[10px] text-gray-400">
+                              {lang === 'bn' ? item.timeBn : item.timeEn}
+                            </span>
+                          </div>
+
+                          <h4 className="text-sm font-black text-gray-900 leading-tight">
+                            {lang === 'bn' ? item.titleBn : item.titleEn}
+                          </h4>
+
+                          <p className="text-xs text-gray-600 leading-relaxed">
+                            {lang === 'bn' ? item.messageBn : item.messageEn}
+                          </p>
+
+                          <div className="flex flex-wrap items-center gap-3 pt-1 text-[11px] text-gray-400">
+                            {item.sender && (
+                              <span className="font-semibold text-brand-burgundy">
+                                {lang === 'bn' ? 'প্রেরক: ' : 'Sender: '}{item.sender}
+                              </span>
+                            )}
+                            {item.link && (
+                              <Link 
+                                href={item.link} 
+                                className="text-brand-red hover:underline inline-flex items-center space-x-1"
+                              >
+                                <span>{lang === 'bn' ? 'অ্যাকশন লিংক' : 'Action Link'}</span>
+                                <ExternalLink className="w-3 h-3 ml-0.5" />
+                              </Link>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="flex items-center space-x-2 shrink-0 self-end md:self-center">
+                        <button
+                          onClick={() => {
+                            const updated = deleteNotification(item.id);
+                            setNotificationsList(updated);
+                            setToastMessage(lang === 'bn' ? 'বিজ্ঞপ্তি অপসারণ করা হয়েছে।' : 'Notification deleted.');
+                            setTimeout(() => setToastMessage(null), 3000);
+                          }}
+                          className="p-2 rounded-xl text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                          title={lang === 'bn' ? 'বিজ্ঞপ্তি মুছুন' : 'Delete Notification'}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
       </div>
 
       {/* =========================================================================
@@ -1570,6 +1829,23 @@ export default function AdminDashboardPage() {
         onCreated={handleAdminCreateCampaign}
         approverName="Md. Rahman Hossain (LA0010001)"
         approverRole="Super Administrator"
+      />
+
+      {/* =========================================================================
+          MODAL 5: DISPATCH NOTIFICATION & ALERT MODAL (ADMIN ONLY)
+         ========================================================================= */}
+      <CreateNotificationModal
+        isOpen={isCreateNotifModalOpen}
+        onClose={() => setIsCreateNotifModalOpen(false)}
+        onDispatched={() => {
+          setNotificationsList(getStoredNotifications());
+          setToastMessage(lang === 'bn' 
+            ? 'বিজ্ঞপ্তি সফলভাবে সমগ্র নেটওয়ার্কে সম্প্রচারিত হয়েছে!' 
+            : 'Alert successfully broadcasted across the nationwide network!');
+          setTimeout(() => setToastMessage(null), 3000);
+        }}
+        adminName="Md. Rahman Hossain (LA0010001)"
+        adminRole="Super Administrator"
       />
 
       </div>

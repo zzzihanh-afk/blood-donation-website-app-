@@ -23,73 +23,19 @@ import {
   ExternalLink,
   Check,
   KeyRound,
-  Lock
+  Lock,
+  Plus,
+  Megaphone,
+  Calendar
 } from 'lucide-react';
 import { getCurrentSession, setCurrentSession, isAuthorizedAdmin, UserSession } from '@/lib/session';
-
-interface NotificationItem {
-  id: string;
-  type: 'emergency' | 'achievement' | 'verification' | 'id_card';
-  titleEn: string;
-  titleBn: string;
-  messageEn: string;
-  messageBn: string;
-  timeEn: string;
-  timeBn: string;
-  link: string;
-  isRead: boolean;
-}
-
-const INITIAL_NOTIFICATIONS: NotificationItem[] = [
-  {
-    id: 'notif-1',
-    type: 'emergency',
-    titleEn: 'Critical Emergency: O+ Blood Needed',
-    titleBn: 'সংকটাপন্ন জরুরি: O+ রক্তের আবেদন',
-    messageEn: 'Open-heart surgery at NICVD. Matches your O+ blood group and location.',
-    messageBn: 'এনআইসিভিডিতে উন্মুক্ত হার্ট সার্জারি। আপনার রক্তের গ্রুপ ও এলাকার সাথে ম্যাচ করেছে।',
-    timeEn: '15m ago',
-    timeBn: '১৫ মিনিট আগে',
-    link: '/blood-requests',
-    isRead: false
-  },
-  {
-    id: 'notif-2',
-    type: 'achievement',
-    titleEn: 'Achievement Unlocked: Life Saver!',
-    titleBn: 'অর্জন আনলক: জীবন রক্ষক!',
-    messageEn: 'Congratulations! You have completed 5 verified donations.',
-    messageBn: 'অভিনন্দন! আপনি সফলভাবে ৫টি যাচাইকৃত রক্তদান সম্পন্ন করেছেন।',
-    timeEn: '2h ago',
-    timeBn: '২ ঘণ্টা আগে',
-    link: '/achievements',
-    isRead: false
-  },
-  {
-    id: 'notif-3',
-    type: 'verification',
-    titleEn: 'Donation Record Verified by Hospital',
-    titleBn: 'হাসপাতাল কর্তৃক রক্তদান রেকর্ড যাচাই সম্পন্ন',
-    messageEn: 'Dhaka Medical College has approved your whole blood donation from Aug 10.',
-    messageBn: 'ঢাকা মেডিকেল কলেজ হাসপাতাল আপনার ১০ আগস্টের রক্তদান অনুমোদন করেছে।',
-    timeEn: '1d ago',
-    timeBn: '১ দিন আগে',
-    link: '/dashboard/donor',
-    isRead: false
-  },
-  {
-    id: 'notif-4',
-    type: 'id_card',
-    titleEn: 'LalBindu Digital ID Card Active',
-    titleBn: 'লালবিন্দু ডিজিটাল পরিচয়পত্র সক্রিয়',
-    messageEn: 'Your cryptographic QR ID is active and ready for verification.',
-    messageBn: 'আপনার কিউআর সমৃদ্ধ ডিজিটাল কার্ড প্রস্তুত ও সক্রিয় রয়েছে।',
-    timeEn: '3d ago',
-    timeBn: '৩ দিন আগে',
-    link: '/dashboard/donor#id-card',
-    isRead: true
-  }
-];
+import { 
+  NotificationItem, 
+  getStoredNotifications, 
+  markAllNotificationsAsRead, 
+  markNotificationAsRead 
+} from '@/lib/notifications';
+import { CreateNotificationModal } from '@/components/notifications/CreateNotificationModal';
 
 export const Navbar: React.FC = () => {
   const { lang, setLang, t } = useLanguage();
@@ -99,22 +45,31 @@ export const Navbar: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
-  const [notifications, setNotifications] = useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);
+  const [isCreateNotifOpen, setIsCreateNotifOpen] = useState(false);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [session, setSession] = useState<UserSession>(() => getCurrentSession());
 
   const notifRef = useRef<HTMLDivElement>(null);
   const userRef = useRef<HTMLDivElement>(null);
 
-  // Sync session reactively
+  // Sync session and notifications reactively
   useEffect(() => {
     setSession(getCurrentSession());
+    setNotifications(getStoredNotifications());
+
     const handleSessionChange = () => {
       setSession(getCurrentSession());
     };
+    const handleNotifUpdate = () => {
+      setNotifications(getStoredNotifications());
+    };
+
     window.addEventListener('lalbindu_session_changed', handleSessionChange);
+    window.addEventListener('lalbindu_notifications_updated', handleNotifUpdate);
     return () => {
       window.removeEventListener('lalbindu_session_changed', handleSessionChange);
+      window.removeEventListener('lalbindu_notifications_updated', handleNotifUpdate);
     };
   }, []);
 
@@ -137,11 +92,13 @@ export const Navbar: React.FC = () => {
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
   const handleMarkAllAsRead = () => {
-    setNotifications(notifications.map(n => ({ ...n, isRead: true })));
+    const updated = markAllNotificationsAsRead();
+    setNotifications(updated);
   };
 
   const handleNotificationClick = (item: NotificationItem) => {
-    setNotifications(notifications.map(n => n.id === item.id ? { ...n, isRead: true } : n));
+    const updated = markNotificationAsRead(item.id);
+    setNotifications(updated);
     setNotifDropdownOpen(false);
     router.push(item.link);
   };
@@ -262,15 +219,32 @@ export const Navbar: React.FC = () => {
                       )}
                     </div>
 
-                    {unreadCount > 0 && (
-                      <button
-                        onClick={handleMarkAllAsRead}
-                        className="text-[11px] font-bold text-brand-green hover:underline flex items-center"
-                      >
-                        <Check className="w-3 h-3 mr-0.5" />
-                        {lang === 'bn' ? 'সব পঠিত করুন' : 'Mark all read'}
-                      </button>
-                    )}
+                    <div className="flex items-center space-x-2">
+                      {/* ADMIN-ONLY ACTION: Option to Add / Dispatch Notification */}
+                      {isAdmin && (
+                        <button
+                          onClick={() => {
+                            setNotifDropdownOpen(false);
+                            setIsCreateNotifOpen(true);
+                          }}
+                          className="px-2.5 py-1 rounded-lg bg-brand-burgundy hover:bg-[#400B13] text-white text-[11px] font-bold flex items-center space-x-1 shadow-sm transition-all"
+                          title="Dispatch Notification & Alert (Admins Only)"
+                        >
+                          <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                          <span>{lang === 'bn' ? 'বিজ্ঞপ্তি যুক্ত' : 'Add Alert'}</span>
+                        </button>
+                      )}
+
+                      {unreadCount > 0 && (
+                        <button
+                          onClick={handleMarkAllAsRead}
+                          className="text-[11px] font-bold text-brand-green hover:underline flex items-center"
+                        >
+                          <Check className="w-3 h-3 mr-0.5" />
+                          {lang === 'bn' ? 'পঠিত' : 'Mark read'}
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {/* Notification List */}
@@ -291,12 +265,18 @@ export const Navbar: React.FC = () => {
                             ? 'bg-amber-100 text-amber-600'
                             : item.type === 'verification'
                             ? 'bg-green-100 text-brand-green'
+                            : item.type === 'campaign'
+                            ? 'bg-purple-100 text-purple-600'
+                            : item.type === 'system'
+                            ? 'bg-rose-100 text-brand-burgundy'
                             : 'bg-blue-100 text-blue-600'
                         }`}>
                           {item.type === 'emergency' && <Droplet className="w-4 h-4 fill-brand-red" />}
                           {item.type === 'achievement' && <Award className="w-4 h-4" />}
                           {item.type === 'verification' && <ShieldCheck className="w-4 h-4" />}
                           {item.type === 'id_card' && <CreditCard className="w-4 h-4" />}
+                          {item.type === 'campaign' && <Calendar className="w-4 h-4 text-purple-600" />}
+                          {item.type === 'system' && <Megaphone className="w-4 h-4 text-brand-burgundy" />}
                         </div>
 
                         {/* Text */}
@@ -321,15 +301,28 @@ export const Navbar: React.FC = () => {
                   </div>
 
                   {/* Bottom Footer Link */}
-                  <div className="px-5 py-2.5 bg-gray-50 border-t border-gray-100 text-center">
+                  <div className="px-5 py-2.5 bg-gray-50 border-t border-gray-100 flex items-center justify-between text-xs">
                     <Link
                       href="/dashboard/donor"
                       onClick={() => setNotifDropdownOpen(false)}
-                      className="text-xs font-bold text-brand-red hover:underline inline-flex items-center space-x-1"
+                      className="font-bold text-brand-red hover:underline inline-flex items-center space-x-1"
                     >
-                      <span>{lang === 'bn' ? 'সকল বিজ্ঞপ্তি ড্যাশবোর্ডে দেখুন' : 'View all activity in Donor Dashboard'}</span>
+                      <span>{lang === 'bn' ? 'সকল বিজ্ঞপ্তি দেখুন' : 'View all activity'}</span>
                       <ExternalLink className="w-3 h-3 ml-0.5" />
                     </Link>
+
+                    {isAdmin && (
+                      <button
+                        onClick={() => {
+                          setNotifDropdownOpen(false);
+                          setIsCreateNotifOpen(true);
+                        }}
+                        className="font-bold text-brand-burgundy hover:underline flex items-center space-x-1"
+                      >
+                        <Megaphone className="w-3.5 h-3.5 text-brand-burgundy" />
+                        <span>{lang === 'bn' ? 'অ্যালার্ট সম্প্রচার' : 'Broadcast'}</span>
+                      </button>
+                    )}
                   </div>
 
                 </div>
@@ -564,6 +557,14 @@ export const Navbar: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Admin Notification Creator Modal */}
+      <CreateNotificationModal
+        isOpen={isCreateNotifOpen}
+        onClose={() => setIsCreateNotifOpen(false)}
+        adminName={session.name}
+        adminRole={session.roleLabelEn}
+      />
     </header>
   );
 };
