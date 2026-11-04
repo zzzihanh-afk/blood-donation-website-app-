@@ -255,43 +255,144 @@ export const DonorHeartDropSVG: React.FC<LandmarkProps> = ({ primaryColor = '#C8
   </svg>
 );
 
-// 9. Bangladesh Map Vector Outline (High-contrast accurate silhouette for Card Back)
-export const BangladeshMapSVG: React.FC<{ color?: string; className?: string }> = ({ color = '#C8102E', className = 'w-full h-full' }) => (
-  <svg viewBox="0 0 200 240" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path 
-      d="M100 12 
-         C112 10 125 15 135 22 
-         C145 30 152 42 150 55 
-         C148 68 160 75 168 85 
-         C176 96 182 110 178 122 
-         C174 135 165 145 162 158 
-         C160 172 165 185 168 198 
-         C170 205 165 212 158 210 
-         C148 206 142 195 135 188 
-         C128 180 120 185 112 192 
-         C104 200 95 215 88 220 
-         C80 226 72 218 68 208 
-         C64 198 62 185 58 174 
-         C52 160 40 150 35 138 
-         C30 124 35 110 40 98 
-         C46 84 55 72 62 60 
-         C68 48 76 35 84 24 
-         C90 16 95 12 100 12 Z" 
-      fill={color} 
-      fillOpacity="0.14" 
-      stroke={color} 
-      strokeWidth="1.5" 
-      strokeOpacity="0.4" 
-    />
-    {/* Sundarbans Coastal Island Nodes */}
-    <circle cx="85" cy="226" r="3.5" fill={color} fillOpacity="0.3" />
-    <circle cx="98" cy="222" r="3" fill={color} fillOpacity="0.3" />
-    <circle cx="112" cy="214" r="3" fill={color} fillOpacity="0.3" />
-    <circle cx="126" cy="208" r="4" fill={color} fillOpacity="0.3" />
-    <circle cx="142" cy="216" r="3" fill={color} fillOpacity="0.25" />
-    <circle cx="155" cy="220" r="2.5" fill={color} fillOpacity="0.25" />
-  </svg>
-);
+// 9. Bangladesh Map Vector Outline (Authentic Geographical Contour & Internal Division Details for Card Back)
+export const BangladeshMapSVG: React.FC<{ color?: string; className?: string }> = ({ 
+  color = '#C8102E', 
+  className = 'w-full h-full' 
+}) => {
+  const safeId = color.replace(/[^a-zA-Z0-9]/g, '');
+  return (
+    <svg viewBox="0 0 220 270" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id={`bdMapGrad-${safeId}`} x1="110" y1="10" x2="110" y2="260" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor={color} stopOpacity="0.25" />
+          <stop offset="60%" stopColor={color} stopOpacity="0.16" />
+          <stop offset="100%" stopColor={color} stopOpacity="0.30" />
+        </linearGradient>
+      </defs>
+
+      {/* Main Geographic Landmass of Bangladesh */}
+      <path 
+        d="M86,14 
+           L92,20 L96,28 L104,32 L112,42 L110,48 L104,54 L114,58 
+           L126,56 L138,54 L152,54 L165,52 L174,56 L182,64 L185,76 
+           L178,86 L168,90 L158,92 L150,96 L145,104 L142,114 L144,124 
+           L152,132 L164,142 L175,154 L184,168 L188,185 L184,204 L180,222 
+           L176,238 L172,248 L168,254 L165,248 L162,238 L160,224 L154,208 
+           L148,194 L140,182 L134,174 L126,170 L118,172 L112,176 L104,180 
+           L96,184 L88,188 L78,190 L68,190 L58,188 L48,184 L40,178 
+           L38,168 L42,156 L44,144 L38,136 L30,126 L28,116 L34,106 
+           L38,98 L30,90 L22,82 L26,72 L34,64 L42,54 L52,42 
+           L62,30 L72,20 L80,14 Z" 
+        fill={`url(#bdMapGrad-${safeId})`}
+        stroke={color} 
+        strokeWidth="2.2" 
+        strokeOpacity="0.85" 
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+
+      {/* Iconic Coastal Delta Islands (Bhola, Hatia, Sandwip, Manpura, St. Martin's) */}
+      {/* Bhola Island */}
+      <path 
+        d="M106,182 C109,178 114,185 113,196 C112,206 107,212 104,208 C102,202 103,188 106,182 Z" 
+        fill={color} 
+        fillOpacity="0.28" 
+        stroke={color} 
+        strokeWidth="1.4" 
+        strokeOpacity="0.8" 
+      />
+      {/* Hatia Island */}
+      <path 
+        d="M120,186 C123,182 127,188 126,198 C125,206 121,208 119,204 C117,198 118,190 120,186 Z" 
+        fill={color} 
+        fillOpacity="0.28" 
+        stroke={color} 
+        strokeWidth="1.4" 
+        strokeOpacity="0.8" 
+      />
+      {/* Sandwip Island */}
+      <path 
+        d="M132,178 C135,175 138,180 137,188 C136,194 133,196 131,192 C129,188 130,181 132,178 Z" 
+        fill={color} 
+        fillOpacity="0.28" 
+        stroke={color} 
+        strokeWidth="1.4" 
+        strokeOpacity="0.8" 
+      />
+      {/* Kutubdia & Maheshkhali */}
+      <path 
+        d="M158,212 C160,208 163,214 162,224 C161,228 159,228 158,222 Z" 
+        fill={color} 
+        fillOpacity="0.28" 
+        stroke={color} 
+        strokeWidth="1.2" 
+        strokeOpacity="0.75" 
+      />
+      {/* St. Martin's Coral Island */}
+      <circle cx="170" cy="262" r="2.8" fill={color} fillOpacity="0.85" />
+
+      {/* Major River Arteries (Padma, Jamuna, Meghna) */}
+      {/* Jamuna River (North to Central) */}
+      <path 
+        d="M84,36 Q88,60 88,85 Q89,102 92,118" 
+        stroke={color} 
+        strokeWidth="1.2" 
+        strokeOpacity="0.5" 
+        strokeDasharray="2.5 1.5" 
+        fill="none" 
+      />
+      {/* Padma River (West to Central Confluence) */}
+      <path 
+        d="M32,86 Q54,98 76,108 Q88,114 96,122" 
+        stroke={color} 
+        strokeWidth="1.4" 
+        strokeOpacity="0.5" 
+        strokeDasharray="2.5 1.5" 
+        fill="none" 
+      />
+      {/* Surma / Meghna River (Northeast to Confluence and Estuary) */}
+      <path 
+        d="M158,74 Q138,88 124,104 Q108,118 98,126 Q106,146 114,170" 
+        stroke={color} 
+        strokeWidth="1.4" 
+        strokeOpacity="0.5" 
+        strokeDasharray="2.5 1.5" 
+        fill="none" 
+      />
+
+      {/* Dhaka Center Star / Capital Pin Marker */}
+      <g transform="translate(98, 120)">
+        <circle cx="0" cy="0" r="4" fill="#FFFFFF" stroke={color} strokeWidth="1.8" />
+        <circle cx="0" cy="0" r="1.8" fill={color} />
+      </g>
+
+      {/* 8 Divisions Center Markers */}
+      <circle cx="82" cy="48" r="1.6" fill={color} fillOpacity="0.75" /> {/* Rangpur */}
+      <circle cx="56" cy="74" r="1.6" fill={color} fillOpacity="0.75" /> {/* Rajshahi */}
+      <circle cx="106" cy="80" r="1.6" fill={color} fillOpacity="0.75" /> {/* Mymensingh */}
+      <circle cx="152" cy="78" r="1.6" fill={color} fillOpacity="0.75" /> {/* Sylhet */}
+      <circle cx="62" cy="148" r="1.6" fill={color} fillOpacity="0.75" /> {/* Khulna */}
+      <circle cx="94" cy="165" r="1.6" fill={color} fillOpacity="0.75" /> {/* Barishal */}
+      <circle cx="156" cy="172" r="1.6" fill={color} fillOpacity="0.75" /> {/* Chattogram */}
+
+      {/* Stylized "BANGLADESH" typography along eastern curve */}
+      <text 
+        x="198" 
+        y="135" 
+        fill={color} 
+        fillOpacity="0.45" 
+        fontSize="7" 
+        fontWeight="900" 
+        letterSpacing="2" 
+        transform="rotate(90 198 135)"
+        fontFamily="sans-serif"
+      >
+        BANGLADESH
+      </text>
+    </svg>
+  );
+};
 
 // 10. Official Role Emblem Badge (Top Right of Front Card)
 export const RoleBadgeEmblem: React.FC<{ roleId: string; badgeIcon?: string; primaryColor?: string; className?: string }> = ({
