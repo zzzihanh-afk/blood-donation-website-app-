@@ -29,7 +29,14 @@ import {
   Calendar,
   Crown
 } from 'lucide-react';
-import { getCurrentSession, setCurrentSession, isAuthorizedAdmin, UserSession } from '@/lib/session';
+import { 
+  getCurrentSession, 
+  setCurrentSession, 
+  isAuthorizedAdmin, 
+  isHighestAuthority, 
+  isSuperOrCoAdmin, 
+  UserSession 
+} from '@/lib/session';
 import { 
   NotificationItem, 
   getStoredNotifications, 
@@ -77,6 +84,8 @@ export const Navbar: React.FC = () => {
   }, []);
 
   const isAdmin = isAuthorizedAdmin(session);
+  const isSuperOrCo = isSuperOrCoAdmin(session);
+  const isSuper = isHighestAuthority(session);
 
   // Close dropdowns on click outside
   useEffect(() => {
@@ -106,14 +115,14 @@ export const Navbar: React.FC = () => {
     router.push(item.link);
   };
 
-  // Strictly filter out Admin Portal for donors and public website viewers
+  // Strictly filter navigation: Admin Portal & Master ID Card Collection are ONLY for Super Admin & Co-Admin
   const navLinks = [
     { href: '/', label: t.nav.home },
     { href: '/find-donor', label: t.nav.findDonor },
     { href: '/blood-requests', label: t.nav.bloodRequests },
     { href: '/campaigns', label: t.nav.campaigns },
     { href: '/achievements', label: t.nav.achievements },
-    { href: '/id-cards', label: lang === 'bn' ? 'ডিজিটাল আইডি কার্ড' : 'Digital ID Cards' },
+    ...(isSuperOrCo ? [{ href: '/id-cards', label: lang === 'bn' ? 'ডিজিটাল আইডি কার্ড' : 'Digital ID Cards' }] : []),
     { href: '/dashboard/donor', label: t.nav.donorDashboard },
     ...(isAdmin ? [{ href: '/dashboard/admin', label: t.nav.adminDashboard, isAdminPill: true }] : [])
   ];
@@ -417,14 +426,16 @@ export const Navbar: React.FC = () => {
                         {t.nav.adminDashboard}
                       </Link>
 
-                      <Link
-                        href="/dashboard/admin/id-cards"
-                        onClick={() => setUserDropdownOpen(false)}
-                        className="flex items-center px-4 py-2 text-xs text-gray-700 hover:bg-brand-light hover:text-brand-burgundy transition-colors"
-                      >
-                        <CreditCard className="w-4 h-4 mr-2.5 text-amber-600" />
-                        {lang === 'bn' ? 'আইডি কার্ড স্টুডিও' : 'ID Card Template Studio'}
-                      </Link>
+                      {isSuperOrCo && (
+                        <Link
+                          href="/dashboard/admin/id-cards"
+                          onClick={() => setUserDropdownOpen(false)}
+                          className="flex items-center px-4 py-2 text-xs text-gray-700 hover:bg-brand-light hover:text-brand-burgundy transition-colors"
+                        >
+                          <CreditCard className="w-4 h-4 mr-2.5 text-amber-600" />
+                          {lang === 'bn' ? 'আইডি কার্ড স্টুডিও' : 'ID Card Template Studio'}
+                        </Link>
+                      )}
 
                       <Link
                         href="/dashboard/donor"
@@ -434,6 +445,38 @@ export const Navbar: React.FC = () => {
                         <User className="w-4 h-4 mr-2.5 text-brand-red" />
                         {t.nav.donorDashboard}
                       </Link>
+
+                      {/* Executive Role Switcher: EXCLUSIVELY for Super Admin and Co-Admin */}
+                      {isSuperOrCo && (
+                        <>
+                          <div className="border-t border-gray-100 my-1"></div>
+                          {isSuper ? (
+                            <button
+                              onClick={() => {
+                                setCurrentSession('co_admin');
+                                setUserDropdownOpen(false);
+                                router.push('/dashboard/admin');
+                              }}
+                              className="w-full text-left flex items-center px-4 py-2 text-xs font-semibold text-emerald-900 bg-emerald-50/60 hover:bg-emerald-100/70 transition-colors"
+                            >
+                              <ShieldCheck className="w-4 h-4 mr-2.5 text-emerald-600" />
+                              <span>{lang === 'bn' ? 'কো-অ্যাডমিন মোডে পরিবর্তন' : 'Switch to Co-Admin (coadmin)'}</span>
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                setCurrentSession('superadmin');
+                                setUserDropdownOpen(false);
+                                router.push('/dashboard/admin');
+                              }}
+                              className="w-full text-left flex items-center px-4 py-2 text-xs font-semibold text-brand-burgundy bg-amber-50/60 hover:bg-amber-100/70 transition-colors"
+                            >
+                              <Crown className="w-4 h-4 mr-2.5 text-amber-600" />
+                              <span>{lang === 'bn' ? 'সুপার অ্যাডমিন মোডে পরিবর্তন' : 'Switch to Super Admin (superadmin)'}</span>
+                            </button>
+                          )}
+                        </>
+                      )}
 
                       {/* Switch to Public Donor View Option */}
                       <div className="border-t border-gray-100 my-1"></div>
@@ -451,7 +494,7 @@ export const Navbar: React.FC = () => {
                     </>
                   ) : (
                     <>
-                      {/* DONOR / WEBSITE VIEWER LINKS ONLY (Admin Portal is strictly hidden) */}
+                      {/* DONOR / WEBSITE VIEWER LINKS ONLY (Super Admin & Co-Admin options strictly restricted) */}
                       <Link
                         href="/dashboard/donor"
                         onClick={() => setUserDropdownOpen(false)}
@@ -462,38 +505,13 @@ export const Navbar: React.FC = () => {
                       </Link>
 
                       <Link
-                        href="/dashboard/donor#id-card"
+                        href="/dashboard/id-card"
                         onClick={() => setUserDropdownOpen(false)}
                         className="flex items-center px-4 py-2 text-xs text-gray-700 hover:bg-brand-light hover:text-brand-red transition-colors"
                       >
                         <CreditCard className="w-4 h-4 mr-2.5 text-brand-green" />
                         {t.nav.myIdCard}
                       </Link>
-
-                      {/* Executive / Staff Portal Login Option for authorized testing */}
-                      <div className="border-t border-gray-100 my-1"></div>
-                      <button
-                        onClick={() => {
-                          setCurrentSession('superadmin');
-                          setUserDropdownOpen(false);
-                          router.push('/dashboard/admin');
-                        }}
-                        className="w-full text-left flex items-center px-4 py-2 text-xs font-semibold text-brand-burgundy bg-amber-50/50 hover:bg-amber-100/70 transition-colors"
-                      >
-                        <Crown className="w-4 h-4 mr-2.5 text-amber-600" />
-                        <span>{lang === 'bn' ? 'সুপার অ্যাডমিন লগইন (superadmin)' : 'Switch to Super Admin (superadmin)'}</span>
-                      </button>
-                      <button
-                        onClick={() => {
-                          setCurrentSession('co_admin');
-                          setUserDropdownOpen(false);
-                          router.push('/dashboard/admin');
-                        }}
-                        className="w-full text-left flex items-center px-4 py-2 text-xs font-semibold text-amber-900 bg-amber-50/30 hover:bg-amber-100/50 transition-colors"
-                      >
-                        <ShieldCheck className="w-4 h-4 mr-2.5 text-emerald-600" />
-                        <span>{lang === 'bn' ? 'কো-অ্যাডমিন লগইন (coadmin)' : 'Switch to Co-Admin (coadmin)'}</span>
-                      </button>
                     </>
                   )}
 
@@ -561,27 +579,38 @@ export const Navbar: React.FC = () => {
               </div>
             </div>
             {isAdmin ? (
-              <button
-                onClick={() => {
-                  setCurrentSession('donor');
-                  setMobileMenuOpen(false);
-                  router.push('/');
-                }}
-                className="px-3 py-1.5 text-xs font-bold text-gray-600 border border-gray-300 rounded-full"
-              >
-                {lang === 'bn' ? 'দাতা মোড' : 'Donor Mode'}
-              </button>
+              <div className="flex items-center space-x-1.5">
+                {isSuperOrCo && (
+                  <button
+                    onClick={() => {
+                      setCurrentSession(isSuper ? 'co_admin' : 'superadmin');
+                      setMobileMenuOpen(false);
+                      router.push('/dashboard/admin');
+                    }}
+                    className="px-2.5 py-1 text-[11px] font-bold text-amber-900 bg-amber-100/70 border border-amber-300 rounded-full"
+                  >
+                    {isSuper ? 'Co-Admin' : 'Super Admin'}
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    setCurrentSession('donor');
+                    setMobileMenuOpen(false);
+                    router.push('/');
+                  }}
+                  className="px-3 py-1.5 text-xs font-bold text-gray-600 border border-gray-300 rounded-full"
+                >
+                  {lang === 'bn' ? 'দাতা মোড' : 'Donor Mode'}
+                </button>
+              </div>
             ) : (
-              <button
-                onClick={() => {
-                  setCurrentSession('super_admin');
-                  setMobileMenuOpen(false);
-                  router.push('/dashboard/admin');
-                }}
-                className="px-3 py-1.5 text-xs font-bold text-brand-burgundy bg-amber-50 border border-amber-300 rounded-full"
+              <Link
+                href="/auth/login"
+                onClick={() => setMobileMenuOpen(false)}
+                className="px-3 py-1.5 text-xs font-bold text-brand-burgundy bg-amber-50 border border-amber-300 rounded-full inline-block"
               >
                 {lang === 'bn' ? 'অ্যাডমিন লগইন' : 'Admin Login'}
-              </button>
+              </Link>
             )}
           </div>
         </div>

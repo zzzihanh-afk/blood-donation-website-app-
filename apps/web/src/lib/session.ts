@@ -193,6 +193,15 @@ export function isAuthorizedAdmin(session: UserSession): boolean {
 /**
  * Check if the active session holds the HIGHEST authority (Supreme Super Admin).
  */
-export function isHighestAuthority(session: UserSession): boolean {
+export function isHighestAuthority(session?: UserSession | null): boolean {
+  if (!session) return false;
   return session.role === 'super_admin' || session.id === 'superadmin' || session.authorityLevel === 'highest' || session.isSuperAdmin === true;
+}
+
+/**
+ * Check if the active session is Super Admin or Co-Super Admin (Highest Authority or Delegated Co-Admin).
+ */
+export function isSuperOrCoAdmin(session?: UserSession | null): boolean {
+  if (!session) return false;
+  return isHighestAuthority(session) || session.role === 'co_super_admin' || session.authorityLevel === 'co_admin' || session.id === 'coadmin';
 }

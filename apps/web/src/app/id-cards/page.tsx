@@ -3,9 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/components/LanguageContext';
 import { CR80IDCard } from '@/components/id-card/CR80IDCard';
 import { REFERENCE_SAMPLE_PROFILES } from '@lalbindu/api-client';
+import { getCurrentSession, isSuperOrCoAdmin, UserSession } from '@/lib/session';
 import { 
   CreditCard, 
   ShieldCheck, 
@@ -19,14 +21,29 @@ import {
   Users,
   Award,
   ChevronRight,
-  Sliders
+  Sliders,
+  Lock
 } from 'lucide-react';
 
 export default function IdCardsMasterShowcasePage() {
   const { lang } = useLanguage();
+  const router = useRouter();
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'admin' | 'community'>('all');
+  const [session, setSession] = useState<UserSession | null>(null);
+  const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
 
   useEffect(() => {
+    const s = getCurrentSession();
+    setSession(s);
+    const authorized = isSuperOrCoAdmin(s);
+    setIsAuthorized(authorized);
+
+    if (!authorized) {
+      // Strictly restrict access: normal donors and unauthenticated users are redirected to personal donor ID card
+      router.replace('/dashboard/id-card');
+      return;
+    }
+
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       if (params.get('print') === 'true') {
@@ -36,7 +53,7 @@ export default function IdCardsMasterShowcasePage() {
         return () => clearTimeout(timer);
       }
     }
-  }, []);
+  }, [router]);
 
   // Master 8 Role Definitions exactly matching the reference poster image
   const ROLE_DEFINITIONS = [
@@ -135,6 +152,40 @@ export default function IdCardsMasterShowcasePage() {
     return r.category === selectedFilter;
   });
 
+  if (isAuthorized === false) {
+    return (
+      <div className="min-h-screen bg-[#FFF8F8] flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl p-8 max-w-md w-full text-center shadow-xl border border-gray-100 animate-in fade-in">
+          <div className="w-16 h-16 rounded-full bg-red-100 text-brand-burgundy flex items-center justify-center mx-auto mb-4">
+            <Lock className="w-8 h-8 text-brand-burgundy" />
+          </div>
+          <h2 className="text-xl font-black text-gray-900">
+            {lang === 'bn' ? 'অনুমতি সংরক্ষিত (Admin Only)' : 'Super Admin & Co-Admin Only'}
+          </h2>
+          <p className="text-xs text-gray-600 mt-2 leading-relaxed">
+            {lang === 'bn' 
+              ? 'জাতীয় ভূমিকা-ভিত্তিক ডিজিটাল পরিচয়পত্র সংগ্রহ এবং টেমপ্লেট ডিজাইনার কেবলমাত্র সুপার অ্যাডমিন এবং কো-অ্যাডমিনদের জন্য সংরক্ষিত।'
+              : 'The national role-based digital ID card collection and template designer studio are strictly reserved for Super Admin and Co-Admin authority.'}
+          </p>
+          <div className="mt-6 flex flex-col gap-2.5">
+            <Link
+              href="/dashboard/id-card"
+              className="w-full py-2.5 rounded-xl bg-brand-red text-white text-xs font-black hover:bg-brand-crimson transition-all shadow-sm"
+            >
+              {lang === 'bn' ? 'আমার ব্যক্তিগত আইডি কার্ডে যান' : 'Go to My Personal ID Card'}
+            </Link>
+            <Link
+              href="/auth/login"
+              className="w-full py-2.5 rounded-xl bg-gray-100 text-gray-700 text-xs font-bold hover:bg-gray-200 transition-all"
+            >
+              {lang === 'bn' ? 'প্রশাসনিক অ্যাকাউন্টে লগইন' : 'Admin Login'}
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-[#FFF8F8] min-h-screen py-10 sm:py-14">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
@@ -168,13 +219,15 @@ export default function IdCardsMasterShowcasePage() {
                 <span>{lang === 'bn' ? 'আমার আইডি কার্ড দেখুন' : 'My Personal ID Card'}</span>
               </Link>
 
-              <Link
-                href="/dashboard/admin/id-cards"
-                className="px-5 py-2.5 rounded-xl bg-brand-burgundy hover:bg-[#400B13] text-white text-xs font-bold shadow-md transition-all flex items-center space-x-2"
-              >
-                <Sliders className="w-4 h-4" />
-                <span>{lang === 'bn' ? 'সুপার অ্যাডমিন টেমপ্লেট ডিজাইনার' : 'Template Designer Studio'}</span>
-              </Link>
+              {isAuthorized && (
+                <Link
+                  href="/dashboard/admin/id-cards"
+                  className="px-5 py-2.5 rounded-xl bg-brand-burgundy hover:bg-[#400B13] text-white text-xs font-bold shadow-md transition-all flex items-center space-x-2"
+                >
+                  <Sliders className="w-4 h-4" />
+                  <span>{lang === 'bn' ? 'সুপার অ্যাডমিন টেমপ্লেট ডিজাইনার' : 'Template Designer Studio'}</span>
+                </Link>
+              )}
             </div>
           </div>
 
