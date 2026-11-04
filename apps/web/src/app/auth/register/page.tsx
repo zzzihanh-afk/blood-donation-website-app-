@@ -5,6 +5,11 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { BANGLADESH_DIVISIONS, BANGLADESH_KEY_DISTRICTS } from '@lalbindu/api-client';
+import { 
+  BANGLADESH_DIVISIONS as BD_DIVISIONS_LIST,
+  getDistrictsByDivision,
+  getUpazilasByDistrict 
+} from '@/lib/bangladeshLocations';
 import { Droplet, ArrowRight, ShieldCheck, CheckCircle2, Crown, AlertCircle, Lock, UserPlus, Sparkles, Camera, Upload, Trash2 } from 'lucide-react';
 import { getCurrentSession, setCurrentSession, UserSession } from '@/lib/session';
 import { getStoredAccounts, saveStoredAccounts, createAccountByAuthority, AccountUser } from '@/lib/accounts';
@@ -29,6 +34,7 @@ export default function RegisterPage() {
     bloodGroup: 'O+',
     divisionId: 'Dhaka',
     districtId: 'Dhaka',
+    upazilaId: 'Dhanmondi',
     avatarUrl: '',
     termsAccepted: false
   });
@@ -113,6 +119,7 @@ export default function RegisterPage() {
             bloodGroup: formData.bloodGroup,
             division: formData.divisionId,
             district: formData.districtId,
+            upazila: formData.upazilaId,
             avatarUrl: formData.avatarUrl || ''
           },
           session.role,
@@ -159,6 +166,7 @@ export default function RegisterPage() {
         bloodGroup: formData.bloodGroup,
         division: formData.divisionId,
         district: formData.districtId,
+        upazila: formData.upazilaId,
         cardId: donorCardId,
         isSuperAdmin: false,
         canCreateAccounts: false,
@@ -196,7 +204,7 @@ export default function RegisterPage() {
         blood_group: formData.bloodGroup,
         division_name_en: formData.divisionId,
         district_name_en: formData.districtId,
-        upazila_name_en: 'Sadar',
+        upazila_name_en: formData.upazilaId,
         verified_donation_count: 0,
         availability_status: 'available',
         is_ready_to_donate: true,
@@ -442,46 +450,71 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            {/* Division and District */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Division, District, and Upazila / Thana */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
-                <label className="block font-bold text-gray-700 mb-1 text-xs">Division *</label>
+                <label className="block font-bold text-gray-700 mb-1 text-xs">
+                  Division * <span className="text-[10px] text-gray-400 font-normal">বিভাগ</span>
+                </label>
                 <select
                   value={formData.divisionId}
                   onChange={(e) => {
                     const newDiv = e.target.value;
-                    const firstDistrict = BANGLADESH_KEY_DISTRICTS.find(d => {
-                      const div = BANGLADESH_DIVISIONS.find(x => x.name_en === newDiv);
-                      return div ? d.division_id === div.id : false;
-                    });
+                    const districts = getDistrictsByDivision(newDiv);
+                    const firstDistrict = districts.length > 0 ? districts[0].nameEn : newDiv;
+                    const upzs = getUpazilasByDistrict(firstDistrict);
+                    const firstUpz = upzs.length > 0 ? upzs[0].nameEn : 'Sadar';
                     setFormData({ 
                       ...formData, 
                       divisionId: newDiv, 
-                      districtId: firstDistrict ? firstDistrict.name_en : newDiv 
+                      districtId: firstDistrict,
+                      upazilaId: firstUpz
                     });
                   }}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-burgundy/20 font-medium text-xs text-gray-900 transition-all cursor-pointer"
                 >
-                  {BANGLADESH_DIVISIONS.map(d => (
-                    <option key={d.id} value={d.name_en}>{d.name_en}</option>
+                  {BD_DIVISIONS_LIST.map(d => (
+                    <option key={d.id} value={d.nameEn}>{d.nameEn} ({d.nameBn})</option>
                   ))}
                 </select>
               </div>
 
               <div>
-                <label className="block font-bold text-gray-700 mb-1 text-xs">District *</label>
+                <label className="block font-bold text-gray-700 mb-1 text-xs">
+                  District * <span className="text-[10px] text-gray-400 font-normal">জেলা</span>
+                </label>
                 <select
                   value={formData.districtId}
-                  onChange={(e) => setFormData({ ...formData, districtId: e.target.value })}
+                  onChange={(e) => {
+                    const newDist = e.target.value;
+                    const upzs = getUpazilasByDistrict(newDist);
+                    const firstUpz = upzs.length > 0 ? upzs[0].nameEn : 'Sadar';
+                    setFormData({ 
+                      ...formData, 
+                      districtId: newDist,
+                      upazilaId: firstUpz
+                    });
+                  }}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-burgundy/20 font-medium text-xs text-gray-900 transition-all cursor-pointer"
                 >
-                  {filteredDistricts.length > 0 ? (
-                    filteredDistricts.map(d => (
-                      <option key={d.id} value={d.name_en}>{d.name_en}</option>
-                    ))
-                  ) : (
-                    <option value={formData.divisionId}>{formData.divisionId}</option>
-                  )}
+                  {getDistrictsByDivision(formData.divisionId).map(d => (
+                    <option key={d.id} value={d.nameEn}>{d.nameEn} ({d.nameBn})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-gray-700 mb-1 text-xs">
+                  Upazila / Thana * <span className="text-[10px] text-gray-400 font-normal">উপজেলা / থানা</span>
+                </label>
+                <select
+                  value={formData.upazilaId}
+                  onChange={(e) => setFormData({ ...formData, upazilaId: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-burgundy/20 font-medium text-xs text-gray-900 transition-all cursor-pointer"
+                >
+                  {getUpazilasByDistrict(formData.districtId).map(upz => (
+                    <option key={upz.id} value={upz.nameEn}>{upz.nameEn} ({upz.nameBn})</option>
+                  ))}
                 </select>
               </div>
             </div>

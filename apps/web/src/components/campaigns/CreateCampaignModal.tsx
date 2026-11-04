@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useLanguage } from '@/components/LanguageContext';
 import { BANGLADESH_DIVISIONS, BANGLADESH_KEY_DISTRICTS } from '@lalbindu/api-client';
+import { getDistrictsByDivision } from '@/lib/bangladeshLocations';
 import { CampaignItem } from '@/lib/campaigns';
 import { 
   X, 
@@ -213,8 +214,16 @@ export const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({
               </label>
               <select
                 value={form.division}
-                onChange={(e) => setForm({ ...form, division: e.target.value })}
-                className="w-full px-3 py-2 text-xs font-bold rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-burgundy/20"
+                onChange={(e) => {
+                  const newDiv = e.target.value;
+                  const dists = getDistrictsByDivision(newDiv);
+                  setForm({ 
+                    ...form, 
+                    division: newDiv,
+                    district: dists.length > 0 ? dists[0].nameEn : newDiv
+                  });
+                }}
+                className="w-full px-3 py-2 text-xs font-bold rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-burgundy/20 cursor-pointer"
               >
                 {BANGLADESH_DIVISIONS.map(d => (
                   <option key={d.id} value={d.name_en}>
@@ -230,11 +239,11 @@ export const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({
               <select
                 value={form.district}
                 onChange={(e) => setForm({ ...form, district: e.target.value })}
-                className="w-full px-3 py-2 text-xs font-bold rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-burgundy/20"
+                className="w-full px-3 py-2 text-xs font-bold rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-burgundy/20 cursor-pointer"
               >
-                {BANGLADESH_KEY_DISTRICTS.map(d => (
-                  <option key={d.id} value={d.name_en}>
-                    {lang === 'bn' ? d.name_bn : d.name_en}
+                {getDistrictsByDivision(form.division).map(d => (
+                  <option key={d.id} value={d.nameEn}>
+                    {lang === 'bn' ? d.nameBn : d.nameEn}
                   </option>
                 ))}
               </select>

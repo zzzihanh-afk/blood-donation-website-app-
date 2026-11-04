@@ -8,6 +8,11 @@ import {
   BANGLADESH_DIVISIONS, 
   BANGLADESH_KEY_DISTRICTS 
 } from '@lalbindu/api-client';
+import { 
+  BANGLADESH_DIVISIONS as BD_DIVISIONS_LIST,
+  getDistrictsByDivision,
+  getUpazilasByDistrict 
+} from '@/lib/bangladeshLocations';
 import { roleCardThemes } from '@lalbindu/design-tokens';
 import { 
   ShieldCheck, 
@@ -228,8 +233,34 @@ export default function AdminDashboardPage() {
     bloodGroup: 'O+',
     division: 'Dhaka',
     district: 'Dhaka',
+    upazila: 'Dhanmondi',
     avatarUrl: ''
   });
+
+  const handleNewAccountDivisionChange = (newDivision: string) => {
+    const districts = getDistrictsByDivision(newDivision);
+    const firstDistrict = districts.length > 0 ? districts[0].nameEn : newDivision;
+    const upazilas = getUpazilasByDistrict(firstDistrict);
+    const firstUpazila = upazilas.length > 0 ? upazilas[0].nameEn : 'Sadar';
+
+    setNewAccountForm(prev => ({
+      ...prev,
+      division: newDivision,
+      district: firstDistrict,
+      upazila: firstUpazila
+    }));
+  };
+
+  const handleNewAccountDistrictChange = (newDistrict: string) => {
+    const upazilas = getUpazilasByDistrict(newDistrict);
+    const firstUpazila = upazilas.length > 0 ? upazilas[0].nameEn : 'Sadar';
+
+    setNewAccountForm(prev => ({
+      ...prev,
+      district: newDistrict,
+      upazila: firstUpazila
+    }));
+  };
 
   const handleAccountPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -595,6 +626,7 @@ export default function AdminDashboardPage() {
         bloodGroup: newAccountForm.bloodGroup,
         division: newAccountForm.division,
         district: newAccountForm.district,
+        upazila: newAccountForm.upazila,
         avatarUrl: newAccountForm.avatarUrl || ''
       },
       session.role,
@@ -652,6 +684,7 @@ export default function AdminDashboardPage() {
       bloodGroup: 'O+',
       division: 'Dhaka',
       district: 'Dhaka',
+      upazila: 'Dhanmondi',
       avatarUrl: ''
     });
   };
@@ -2385,29 +2418,50 @@ export default function AdminDashboardPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="block font-bold text-gray-700 mb-1">Division *</label>
+                  <label className="block font-bold text-gray-700 mb-1 text-xs">
+                    Division * <span className="text-[10px] text-gray-400 font-normal">বিভাগ</span>
+                  </label>
                   <select
                     value={newAccountForm.division}
-                    onChange={(e) => setNewAccountForm({ ...newAccountForm, division: e.target.value })}
-                    className="w-full p-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white font-semibold"
+                    onChange={(e) => handleNewAccountDivisionChange(e.target.value)}
+                    className="w-full p-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white font-semibold text-xs text-gray-900 cursor-pointer"
                   >
-                    {BANGLADESH_DIVISIONS.map(d => (
-                      <option key={d.id} value={d.name_en}>{d.name_en}</option>
+                    {BD_DIVISIONS_LIST.map(d => (
+                      <option key={d.id} value={d.nameEn}>{d.nameEn} ({d.nameBn})</option>
                     ))}
                   </select>
                 </div>
 
                 <div>
-                  <label className="block font-bold text-gray-700 mb-1">District</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Dhaka, Bogura"
+                  <label className="block font-bold text-gray-700 mb-1 text-xs">
+                    District * <span className="text-[10px] text-gray-400 font-normal">জেলা</span>
+                  </label>
+                  <select
                     value={newAccountForm.district}
-                    onChange={(e) => setNewAccountForm({ ...newAccountForm, district: e.target.value })}
-                    className="w-full p-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white font-semibold"
-                  />
+                    onChange={(e) => handleNewAccountDistrictChange(e.target.value)}
+                    className="w-full p-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white font-semibold text-xs text-gray-900 cursor-pointer"
+                  >
+                    {getDistrictsByDivision(newAccountForm.division).map(dist => (
+                      <option key={dist.id} value={dist.nameEn}>{dist.nameEn} ({dist.nameBn})</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1 text-xs">
+                    Upazila / Thana * <span className="text-[10px] text-gray-400 font-normal">উপজেলা / থানা</span>
+                  </label>
+                  <select
+                    value={newAccountForm.upazila}
+                    onChange={(e) => setNewAccountForm({ ...newAccountForm, upazila: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white font-semibold text-xs text-gray-900 cursor-pointer"
+                  >
+                    {getUpazilasByDistrict(newAccountForm.district).map(upz => (
+                      <option key={upz.id} value={upz.nameEn}>{upz.nameEn} ({upz.nameBn})</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
@@ -2558,45 +2612,65 @@ export default function AdminDashboardPage() {
                       </label>
                       <select
                         value={newAppointForm.division}
-                        onChange={(e) => setNewAppointForm({ ...newAppointForm, division: e.target.value })}
-                        className="w-full text-xs p-2.5 rounded-xl border border-gray-200 bg-gray-50 font-medium"
+                        onChange={(e) => {
+                          const newDiv = e.target.value;
+                          const districts = getDistrictsByDivision(newDiv);
+                          const firstDist = districts.length > 0 ? districts[0].nameEn : newDiv;
+                          const upzs = getUpazilasByDistrict(firstDist);
+                          const firstUpz = upzs.length > 0 ? upzs[0].nameEn : 'Sadar';
+                          setNewAppointForm({
+                            ...newAppointForm,
+                            division: newDiv,
+                            district: firstDist,
+                            specificArea: firstUpz
+                          });
+                        }}
+                        className="w-full text-xs p-2.5 rounded-xl border border-gray-200 bg-gray-50 font-medium cursor-pointer"
                       >
-                        <option value="Dhaka">Dhaka (ঢাকা)</option>
-                        <option value="Chattogram">Chattogram (চট্টগ্রাম)</option>
-                        <option value="Rajshahi">Rajshahi (রাজশাহী)</option>
-                        <option value="Khulna">Khulna (খুলনা)</option>
-                        <option value="Barishal">Barishal (বরিশাল)</option>
-                        <option value="Sylhet">Sylhet (সিলেট)</option>
-                        <option value="Rangpur">Rangpur (রংপুর)</option>
-                        <option value="Mymensingh">Mymensingh (ময়মনসিংহ)</option>
+                        {BD_DIVISIONS_LIST.map(d => (
+                          <option key={d.id} value={d.nameEn}>{d.nameEn} ({d.nameBn})</option>
+                        ))}
                       </select>
                     </div>
 
                     <div>
                       <label className="block text-xs font-bold text-gray-700 mb-1">
-                        {lang === 'bn' ? 'দায়িত্বপ্রাপ্ত জেলা / জিলা' : 'Assigned District'}
+                        {lang === 'bn' ? 'দায়িত্বপ্রাপ্ত জেলা / জিলা' : 'Assigned District'} <span className="text-brand-red">*</span>
                       </label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Dhaka, Gazipur, Chattogram"
+                      <select
                         value={newAppointForm.district}
-                        onChange={(e) => setNewAppointForm({ ...newAppointForm, district: e.target.value })}
-                        className="w-full text-xs p-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white font-medium"
-                      />
+                        onChange={(e) => {
+                          const newDist = e.target.value;
+                          const upzs = getUpazilasByDistrict(newDist);
+                          const firstUpz = upzs.length > 0 ? upzs[0].nameEn : 'Sadar';
+                          setNewAppointForm({
+                            ...newAppointForm,
+                            district: newDist,
+                            specificArea: firstUpz
+                          });
+                        }}
+                        className="w-full text-xs p-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white font-medium cursor-pointer"
+                      >
+                        {getDistrictsByDivision(newAppointForm.division).map(dist => (
+                          <option key={dist.id} value={dist.nameEn}>{dist.nameEn} ({dist.nameBn})</option>
+                        ))}
+                      </select>
                     </div>
                   </div>
 
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-1">
-                      {lang === 'bn' ? 'নির্দিষ্ট এলাকা / থানা / উপজেলা' : 'Specific Area / Thana / Upazila'}
+                      {lang === 'bn' ? 'দায়িত্বপ্রাপ্ত উপজেলা / থানা' : 'Assigned Upazila / Thana'}
                     </label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Gulshan Thana, Savar Upazila"
+                    <select
                       value={newAppointForm.specificArea}
                       onChange={(e) => setNewAppointForm({ ...newAppointForm, specificArea: e.target.value })}
-                      className="w-full text-xs p-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white font-medium"
-                    />
+                      className="w-full text-xs p-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white font-medium cursor-pointer"
+                    >
+                      {getUpazilasByDistrict(newAppointForm.district).map(upz => (
+                        <option key={upz.id} value={upz.nameEn}>{upz.nameEn} ({upz.nameBn})</option>
+                      ))}
+                    </select>
                   </div>
                 </>
               )}

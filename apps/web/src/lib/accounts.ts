@@ -31,6 +31,7 @@ export interface AccountUser {
   bloodGroup?: string;
   division?: string;
   district?: string;
+  upazila?: string;
   cardId: string;
   isSuperAdmin: boolean;
   canCreateAccounts: boolean;
@@ -50,6 +51,7 @@ export interface PendingApplication {
   bloodGroup: string;
   divisionId: string;
   districtId: string;
+  upazilaId?: string;
   appliedAt: string;
   status: 'pending' | 'approved' | 'rejected';
 }
@@ -323,6 +325,7 @@ export function createAccountByAuthority(
     bloodGroup: accountData.bloodGroup || 'O+',
     division: accountData.division || 'Dhaka',
     district: accountData.district || 'Dhaka',
+    upazila: accountData.upazila || 'Dhanmondi',
     cardId: accountData.cardId || (isCreatingCoAdmin ? `LA001-${Math.floor(1000 + Math.random() * 9000)}` : `LB-${Math.floor(1000000 + Math.random() * 9000000)}`),
     isSuperAdmin: role === 'super_admin',
     canCreateAccounts: isCreatingCoAdmin ? (accountData.delegatedPermissions?.canCreateDonors ?? true) : false,
