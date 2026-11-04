@@ -36,8 +36,15 @@ import {
   Trash2,
   Camera,
   Upload,
-  User
+  User,
+  Plus,
+  X
 } from 'lucide-react';
+import { 
+  getDonorHistory, 
+  submitDonationVerification, 
+  DonationHistoryRecord 
+} from '@/lib/verifications';
 
 interface IncomingContactRequest {
   id: string;
@@ -116,11 +123,22 @@ export default function DonorDashboardPage() {
     reader.readAsDataURL(file);
   };
 
+  // Donation proof submission & history state
+  const [historyRecords, setHistoryRecords] = useState<DonationHistoryRecord[]>(() => {
+    return getDonorHistory(donor.donor_id_number || 'LB-0004278', donor.full_name);
+  });
+  const [isSubmitRecordModalOpen, setIsSubmitRecordModalOpen] = useState(false);
+  const [submitRecordForm, setSubmitRecordForm] = useState({
+    hospitalName: '',
+    donationDate: new Date().toISOString().split('T')[0],
+    units: 1,
+    bagNumber: '',
+    notes: ''
+  });
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
   // Hydrate custom donor profile from registration / login session
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setOriginUrl(window.location.origin);
-    }
+  const loadDonorProfile = () => {
     try {
       const activeRaw = localStorage.getItem('lalbindu_active_donor_profile');
       if (activeRaw) {
@@ -136,7 +154,8 @@ export default function DonorDashboardPage() {
             district_name_en: parsed.district_name_en || parsed.district || prev.district_name_en,
             division_name_en: parsed.division_name_en || parsed.division || prev.division_name_en,
             avatar_url: parsed.avatar_url || parsed.avatarUrl || prev.avatar_url,
-            verified_donation_count: typeof parsed.verified_donation_count === 'number' ? parsed.verified_donation_count : prev.verified_donation_count
+            verified_donation_count: typeof parsed.verified_donation_count === 'number' ? parsed.verified_donation_count : prev.verified_donation_count,
+            last_donation_date: parsed.last_donation_date || (prev as any).last_donation_date || '2026-08-10'
           }));
           if (parsed.availability_status) {
             setAvailabilityStatus(parsed.availability_status);
@@ -153,12 +172,40 @@ export default function DonorDashboardPage() {
           fullNameBn: session.name,
           donor_id_number: session.donorId || prev.donor_id_number,
           blood_group: (session.bloodGroup as any) || prev.blood_group,
-          avatar_url: session.avatarUrl || prev.avatar_url
+          avatar_url: session.avatarUrl || prev.avatar_url,
+          last_donation_date: (session as any).last_donation_date || (prev as any).last_donation_date || '2026-08-10'
         }));
       }
     } catch (e) {
       console.error('Error hydrating donor data:', e);
     }
+  };
+
+  const refreshHistoryAndProfile = () => {
+    loadDonorProfile();
+    const updatedHistory = getDonorHistory(donor.donor_id_number || 'LB-0004278', donor.full_name);
+    setHistoryRecords(updatedHistory);
+  };
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setOriginUrl(window.location.origin);
+    }
+    loadDonorProfile();
+    const updatedHistory = getDonorHistory(donor.donor_id_number || 'LB-0004278', donor.full_name);
+    setHistoryRecords(updatedHistory);
+
+    window.addEventListener('lalbindu_session_changed', refreshHistoryAndProfile);
+    window.addEventListener('lalbindu_verification_updated', refreshHistoryAndProfile);
+    window.addEventListener('lalbindu_donation_history_updated', refreshHistoryAndProfile);
+    window.addEventListener('storage', refreshHistoryAndProfile);
+
+    return () => {
+      window.removeEventListener('lalbindu_session_changed', refreshHistoryAndProfile);
+      window.removeEventListener('lalbindu_verification_updated', refreshHistoryAndProfile);
+      window.removeEventListener('lalbindu_donation_history_updated', refreshHistoryAndProfile);
+      window.removeEventListener('storage', refreshHistoryAndProfile);
+    };
   }, []);
 
   // Load incoming contact requests from localStorage and sync across tabs
@@ -215,9 +262,45 @@ export default function DonorDashboardPage() {
     } catch (e) {}
   };
 
+  const handleSubmitDonationRecord = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!submitRecordForm.hospitalName.trim()) {
+      alert(lang === 'bn' ? 'অনুগ্রহ করে হাসপাতালের নাম লিখুন।' : 'Please enter hospital name.');
+      return;
+    }
+    const randBag = submitRecordForm.bagNumber.trim() || `BAG-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+    submitDonationVerification({
+      donorId: donor.donor_id_number || 'LB-0004278',
+      donorName: donor.full_name || 'Ahmed Rahman',
+      bloodGroup: donor.blood_group || 'O+',
+      hospitalName: submitRecordForm.hospitalName.trim(),
+      donationDate: submitRecordForm.donationDate,
+      units: Number(submitRecordForm.units) || 1,
+      bagNumber: randBag
+    });
+
+    setIsSubmitRecordModalOpen(false);
+    setSubmitRecordForm({
+      hospitalName: '',
+      donationDate: new Date().toISOString().split('T')[0],
+      units: 1,
+      bagNumber: '',
+      notes: ''
+    });
+
+    setToastMessage(lang === 'bn' 
+      ? 'রক্তদানের তথ্য সফলভাবে দাখিল করা হয়েছে! প্রশাসনিক ও হাসপাতাল যাচাইয়ের পর আপনার প্রোফাইলে যুক্ত হবে।' 
+      : 'Donation proof submitted successfully! It has been routed to the pending verification queue for Super Admin review.');
+    setTimeout(() => setToastMessage(null), 5000);
+
+    const updated = getDonorHistory(donor.donor_id_number || 'LB-0004278', donor.full_name);
+    setHistoryRecords(updated);
+  };
+
   // 3-calendar-month calculation
-  const lastDonationDate = '2026-08-10';
-  const nextEligibleDate = calculateNextEligibleDate(lastDonationDate, 3); // 2026-11-10
+  const lastDonationDate = (donor as any).last_donation_date || '2026-08-10';
+  const nextEligibleDate = calculateNextEligibleDate(lastDonationDate, 3); // e.g. 2026-11-10
+  const isResting = typeof window !== 'undefined' ? (new Date().toISOString().split('T')[0] < nextEligibleDate) : true;
 
   const tokenCleanId = (donor.donor_id_number || 'LB-0004278').replace(/[^a-zA-Z0-9]/g, '');
   const verificationToken = `LB-TOKEN-DNR-${tokenCleanId}`;
@@ -250,6 +333,14 @@ export default function DonorDashboardPage() {
   return (
     <div className="bg-[#FFF8F8] min-h-screen py-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+        
+        {/* Toast Alert Banner */}
+        {toastMessage && (
+          <div className="p-4 bg-emerald-50 text-emerald-800 rounded-2xl border border-emerald-200 text-xs font-bold flex items-center space-x-2 animate-fade-in shadow-sm">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+            <span>{toastMessage}</span>
+          </div>
+        )}
         
         {/* Header Profile Bar */}
         <div className="bg-white rounded-3xl p-6 sm:p-8 card-shadow border border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -661,14 +752,20 @@ export default function DonorDashboardPage() {
            ========================================================================= */}
         <div className="bg-white rounded-3xl p-6 sm:p-8 card-shadow border border-gray-100">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-black text-gray-900 tracking-tight">
-              {t.donorDashboard.donationHistoryHeading}
-            </h2>
+            <div>
+              <h2 className="text-xl font-black text-gray-900 tracking-tight">
+                {t.donorDashboard.donationHistoryHeading}
+              </h2>
+              <p className="text-xs text-gray-500 mt-0.5">
+                {lang === 'bn' ? 'যাচাইকৃত রক্তদান লগ ও হাসপাতাল অনুমোদনের ইতিহাস' : 'Verified donation records & clinical confirmation history'}
+              </p>
+            </div>
             <button
-              onClick={() => alert("Donation record submission modal")}
-              className="text-xs font-bold text-brand-red hover:underline"
+              onClick={() => setIsSubmitRecordModalOpen(true)}
+              className="px-3.5 py-2 rounded-xl bg-brand-light hover:bg-red-100 text-brand-red text-xs font-bold transition-all flex items-center space-x-1.5 cursor-pointer"
             >
-              {t.donorDashboard.submitNewRecordBtn}
+              <Plus className="w-3.5 h-3.5" />
+              <span>{t.donorDashboard.submitNewRecordBtn}</span>
             </button>
           </div>
 
@@ -684,43 +781,163 @@ export default function DonorDashboardPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 text-gray-700">
-                <tr>
-                  <td className="py-3 px-4 font-bold text-gray-900">2026-08-10</td>
-                  <td className="py-3 px-4">{t.donorDashboard.wholeBlood}</td>
-                  <td className="py-3 px-4">{t.donorDashboard.hospitalDhaka}</td>
-                  <td className="py-3 px-4 font-bold">{lang === 'bn' ? '১ ব্যাগ' : '1 Unit'}</td>
-                  <td className="py-3 px-4">
-                    <span className="px-2 py-0.5 rounded-full bg-green-100 text-brand-green font-bold text-[10px]">
-                      {t.donorDashboard.verifiedByHospital}
-                    </span>
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-3 px-4 font-bold text-gray-900">2026-04-15</td>
-                  <td className="py-3 px-4">{t.donorDashboard.wholeBlood}</td>
-                  <td className="py-3 px-4">{lang === 'bn' ? 'এনআইসিভিডি হৃদরোগ ইনস্টিটিউট' : 'NICVD Heart Institute'}</td>
-                  <td className="py-3 px-4 font-bold">{lang === 'bn' ? '১ ব্যাগ' : '1 Unit'}</td>
-                  <td className="py-3 px-4">
-                    <span className="px-2 py-0.5 rounded-full bg-green-100 text-brand-green font-bold text-[10px]">
-                      {t.donorDashboard.verifiedByOfficer}
-                    </span>
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-3 px-4 font-bold text-gray-900">2025-12-01</td>
-                  <td className="py-3 px-4">{t.donorDashboard.wholeBlood}</td>
-                  <td className="py-3 px-4">{lang === 'bn' ? 'রেড ক্রিসেন্ট হলি ফ্যামিলি হাসপাতাল' : 'Red Crescent Holy Family Hospital'}</td>
-                  <td className="py-3 px-4 font-bold">{lang === 'bn' ? '১ ব্যাগ' : '1 Unit'}</td>
-                  <td className="py-3 px-4">
-                    <span className="px-2 py-0.5 rounded-full bg-green-100 text-brand-green font-bold text-[10px]">
-                      {t.donorDashboard.verifiedByHospital}
-                    </span>
-                  </td>
-                </tr>
+                {historyRecords.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-8 text-center text-gray-400">
+                      {lang === 'bn' ? 'কোনো রক্তদানের ইতিহাস পাওয়া যায়নি।' : 'No verified donation history found.'}
+                    </td>
+                  </tr>
+                ) : (
+                  historyRecords.map((item) => (
+                    <tr key={item.id} className="hover:bg-gray-50/50">
+                      <td className="py-3 px-4 font-bold text-gray-900">
+                        <div>{item.donationDate}</div>
+                        {item.bagNumber && (
+                          <div className="text-[10px] text-gray-400 font-mono">{item.bagNumber}</div>
+                        )}
+                      </td>
+                      <td className="py-3 px-4">{item.donationType}</td>
+                      <td className="py-3 px-4 font-medium text-gray-800">{item.hospitalName}</td>
+                      <td className="py-3 px-4 font-bold">{item.units} {lang === 'bn' ? 'ব্যাগ' : 'Unit(s)'}</td>
+                      <td className="py-3 px-4">
+                        {item.status === 'verified' ? (
+                          <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[10px] inline-flex items-center space-x-1">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                            <span>{item.verifierTag || (lang === 'bn' ? 'কর্তৃপক্ষ কর্তৃক যাচাইকৃত' : 'Verified by Authority')}</span>
+                          </span>
+                        ) : (
+                          <span className="px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 font-bold text-[10px] inline-flex items-center space-x-1">
+                            <Clock className="w-3 h-3 text-amber-600" />
+                            <span>{lang === 'bn' ? 'যাচাই প্রক্রিয়াধীন' : 'Verification Pending'}</span>
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
         </div>
+
+        {/* Modal: Submit Blood Donation Proof */}
+        {isSubmitRecordModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white rounded-3xl max-w-lg w-full p-6 card-shadow border border-gray-100 relative">
+              <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-4">
+                <div className="flex items-center space-x-2">
+                  <Droplet className="w-5 h-5 text-brand-red" />
+                  <h3 className="font-black text-gray-900 text-base">
+                    {lang === 'bn' ? 'নতুন রক্তদানের তথ্য দাখিল করুন' : 'Submit Blood Donation Record'}
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setIsSubmitRecordModalOpen(false)}
+                  className="text-gray-400 hover:text-gray-600 p-1 rounded-lg"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSubmitDonationRecord} className="space-y-4">
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-700 mb-1">
+                    {lang === 'bn' ? 'হাসপাতাল বা রক্ত ব্যাংকের নাম *' : 'Hospital / Blood Bank / Facility *'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={submitRecordForm.hospitalName}
+                    onChange={(e) => setSubmitRecordForm({ ...submitRecordForm, hospitalName: e.target.value })}
+                    placeholder="e.g. Dhaka Medical College Hospital"
+                    className="w-full text-xs p-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-brand-burgundy"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-700 mb-1">
+                      {lang === 'bn' ? 'রক্তদানের তারিখ *' : 'Donation Date *'}
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={submitRecordForm.donationDate}
+                      onChange={(e) => setSubmitRecordForm({ ...submitRecordForm, donationDate: e.target.value })}
+                      className="w-full text-xs p-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-brand-burgundy"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-700 mb-1">
+                      {lang === 'bn' ? 'রক্তের ব্যাগ রেফারেন্স নম্বর (ঐচ্ছিক)' : 'Blood Bag Ref Number (Optional)'}
+                    </label>
+                    <input
+                      type="text"
+                      value={submitRecordForm.bagNumber}
+                      onChange={(e) => setSubmitRecordForm({ ...submitRecordForm, bagNumber: e.target.value })}
+                      placeholder="e.g. BAG-2026-DMC-1049"
+                      className="w-full text-xs p-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-brand-burgundy font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-700 mb-1">
+                      {lang === 'bn' ? 'ইউনিটের সংখ্যা' : 'Donation Units'}
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="2"
+                      value={submitRecordForm.units}
+                      onChange={(e) => setSubmitRecordForm({ ...submitRecordForm, units: Number(e.target.value) })}
+                      className="w-full text-xs p-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-brand-burgundy font-bold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-700 mb-1">
+                      {lang === 'bn' ? 'অতিরিক্ত মন্তব্য / ওয়ার্ড' : 'Transfusion Details / Notes'}
+                    </label>
+                    <input
+                      type="text"
+                      value={submitRecordForm.notes}
+                      onChange={(e) => setSubmitRecordForm({ ...submitRecordForm, notes: e.target.value })}
+                      placeholder="e.g. Emergency transfusion"
+                      className="w-full text-xs p-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-brand-burgundy"
+                    />
+                  </div>
+                </div>
+
+                <div className="p-3 bg-brand-light rounded-xl border border-brand-red/20 text-[11px] text-brand-burgundy flex items-start space-x-2">
+                  <ShieldCheck className="w-4 h-4 text-brand-red shrink-0 mt-0.5" />
+                  <span>
+                    {lang === 'bn'
+                      ? 'দাখিলকৃত তথ্য সরাসরি ন্যাশনাল অ্যাডমিন ভেরিফিকেশন কিউতে পাঠানো হবে। সুপার অ্যাডমিন বা হাসপাতাল কর্তৃক অনুমোদনের সাথে সাথে আপনার মোট রক্তদান সংখ্যা বৃদ্ধি পাবে এবং ৩ মাসের বাধ্যতামূলক বিশ্রাম ট্র্যাকার হালনাগাদ হবে।'
+                      : 'Submitted records are routed directly to the National Super Admin verification queue. Once approved, your official verified donation tally will increase and your 3-calendar-month rest cycle will reset.'}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-end space-x-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsSubmitRecordModalOpen(false)}
+                    className="px-4 py-2 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-100 transition-all"
+                  >
+                    {lang === 'bn' ? 'বাতিল' : 'Cancel'}
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 rounded-xl text-xs font-black bg-brand-red hover:bg-brand-crimson text-white transition-all shadow-sm flex items-center space-x-1.5"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>{lang === 'bn' ? 'যাচাইয়ের জন্য দাখিল করুন' : 'Submit for Verification'}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
 
       </div>
     </div>

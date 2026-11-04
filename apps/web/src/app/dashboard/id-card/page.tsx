@@ -51,7 +51,7 @@ export default function MyIdCardPage() {
     roleId: 'donor'
   });
 
-  useEffect(() => {
+  const loadProfile = () => {
     try {
       const activeRaw = localStorage.getItem('lalbindu_active_donor_profile');
       if (activeRaw) {
@@ -65,6 +65,7 @@ export default function MyIdCardPage() {
             uniqueId: uId,
             avatarUrl: parsed.avatar_url || parsed.avatarUrl || '',
             bloodGroup: parsed.blood_group || parsed.bloodGroup || 'O+',
+            donationCount: typeof parsed.verified_donation_count === 'number' ? parsed.verified_donation_count : (typeof parsed.donationCount === 'number' ? parsed.donationCount : prev.donationCount),
             jurisdictionName: `${parsed.district_name_en || parsed.district || 'Dhaka'} District`,
             jurisdictionNameBn: `${parsed.district_name_en || parsed.district || 'ঢাকা'} জেলা`,
             verificationToken: `LB-TOKEN-DNR-${uId.replace(/[^a-zA-Z0-9]/g, '')}`
@@ -83,10 +84,24 @@ export default function MyIdCardPage() {
           uniqueId: uId,
           avatarUrl: session.avatarUrl || '',
           bloodGroup: session.bloodGroup || 'O+',
+          donationCount: typeof (session as any).verified_donation_count === 'number' ? (session as any).verified_donation_count : prev.donationCount,
           verificationToken: `LB-TOKEN-DNR-${uId.replace(/[^a-zA-Z0-9]/g, '')}`
         }));
       }
     } catch (e) {}
+  };
+
+  useEffect(() => {
+    loadProfile();
+    window.addEventListener('lalbindu_session_changed', loadProfile);
+    window.addEventListener('lalbindu_verification_updated', loadProfile);
+    window.addEventListener('storage', loadProfile);
+
+    return () => {
+      window.removeEventListener('lalbindu_session_changed', loadProfile);
+      window.removeEventListener('lalbindu_verification_updated', loadProfile);
+      window.removeEventListener('storage', loadProfile);
+    };
   }, []);
 
   const verificationUrl = typeof window !== 'undefined'

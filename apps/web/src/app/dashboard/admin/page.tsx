@@ -78,6 +78,13 @@ import {
   approvePendingApplication, 
   PendingApplication 
 } from '@/lib/accounts';
+import { 
+  DonationVerification, 
+  getStoredVerifications, 
+  approveDonationVerification, 
+  rejectDonationVerification,
+  submitDonationVerification 
+} from '@/lib/verifications';
 
 export interface SubordinateAppointment {
   id: string;
@@ -248,6 +255,7 @@ export default function AdminDashboardPage() {
     setSession(getCurrentSession());
     setAccountsList(getStoredAccounts());
     setPendingApps(getPendingApplications());
+    setVerificationsList(getStoredVerifications());
     syncNotificationsFromDatabase();
 
     const handleNotifsUpdate = () => {
@@ -256,17 +264,22 @@ export default function AdminDashboardPage() {
     const handleSessionChange = () => setSession(getCurrentSession());
     const handleAccountsUpdate = () => setAccountsList(getStoredAccounts());
     const handleAppsUpdate = () => setPendingApps(getPendingApplications());
+    const handleVerifsUpdate = () => setVerificationsList(getStoredVerifications());
 
     window.addEventListener('lalbindu_notifications_updated', handleNotifsUpdate);
     window.addEventListener('lalbindu_session_changed', handleSessionChange);
     window.addEventListener('lalbindu_accounts_updated', handleAccountsUpdate);
     window.addEventListener('lalbindu_pending_apps_updated', handleAppsUpdate);
+    window.addEventListener('lalbindu_verification_updated', handleVerifsUpdate);
+    window.addEventListener('storage', handleVerifsUpdate);
 
     return () => {
       window.removeEventListener('lalbindu_notifications_updated', handleNotifsUpdate);
       window.removeEventListener('lalbindu_session_changed', handleSessionChange);
       window.removeEventListener('lalbindu_accounts_updated', handleAccountsUpdate);
       window.removeEventListener('lalbindu_pending_apps_updated', handleAppsUpdate);
+      window.removeEventListener('lalbindu_verification_updated', handleVerifsUpdate);
+      window.removeEventListener('storage', handleVerifsUpdate);
     };
   }, []);
 
@@ -311,45 +324,76 @@ export default function AdminDashboardPage() {
     charterAgreed: true
   });
 
-  // Sample donation verification requests
-  const [pendingVerifications, setPendingVerifications] = useState([
-    {
-      id: 'don-rec-01',
-      donorName: 'Tanvir Hossain',
-      donorId: 'LB-0008819',
-      bloodGroup: 'B+',
-      hospitalName: lang === 'bn' ? 'রাজশাহী মেডিকেল কলেজ হাসপাতাল' : 'Rajshahi Medical College Hospital',
-      donationDate: '2026-11-02',
-      units: 1,
-      bagNumber: 'BAG-2026-RMC-8120',
-      status: 'pending'
-    },
-    {
-      id: 'don-rec-02',
-      donorName: 'Sumaiya Akter',
-      donorId: 'LB-0003411',
-      bloodGroup: 'O-',
-      hospitalName: lang === 'bn' ? 'ঢাকা মেডিকেল কলেজ হাসপাতাল' : 'Dhaka Medical College Hospital',
-      donationDate: '2026-11-01',
-      units: 1,
-      bagNumber: 'BAG-2026-DMC-1049',
-      status: 'pending'
-    }
-  ]);
+  // Clinical donation verification state with localStorage persistence
+  const [verificationsList, setVerificationsList] = useState<DonationVerification[]>(() => getStoredVerifications());
+  const [verificationSubTab, setVerificationSubTab] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending');
+  const [isRecordDonationModalOpen, setIsRecordDonationModalOpen] = useState(false);
+  const [newDirectDonation, setNewDirectDonation] = useState({
+    donorName: '',
+    donorId: '',
+    bloodGroup: 'O+',
+    hospitalName: '',
+    donationDate: new Date().toISOString().split('T')[0],
+    units: 1,
+    bagNumber: ''
+  });
 
   const handleApprove = (id: string) => {
-    setPendingVerifications(pendingVerifications.filter(v => v.id !== id));
-    setToastMessage(lang === 'bn' 
-      ? 'রক্তদান যাচাই সফল! দাতার মোট সংখ্যা হালনাগাদ হয়েছে এবং ৩ মাসের বিশ্রাম পর্ব শুরু হয়েছে।' 
-      : 'Donation verified! Donor count updated and 3-calendar-month resting interval initiated.');
-    setTimeout(() => setToastMessage(null), 4000);
+    const res = approveDonationVerification(id, session.name || 'National Super Admin');
+    if (res.success) {
+      setVerificationsList(getStoredVerifications());
+      setToastMessage(lang === 'bn' 
+        ? 'রক্তদান যাচাই সফল! দাতার মোট সংখ্যা বৃদ্ধি পেয়েছে এবং ৩ মাসের বিশ্রাম পর্ব শুরু হয়েছে।' 
+        : 'Donation verified! Donor count updated and 3-calendar-month resting interval initiated.');
+      setTimeout(() => setToastMessage(null), 4000);
+    } else {
+      alert(res.error || 'Failed to approve verification.');
+    }
   };
 
   const handleReject = (id: string) => {
-    setPendingVerifications(pendingVerifications.filter(v => v.id !== id));
-    setToastMessage(lang === 'bn' 
-      ? 'রেকর্ডটি বাতিল করা হয়েছে।' 
-      : 'Donation record rejected with reviewer remarks.');
+    const reason = prompt(lang === 'bn' ? 'বাতিলের কারণ লিখুন:' : 'Enter rejection reason (optional):') || 'Hospital verification unconfirmed';
+    const res = rejectDonationVerification(id, reason);
+    if (res.success) {
+      setVerificationsList(getStoredVerifications());
+      setToastMessage(lang === 'bn' 
+        ? 'রেকর্ডটি বাতিল করা হয়েছে।' 
+        : 'Donation record rejected.');
+      setTimeout(() => setToastMessage(null), 4000);
+    }
+  };
+
+  const handleCreateDirectDonation = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newDirectDonation.donorName.trim() || !newDirectDonation.hospitalName.trim()) {
+      alert('Please fill in donor name and hospital name.');
+      return;
+    }
+    const randBag = newDirectDonation.bagNumber.trim() || `BAG-${Date.now().toString().slice(-6)}`;
+    const randId = newDirectDonation.donorId.trim() || `LB-000${Math.floor(1000 + Math.random() * 9000)}`;
+    const created = submitDonationVerification({
+      donorName: newDirectDonation.donorName.trim(),
+      donorId: randId,
+      bloodGroup: newDirectDonation.bloodGroup,
+      hospitalName: newDirectDonation.hospitalName.trim(),
+      donationDate: newDirectDonation.donationDate,
+      units: Number(newDirectDonation.units) || 1,
+      bagNumber: randBag
+    });
+    // Immediately approve direct verified submission
+    approveDonationVerification(created.id, session.name || 'National Super Admin');
+    setVerificationsList(getStoredVerifications());
+    setIsRecordDonationModalOpen(false);
+    setNewDirectDonation({
+      donorName: '',
+      donorId: '',
+      bloodGroup: 'O+',
+      hospitalName: '',
+      donationDate: new Date().toISOString().split('T')[0],
+      units: 1,
+      bagNumber: ''
+    });
+    setToastMessage('Direct donation recorded and verified successfully!');
     setTimeout(() => setToastMessage(null), 4000);
   };
 
@@ -800,7 +844,7 @@ export default function AdminDashboardPage() {
         <div className="flex border-b border-gray-200 space-x-8 overflow-x-auto">
           {[
             { id: 'overview', label: t.adminDashboard.tabOverview },
-            { id: 'verifications', label: `${t.adminDashboard.tabVerifications} (${pendingVerifications.length})` },
+            { id: 'verifications', label: `${t.adminDashboard.tabVerifications} (${verificationsList.filter(v => v.status === 'pending').length})` },
             { id: 'admins', label: t.adminDashboard.tabAdmins },
             { id: 'campaigns', label: lang === 'bn' ? `রক্তদান কর্মসূচি (${campaigns.length})` : `Campaigns (${campaigns.length})` },
             { id: 'notifications', label: lang === 'bn' ? `বিজ্ঞপ্তি ও অ্যালার্ট (${notificationsList.length})` : `Alerts & Broadcasts (${notificationsList.length})` },
@@ -828,7 +872,7 @@ export default function AdminDashboardPage() {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               {[
                 { label: t.adminDashboard.registeredDonors, value: '1,420', change: '+12% this week', icon: Users, color: 'text-brand-green' },
-                { label: t.adminDashboard.casesPending, value: pendingVerifications.length.toString(), change: 'Requires Hospital Signoff', icon: Clock, color: 'text-brand-orange' },
+                { label: t.adminDashboard.casesPending, value: verificationsList.filter(v => v.status === 'pending').length.toString(), change: 'Requires Hospital Signoff', icon: Clock, color: 'text-brand-orange' },
                 { label: t.adminDashboard.activeEmergencies, value: '412', change: 'Across 64 Districts', icon: Droplet, color: 'text-brand-red' },
                 { label: lang === 'bn' ? 'নিবন্ধিত ব্লাড ব্যাংক' : 'Registered Blood Banks', value: '68', change: 'Verified Facilities', icon: Building2, color: 'text-brand-burgundy' }
               ].map((stat, idx) => {
@@ -907,20 +951,54 @@ export default function AdminDashboardPage() {
            ========================================================================= */}
         {activeTab === 'verifications' && (
           <div className="bg-white rounded-3xl p-6 sm:p-8 card-shadow border border-gray-100 space-y-6">
-            <div>
-              <h2 className="text-lg font-black text-gray-900">{t.adminDashboard.tabVerifications}</h2>
-              <p className="text-xs text-gray-500">
-                {lang === 'bn' 
-                  ? 'হাসপাতাল বা ভেরিফিকেশন অফিসারের স্বাক্ষরযুক্ত রক্তদানের প্রমাণাদি যাচাই করুন।' 
-                  : 'Verify hospital-authorized blood donation proof logs to unlock milestones and donor availability cooldowns.'}
-              </p>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-gray-100">
+              <div>
+                <h2 className="text-lg font-black text-gray-900">{t.adminDashboard.tabVerifications}</h2>
+                <p className="text-xs text-gray-500">
+                  {lang === 'bn' 
+                    ? 'হাসপাতাল বা ভেরিফিকেশন অফিসারের স্বাক্ষরযুক্ত রক্তদানের প্রমাণাদি স্থায়ীভাবে যাচাই করুন।' 
+                    : 'Verify hospital-authorized blood donation proof logs to unlock milestones and donor availability cooldowns.'}
+                </p>
+              </div>
+              <button
+                onClick={() => setIsRecordDonationModalOpen(true)}
+                className="px-4 py-2 bg-brand-burgundy hover:bg-brand-red text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center justify-center space-x-1.5 self-start sm:self-auto"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>{lang === 'bn' ? '+ সরাসরি রক্তদান নথিভুক্ত করুন' : '+ Record Direct Donation'}</span>
+              </button>
             </div>
 
-            {pendingVerifications.length === 0 ? (
+            {/* Filter Sub-Tabs */}
+            <div className="flex border-b border-gray-100 space-x-3 overflow-x-auto">
+              {[
+                { id: 'pending', label: lang === 'bn' ? `অপেক্ষমান (${verificationsList.filter(v => v.status === 'pending').length})` : `Pending Queue (${verificationsList.filter(v => v.status === 'pending').length})` },
+                { id: 'approved', label: lang === 'bn' ? `যাচাইকৃত ইতিহাস (${verificationsList.filter(v => v.status === 'approved').length})` : `Approved History (${verificationsList.filter(v => v.status === 'approved').length})` },
+                { id: 'rejected', label: lang === 'bn' ? `বাতিলকৃত (${verificationsList.filter(v => v.status === 'rejected').length})` : `Rejected (${verificationsList.filter(v => v.status === 'rejected').length})` },
+                { id: 'all', label: lang === 'bn' ? `সর্বমোট (${verificationsList.length})` : `All Records (${verificationsList.length})` }
+              ].map(sub => (
+                <button
+                  key={sub.id}
+                  onClick={() => setVerificationSubTab(sub.id as any)}
+                  className={`pb-2.5 px-3 text-xs font-bold border-b-2 transition-all ${
+                    verificationSubTab === sub.id
+                      ? 'border-brand-burgundy text-brand-burgundy'
+                      : 'border-transparent text-gray-400 hover:text-gray-700'
+                  }`}
+                >
+                  {sub.label}
+                </button>
+              ))}
+            </div>
+
+            {verificationsList.filter(v => verificationSubTab === 'all' ? true : v.status === verificationSubTab).length === 0 ? (
               <div className="text-center py-12 text-gray-500">
                 <CheckCircle2 className="w-12 h-12 text-brand-green mx-auto mb-2 opacity-50" />
                 <p className="font-bold text-sm">
-                  {lang === 'bn' ? 'সব রক্তদান যাচাই সম্পন্ন হয়েছে!' : 'All pending verifications processed!'}
+                  {lang === 'bn' ? 'এই বিভাগে কোনো রেকর্ড নেই।' : 'No donation records in this queue.'}
+                </p>
+                <p className="text-xs text-gray-400 mt-1">
+                  {verificationSubTab === 'pending' && (lang === 'bn' ? 'সকল অপেক্ষমান রক্তদান সফলভাবে যাচাই সম্পন্ন হয়েছে।' : 'All pending submissions have been verified and processed.')}
                 </p>
               </div>
             ) : (
@@ -933,44 +1011,231 @@ export default function AdminDashboardPage() {
                       <th className="p-3">{t.adminDashboard.colHospital}</th>
                       <th className="p-3">{t.adminDashboard.colDate}</th>
                       <th className="p-3">{t.adminDashboard.colBag}</th>
+                      <th className="p-3">{lang === 'bn' ? 'স্ট্যাটাস' : 'Status'}</th>
                       <th className="p-3 text-right">{t.adminDashboard.colActions}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {pendingVerifications.map((item) => (
-                      <tr key={item.id} className="hover:bg-gray-50/50">
-                        <td className="p-3">
-                          <p className="font-bold text-gray-900">{item.donorName}</p>
-                          <p className="text-[10px] text-gray-500 font-mono">{item.donorId}</p>
-                        </td>
-                        <td className="p-3">
-                          <span className="font-bold px-2 py-0.5 rounded bg-brand-light text-brand-red">
-                            {item.bloodGroup}
-                          </span>
-                        </td>
-                        <td className="p-3 font-medium text-gray-700">{item.hospitalName}</td>
-                        <td className="p-3 text-gray-600">{item.donationDate}</td>
-                        <td className="p-3 font-mono text-gray-500">{item.bagNumber}</td>
-                        <td className="p-3 text-right space-x-2">
-                          <button
-                            onClick={() => handleApprove(item.id)}
-                            className="px-3 py-1.5 bg-brand-green text-white font-bold rounded-lg hover:bg-emerald-700 transition-all inline-flex items-center space-x-1"
-                          >
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>{t.adminDashboard.approveBtn}</span>
-                          </button>
-                          <button
-                            onClick={() => handleReject(item.id)}
-                            className="px-3 py-1.5 bg-gray-100 text-gray-700 font-bold rounded-lg hover:bg-gray-200 transition-all inline-flex items-center space-x-1"
-                          >
-                            <XCircle className="w-3.5 h-3.5" />
-                            <span>{t.adminDashboard.rejectBtn}</span>
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    {verificationsList
+                      .filter(v => verificationSubTab === 'all' ? true : v.status === verificationSubTab)
+                      .map((item) => (
+                        <tr key={item.id} className="hover:bg-gray-50/50">
+                          <td className="p-3">
+                            <p className="font-bold text-gray-900">{item.donorName}</p>
+                            <p className="text-[10px] text-gray-500 font-mono">{item.donorId}</p>
+                          </td>
+                          <td className="p-3">
+                            <span className="font-bold px-2 py-0.5 rounded bg-brand-light text-brand-red">
+                              {item.bloodGroup}
+                            </span>
+                          </td>
+                          <td className="p-3 font-medium text-gray-700">{item.hospitalName}</td>
+                          <td className="p-3 text-gray-600">
+                            <div>{item.donationDate}</div>
+                            <div className="text-[10px] text-gray-400">{item.units || 1} {lang === 'bn' ? 'ব্যাগ / ইউনিট' : 'Unit(s)'}</div>
+                          </td>
+                          <td className="p-3 font-mono text-gray-500">{item.bagNumber}</td>
+                          <td className="p-3">
+                            {item.status === 'pending' && (
+                              <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-amber-100 text-amber-800">
+                                {lang === 'bn' ? 'অপেক্ষমান' : 'Pending'}
+                              </span>
+                            )}
+                            {item.status === 'approved' && (
+                              <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-100 text-emerald-800">
+                                {lang === 'bn' ? 'যাচাইকৃত' : 'Verified'}
+                              </span>
+                            )}
+                            {item.status === 'rejected' && (
+                              <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-rose-100 text-rose-800">
+                                {lang === 'bn' ? 'বাতিল' : 'Rejected'}
+                              </span>
+                            )}
+                          </td>
+                          <td className="p-3 text-right space-x-2">
+                            {item.status === 'pending' ? (
+                              <>
+                                <button
+                                  onClick={() => handleApprove(item.id)}
+                                  className="px-3 py-1.5 bg-brand-green text-white font-bold rounded-lg hover:bg-emerald-700 transition-all inline-flex items-center space-x-1"
+                                >
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                  <span>{t.adminDashboard.approveBtn}</span>
+                                </button>
+                                <button
+                                  onClick={() => handleReject(item.id)}
+                                  className="px-3 py-1.5 bg-gray-100 text-gray-700 font-bold rounded-lg hover:bg-gray-200 transition-all inline-flex items-center space-x-1"
+                                >
+                                  <XCircle className="w-3.5 h-3.5" />
+                                  <span>{t.adminDashboard.rejectBtn}</span>
+                                </button>
+                              </>
+                            ) : item.status === 'approved' ? (
+                              <div className="text-right">
+                                <span className="inline-flex items-center space-x-1 text-[11px] font-semibold text-emerald-700">
+                                  <CheckCircle className="w-3.5 h-3.5" />
+                                  <span>{item.reviewedBy || 'National Admin'}</span>
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="text-right text-[11px] text-rose-600 font-medium">
+                                <span>{item.rejectionReason || 'Unconfirmed'}</span>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+
+            {/* Direct Donation Recording Modal */}
+            {isRecordDonationModalOpen && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+                <div className="bg-white rounded-3xl max-w-lg w-full p-6 card-shadow border border-gray-100 relative">
+                  <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-4">
+                    <div className="flex items-center space-x-2">
+                      <Droplet className="w-5 h-5 text-brand-red" />
+                      <h3 className="font-black text-gray-900 text-base">
+                        {lang === 'bn' ? 'সরাসরি রক্তদান লিপিবদ্ধ ও যাচাই করুন' : 'Record & Verify Blood Donation'}
+                      </h3>
+                    </div>
+                    <button
+                      onClick={() => setIsRecordDonationModalOpen(false)}
+                      className="text-gray-400 hover:text-gray-600 p-1 rounded-lg"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  <form onSubmit={handleCreateDirectDonation} className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-bold text-gray-700 mb-1">
+                          {lang === 'bn' ? 'দাতার পূর্ণ নাম *' : 'Donor Full Name *'}
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={newDirectDonation.donorName}
+                          onChange={(e) => setNewDirectDonation({ ...newDirectDonation, donorName: e.target.value })}
+                          placeholder="e.g. Tanzim Ahmed"
+                          className="w-full text-xs p-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-brand-burgundy"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-gray-700 mb-1">
+                          {lang === 'bn' ? 'রক্তের গ্রুপ *' : 'Blood Group *'}
+                        </label>
+                        <select
+                          value={newDirectDonation.bloodGroup}
+                          onChange={(e) => setNewDirectDonation({ ...newDirectDonation, bloodGroup: e.target.value })}
+                          className="w-full text-xs p-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-brand-burgundy font-bold text-brand-red"
+                        >
+                          {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(bg => (
+                            <option key={bg} value={bg}>{bg}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-bold text-gray-700 mb-1">
+                          {lang === 'bn' ? 'দাতার আইডি (ঐচ্ছিক)' : 'Donor ID (Optional)'}
+                        </label>
+                        <input
+                          type="text"
+                          value={newDirectDonation.donorId}
+                          onChange={(e) => setNewDirectDonation({ ...newDirectDonation, donorId: e.target.value })}
+                          placeholder="e.g. LB-0004278"
+                          className="w-full text-xs p-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-brand-burgundy font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-gray-700 mb-1">
+                          {lang === 'bn' ? 'রক্তদানের তারিখ *' : 'Donation Date *'}
+                        </label>
+                        <input
+                          type="date"
+                          required
+                          value={newDirectDonation.donationDate}
+                          onChange={(e) => setNewDirectDonation({ ...newDirectDonation, donationDate: e.target.value })}
+                          className="w-full text-xs p-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-brand-burgundy"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-gray-700 mb-1">
+                        {lang === 'bn' ? 'হাসপাতাল বা রক্ত সঞ্চালন কেন্দ্র *' : 'Hospital / Transfusion Center *'}
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={newDirectDonation.hospitalName}
+                        onChange={(e) => setNewDirectDonation({ ...newDirectDonation, hospitalName: e.target.value })}
+                        placeholder="e.g. Dhaka Medical College Hospital"
+                        className="w-full text-xs p-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-brand-burgundy"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-bold text-gray-700 mb-1">
+                          {lang === 'bn' ? 'রক্তের ব্যাগ রেফারেন্স নম্বর' : 'Blood Bag Ref Number'}
+                        </label>
+                        <input
+                          type="text"
+                          value={newDirectDonation.bagNumber}
+                          onChange={(e) => setNewDirectDonation({ ...newDirectDonation, bagNumber: e.target.value })}
+                          placeholder="e.g. BAG-2026-DMC-8819"
+                          className="w-full text-xs p-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-brand-burgundy font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-gray-700 mb-1">
+                          {lang === 'bn' ? 'ইউনিট সংখ্যা' : 'Units (Bags)'}
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          max="3"
+                          value={newDirectDonation.units}
+                          onChange={(e) => setNewDirectDonation({ ...newDirectDonation, units: Number(e.target.value) })}
+                          className="w-full text-xs p-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-brand-burgundy font-bold"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-[11px] text-emerald-800 flex items-start space-x-2">
+                      <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span>
+                        {lang === 'bn'
+                          ? 'সুপার অ্যাডমিন কর্তৃত্ববলে এন্ট্রি সম্পন্ন হলে দাতার মোট রক্তদান সংখ্যা তাৎক্ষণিকভাবে বৃদ্ধি পাবে এবং ৩ মাসের বাধ্যতামূলক বিশ্রাম ট্র্যাকার সক্রিয় হবে।'
+                          : 'Upon entry by Super Admin authority, the donor count will be incremented instantly, and the 3-month clinical resting cooldown will be initiated.'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-end space-x-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setIsRecordDonationModalOpen(false)}
+                        className="px-4 py-2 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-100 transition-all"
+                      >
+                        {lang === 'bn' ? 'বাতিল' : 'Cancel'}
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-4 py-2 rounded-xl text-xs font-black bg-brand-green hover:bg-emerald-700 text-white transition-all shadow-sm flex items-center space-x-1.5"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>{lang === 'bn' ? 'লিপিবদ্ধ ও অনুমোদন করুন' : 'Record & Approve'}</span>
+                      </button>
+                    </div>
+                  </form>
+                </div>
               </div>
             )}
           </div>
