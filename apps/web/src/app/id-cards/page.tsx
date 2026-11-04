@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useLanguage } from '@/components/LanguageContext';
@@ -25,6 +25,18 @@ import {
 export default function IdCardsMasterShowcasePage() {
   const { lang } = useLanguage();
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'admin' | 'community'>('all');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('print') === 'true') {
+        const timer = setTimeout(() => {
+          window.print();
+        }, 700);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, []);
 
   // Master 8 Role Definitions exactly matching the reference poster image
   const ROLE_DEFINITIONS = [

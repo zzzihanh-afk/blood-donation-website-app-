@@ -186,112 +186,127 @@ export const CR80IDCard: React.FC<CR80IDCardProps> = ({
     }).then(setQrDataUrl).catch(console.error);
   }, [targetVerifyUrl]);
 
-  // High-Resolution 300 DPI CR80 PNG Client-Side Vector/Canvas Exporter
-  const handleExportPNG = async (side: 'front' | 'back' | 'both') => {
-    const exportSide = async (s: 'front' | 'back') => {
-      const canvas = document.createElement('canvas');
-      canvas.width = 1011; // 85.6mm at 300 DPI
-      canvas.height = 638; // 54.0mm at 300 DPI
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
+  // High-Resolution 300 DPI CR80 Canvas Vector Generator (1011 × 638 pixels = 85.6mm × 54.0mm)
+  const generateCardCanvas = async (s: 'front' | 'back'): Promise<HTMLCanvasElement> => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1011; // 85.6mm at 300 DPI
+    canvas.height = 638; // 54.0mm at 300 DPI
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return canvas;
 
-      // Card Background (Smooth rounded rectangle with subtle gradient)
-      const r = 40;
+    // Card Background (Smooth rounded rectangle with subtle gradient)
+    const r = 40;
+    ctx.beginPath();
+    ctx.moveTo(r, 0);
+    ctx.lineTo(canvas.width - r, 0);
+    ctx.quadraticCurveTo(canvas.width, 0, canvas.width, r);
+    ctx.lineTo(canvas.width, canvas.height - r);
+    ctx.quadraticCurveTo(canvas.width, canvas.height, canvas.width - r, canvas.height);
+    ctx.lineTo(r, canvas.height);
+    ctx.quadraticCurveTo(0, canvas.height, 0, canvas.height - r);
+    ctx.lineTo(0, r);
+    ctx.quadraticCurveTo(0, 0, r, 0);
+    ctx.closePath();
+    ctx.clip();
+
+    const bgGrad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+    bgGrad.addColorStop(0, '#FFFFFF');
+    bgGrad.addColorStop(0.7, '#FCFDFE');
+    bgGrad.addColorStop(1, '#F7FAFC');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    if (s === 'front') {
+      // Top Role Header Ribbon
+      ctx.fillStyle = primaryColor;
       ctx.beginPath();
-      ctx.moveTo(r, 0);
-      ctx.lineTo(canvas.width - r, 0);
-      ctx.quadraticCurveTo(canvas.width, 0, canvas.width, r);
-      ctx.lineTo(canvas.width, canvas.height - r);
-      ctx.quadraticCurveTo(canvas.width, canvas.height, canvas.width - r, canvas.height);
-      ctx.lineTo(r, canvas.height);
-      ctx.quadraticCurveTo(0, canvas.height, 0, canvas.height - r);
-      ctx.lineTo(0, r);
-      ctx.quadraticCurveTo(0, 0, r, 0);
-      ctx.closePath();
-      ctx.clip();
+      const rw = 340;
+      const rh = 44;
+      const rx = (canvas.width - rw) / 2;
+      ctx.roundRect(rx, 0, rw, rh, [0, 0, 18, 18]);
+      ctx.fill();
 
-      const bgGrad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-      bgGrad.addColorStop(0, '#FFFFFF');
-      bgGrad.addColorStop(0.7, '#FCFDFE');
-      bgGrad.addColorStop(1, '#F7FAFC');
-      ctx.fillStyle = bgGrad;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = '900 18px "Inter", -apple-system, BlinkMacSystemFont, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(ribbonLabel.toUpperCase(), canvas.width / 2, 29);
 
-      if (s === 'front') {
-        // Top Role Header Ribbon
-        ctx.fillStyle = primaryColor;
-        ctx.beginPath();
-        const rw = 320;
-        const rh = 42;
-        const rx = (canvas.width - rw) / 2;
-        ctx.roundRect(rx, 0, rw, rh, [0, 0, 18, 18]);
-        ctx.fill();
+      // LalBindu Brand Text on Left
+      ctx.fillStyle = '#C8102E';
+      ctx.font = '900 38px "Inter", sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('LalBindu', 60, 95);
+      ctx.fillStyle = '#707070';
+      ctx.font = 'italic 600 14px "Inter", sans-serif';
+      ctx.fillText('Every Drop Connects a Life.', 60, 118);
 
-        ctx.fillStyle = '#FFFFFF';
-        ctx.font = '900 18px "Inter", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(ribbonLabel.toUpperCase(), canvas.width / 2, 28);
-
-        // LalBindu Brand Text on Left
-        ctx.fillStyle = '#C8102E';
-        ctx.font = '900 38px "Inter", sans-serif';
-        ctx.textAlign = 'left';
-        ctx.fillText('LalBindu', 60, 95);
-        ctx.fillStyle = '#707070';
-        ctx.font = 'italic 600 14px "Inter", sans-serif';
-        ctx.fillText('Every Drop Connects a Life.', 60, 118);
-
-        // Cardholder Information
-        ctx.fillStyle = '#171717';
-        ctx.font = '900 34px "Inter", sans-serif';
-        ctx.fillText(fullName, 260, 240);
-
-        ctx.fillStyle = primaryColor;
-        ctx.font = '900 22px "Inter", sans-serif';
-        ctx.fillText(designation, 260, 275);
-
-        ctx.fillStyle = '#4B5563';
-        ctx.font = 'bold 20px monospace';
-        ctx.fillText(`ID: ${uniqueId}`, 260, 310);
-
-        if (organizationName || jurisdictionName) {
-          ctx.fillStyle = '#6B7280';
-          ctx.font = '600 18px "Inter", sans-serif';
-          ctx.fillText(organizationName || jurisdictionName || '', 260, 345);
+      // Try drawing official logo if available
+      try {
+        const logoImg = new window.Image();
+        logoImg.src = '/branding/lalbindu-logo.png';
+        await new Promise((res) => { logoImg.onload = res; logoImg.onerror = res; setTimeout(res, 300); });
+        if (logoImg.complete && logoImg.naturalWidth > 0) {
+          ctx.clearRect(55, 45, 230, 80);
+          ctx.drawImage(logoImg, 60, 50, 190, 52);
         }
+      } catch (e) {}
 
-        if (donationCount !== undefined) {
-          ctx.fillStyle = '#374151';
-          ctx.font = 'bold 18px "Inter", sans-serif';
-          ctx.fillText(`Total Donations: ${donationCount}`, 260, 380);
-        }
+      // Cardholder Information
+      ctx.fillStyle = '#171717';
+      ctx.font = '900 34px "Inter", -apple-system, BlinkMacSystemFont, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(fullName, 260, 240);
 
+      ctx.fillStyle = primaryColor;
+      ctx.font = '900 22px "Inter", -apple-system, BlinkMacSystemFont, sans-serif';
+      ctx.fillText(designation, 260, 275);
+
+      ctx.fillStyle = '#4B5563';
+      ctx.font = 'bold 20px monospace';
+      ctx.fillText(`ID: ${uniqueId}`, 260, 310);
+
+      if (front.showJurisdiction) {
+        ctx.fillStyle = '#6B7280';
+        ctx.font = '600 18px "Inter", -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.fillText(organizationName || jurisdictionName || 'LalBindu Bangladesh', 260, 345);
+      }
+
+      if (front.showDonations) {
+        const donText = donationCount !== undefined ? donationCount : 5;
+        ctx.fillStyle = '#374151';
+        ctx.font = 'bold 18px "Inter", -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.fillText(`Total Donations: ${donText}`, 260, 380);
+      }
+
+      if (front.showValidity) {
         ctx.fillStyle = '#9CA3AF';
-        ctx.font = '600 16px "Inter", sans-serif';
-        ctx.fillText(`Valid Until: ${validUntil}`, 260, 420);
+        ctx.font = '600 16px "Inter", -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.fillText(`Valid Until: ${validUntil || '31 Dec 2026'}`, 260, 420);
+      }
 
-        // Sweeping Curve along bottom
-        ctx.fillStyle = primaryColor;
-        ctx.beginPath();
-        ctx.moveTo(0, canvas.height - 90);
-        ctx.bezierCurveTo(canvas.width * 0.3, canvas.height - 35, canvas.width * 0.7, canvas.height - 130, canvas.width, canvas.height - 75);
-        ctx.lineTo(canvas.width, canvas.height);
-        ctx.lineTo(0, canvas.height);
-        ctx.closePath();
-        ctx.fill();
+      // Sweeping Curve along bottom
+      ctx.fillStyle = primaryColor;
+      ctx.beginPath();
+      ctx.moveTo(0, canvas.height - 90);
+      ctx.bezierCurveTo(canvas.width * 0.3, canvas.height - 35, canvas.width * 0.7, canvas.height - 130, canvas.width, canvas.height - 75);
+      ctx.lineTo(canvas.width, canvas.height);
+      ctx.lineTo(0, canvas.height);
+      ctx.closePath();
+      ctx.fill();
 
-        ctx.fillStyle = secondaryColor;
-        ctx.globalAlpha = 0.85;
-        ctx.beginPath();
-        ctx.moveTo(0, canvas.height - 60);
-        ctx.bezierCurveTo(canvas.width * 0.35, canvas.height - 15, canvas.width * 0.75, canvas.height - 90, canvas.width, canvas.height - 45);
-        ctx.lineTo(canvas.width, canvas.height);
-        ctx.lineTo(0, canvas.height);
-        ctx.closePath();
-        ctx.fill();
-        ctx.globalAlpha = 1.0;
+      ctx.fillStyle = secondaryColor;
+      ctx.globalAlpha = 0.85;
+      ctx.beginPath();
+      ctx.moveTo(0, canvas.height - 60);
+      ctx.bezierCurveTo(canvas.width * 0.35, canvas.height - 15, canvas.width * 0.75, canvas.height - 90, canvas.width, canvas.height - 45);
+      ctx.lineTo(canvas.width, canvas.height);
+      ctx.lineTo(0, canvas.height);
+      ctx.closePath();
+      ctx.fill();
+      ctx.globalAlpha = 1.0;
 
-        // Photo Frame placeholder / photo
+      // Photo Frame & Avatar
+      if (front.showPhoto) {
         ctx.strokeStyle = primaryColor;
         ctx.lineWidth = 5;
         ctx.fillStyle = '#E5E7EB';
@@ -300,64 +315,113 @@ export const CR80IDCard: React.FC<CR80IDCardProps> = ({
         ctx.fill();
         ctx.stroke();
 
-        // Blood group badge for donor
-        if (bloodGroup) {
-          ctx.fillStyle = '#C8102E';
-          ctx.beginPath();
-          ctx.arc(canvas.width - 120, 240, 45, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = '#FFFFFF';
-          ctx.font = '900 24px "Inter", sans-serif';
-          ctx.textAlign = 'center';
-          ctx.fillText(bloodGroup, canvas.width - 120, 248);
+        if (avatarUrl) {
+          try {
+            const img = new window.Image();
+            img.crossOrigin = 'anonymous';
+            img.src = avatarUrl;
+            await new Promise((res) => { img.onload = res; img.onerror = res; setTimeout(res, 500); });
+            if (img.complete && img.naturalWidth > 0) {
+              ctx.save();
+              ctx.beginPath();
+              ctx.roundRect(60, 180, 160, 200, 24);
+              ctx.clip();
+              ctx.drawImage(img, 60, 180, 160, 200);
+              ctx.restore();
+            }
+          } catch (e) {}
         }
-
-      } else {
-        // BACK SIDE
-        ctx.fillStyle = '#C8102E';
-        ctx.font = '900 38px "Inter", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('LalBindu', canvas.width / 2, 85);
-        ctx.fillStyle = '#707070';
-        ctx.font = 'italic 600 14px "Inter", sans-serif';
-        ctx.fillText('Every Drop Connects a Life.', canvas.width / 2, 108);
-
-        // QR Code
-        if (qrDataUrl) {
-          const qrImg = new window.Image();
-          qrImg.src = qrDataUrl;
-          await new Promise((res) => { qrImg.onload = res; });
-          ctx.drawImage(qrImg, (canvas.width - 200) / 2, 140, 200, 200);
-        }
-
-        // "SCAN TO VERIFY" badge
-        ctx.fillStyle = '#171717';
-        ctx.beginPath();
-        ctx.roundRect((canvas.width - 220) / 2, 360, 220, 34, 17);
-        ctx.fill();
-        ctx.fillStyle = '#FFFFFF';
-        ctx.font = '900 15px "Inter", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('SCAN TO VERIFY', canvas.width / 2, 383);
-
-        // Verification URL
-        ctx.fillStyle = '#374151';
-        ctx.font = 'bold 16px monospace';
-        ctx.fillText(`https://lalbindu.bd/verify/${uniqueId}`, canvas.width / 2, 420);
-
-        // Issue & Valid
-        ctx.fillStyle = '#6B7280';
-        ctx.font = '600 14px "Inter", sans-serif';
-        ctx.fillText(`Issued: ${issueDate} | Valid: Active`, canvas.width / 2, 445);
-
-        // Slogan wave footer
-        ctx.fillStyle = primaryColor;
-        ctx.fillRect(0, canvas.height - 48, canvas.width, 48);
-        ctx.fillStyle = '#FFFFFF';
-        ctx.font = 'bold 16px "Inter", sans-serif';
-        ctx.fillText('Together for a Blood-Safe Bangladesh ❤️', canvas.width / 2, canvas.height - 18);
       }
 
+      // Blood group badge for donor
+      if (front.showBloodGroup) {
+        ctx.fillStyle = '#C8102E';
+        ctx.beginPath();
+        ctx.arc(canvas.width - 120, 240, 45, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = '900 24px "Inter", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(bloodGroup || 'O+', canvas.width - 120, 248);
+      }
+
+    } else {
+      // BACK SIDE
+      ctx.fillStyle = '#C8102E';
+      ctx.font = '900 38px "Inter", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('LalBindu', canvas.width / 2, 85);
+      ctx.fillStyle = '#707070';
+      ctx.font = 'italic 600 14px "Inter", sans-serif';
+      ctx.fillText('Every Drop Connects a Life.', canvas.width / 2, 108);
+
+      try {
+        const logoImg = new window.Image();
+        logoImg.src = '/branding/lalbindu-logo.png';
+        await new Promise((res) => { logoImg.onload = res; logoImg.onerror = res; setTimeout(res, 300); });
+        if (logoImg.complete && logoImg.naturalWidth > 0) {
+          ctx.clearRect((canvas.width - 240) / 2, 40, 240, 75);
+          ctx.drawImage(logoImg, (canvas.width - 200) / 2, 45, 200, 54);
+        }
+      } catch (e) {}
+
+      // QR Code
+      let activeQr = qrDataUrl;
+      if (!activeQr) {
+        try {
+          activeQr = await QRCode.toDataURL(targetVerifyUrl, {
+            width: 260,
+            margin: 1,
+            color: { dark: '#171717', light: '#FFFFFF' }
+          });
+        } catch (e) {}
+      }
+
+      if (activeQr) {
+        const qrImg = new window.Image();
+        qrImg.src = activeQr;
+        await new Promise((res) => { qrImg.onload = res; qrImg.onerror = res; setTimeout(res, 400); });
+        if (qrImg.complete) {
+          ctx.drawImage(qrImg, (canvas.width - 200) / 2, 135, 200, 200);
+        }
+      }
+
+      // "SCAN TO VERIFY" badge
+      ctx.fillStyle = '#171717';
+      ctx.beginPath();
+      ctx.roundRect((canvas.width - 220) / 2, 355, 220, 34, 17);
+      ctx.fill();
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = '900 15px "Inter", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('SCAN TO VERIFY', canvas.width / 2, 378);
+
+      // Verification URL
+      ctx.fillStyle = '#374151';
+      ctx.font = 'bold 16px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(`https://lalbindu.bd/verify/${uniqueId}`, canvas.width / 2, 415);
+
+      // Issue & Valid
+      ctx.fillStyle = '#6B7280';
+      ctx.font = '600 14px "Inter", sans-serif';
+      ctx.fillText(`Issued: ${issueDate} | Valid: Active`, canvas.width / 2, 440);
+
+      // Slogan wave footer
+      ctx.fillStyle = primaryColor;
+      ctx.fillRect(0, canvas.height - 48, canvas.width, 48);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = 'bold 16px "Inter", sans-serif';
+      ctx.fillText('Together for a Blood-Safe Bangladesh ❤️', canvas.width / 2, canvas.height - 18);
+    }
+
+    return canvas;
+  };
+
+  // High-Resolution 300 DPI CR80 PNG Client-Side Exporter
+  const handleExportPNG = async (side: 'front' | 'back' | 'both') => {
+    const exportSide = async (s: 'front' | 'back') => {
+      const canvas = await generateCardCanvas(s);
       const link = document.createElement('a');
       link.download = `LalBindu-CR80-${uniqueId}-${s.toUpperCase()}.png`;
       link.href = canvas.toDataURL('image/png');
@@ -369,6 +433,313 @@ export const CR80IDCard: React.FC<CR80IDCardProps> = ({
       setTimeout(() => exportSide('back'), 450);
     } else {
       await exportSide(side);
+    }
+  };
+
+  // Dedicated Print-Ready 1-Page PDF Generator (Isolates CR80 Cards and Redacts Background UI)
+  const handlePrintPDF = async () => {
+    // Open isolated window immediately to prevent popup blocking in modern browsers
+    const printWin = typeof window !== 'undefined' ? window.open('', '_blank', 'width=950,height=1000') : null;
+    if (printWin) {
+      printWin.document.write(`<!DOCTYPE html><html><head><title>Preparing CR80 ID Card...</title></head><body style="font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:90vh;margin:0;background:#FFF8F8;"><div style="text-align:center;"><h2 style="color:#C8102E;margin-bottom:8px;">LalBindu Bangladesh</h2><p style="color:#555;font-size:13px;font-weight:600;">Generating High-Resolution CR80 Print Sheet (85.6mm × 54.0mm)...</p></div></body></html>`);
+    }
+
+    // Generate high-resolution 300 DPI canvases for Front & Back
+    const frontCanvas = await generateCardCanvas('front');
+    const backCanvas = await generateCardCanvas('back');
+    const frontImg = frontCanvas.toDataURL('image/png');
+    const backImg = backCanvas.toDataURL('image/png');
+
+    const printDocHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>LalBindu CR80 ID Card — ${fullName} (${uniqueId})</title>
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 12mm 15mm;
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #f8fafc;
+      color: #171717;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .print-bar {
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: #ffffff;
+      padding: 12px 20px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      width: 100%;
+      max-width: 780px;
+      justify-content: space-between;
+    }
+    .btn-print {
+      background: #C8102E;
+      color: #ffffff;
+      border: none;
+      padding: 10px 22px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-print:hover {
+      background: #9B0D23;
+    }
+    .btn-close {
+      background: #f3f4f6;
+      color: #374151;
+      border: 1px solid #d1d5db;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .sheet-container {
+      background: #ffffff;
+      width: 100%;
+      max-width: 780px;
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+      border: 1px solid #e5e7eb;
+    }
+    .sheet-header {
+      text-align: center;
+      border-bottom: 2px solid #C8102E;
+      padding-bottom: 16px;
+      margin-bottom: 25px;
+    }
+    .sheet-title {
+      font-size: 20px;
+      font-weight: 900;
+      color: #C8102E;
+      letter-spacing: 0.5px;
+      margin: 0 0 4px 0;
+    }
+    .sheet-subtitle {
+      font-size: 11px;
+      color: #4b5563;
+      margin: 0;
+      font-weight: 600;
+    }
+    .cards-row {
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 28px;
+      margin: 25px 0;
+    }
+    .card-block {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 85.6mm;
+    }
+    .card-label {
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: #4b5563;
+      margin-bottom: 8px;
+    }
+    .card-cut-guide {
+      position: relative;
+      padding: 2.5mm;
+      border: 1.5px dashed #9ca3af;
+      border-radius: 4.5mm;
+      background: #ffffff;
+    }
+    .card-img {
+      width: 85.6mm;
+      height: 54.0mm;
+      display: block;
+      border-radius: 3.18mm;
+      box-shadow: 0 1mm 3mm rgba(0,0,0,0.12);
+    }
+    .meta-grid {
+      margin-top: 25px;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 14px 18px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      font-size: 11px;
+    }
+    .meta-grid strong {
+      color: #111827;
+      display: block;
+      margin-bottom: 2px;
+    }
+    .meta-grid span {
+      color: #4b5563;
+      font-weight: 600;
+    }
+    .cut-instructions {
+      margin-top: 22px;
+      padding: 12px 16px;
+      background: #fef2f2;
+      border: 1px solid #fee2e2;
+      border-radius: 8px;
+      text-align: center;
+      font-size: 10.5px;
+      color: #991b1b;
+      line-height: 1.5;
+    }
+    .print-footer {
+      margin-top: 20px;
+      text-align: center;
+      font-size: 9px;
+      color: #6b7280;
+    }
+    @media print {
+      body {
+        background: #ffffff !important;
+        padding: 0 !important;
+      }
+      .print-bar {
+        display: none !important;
+      }
+      .sheet-container {
+        padding: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+        max-width: 100% !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="print-bar">
+    <div style="font-size: 13px; font-weight: 700; color: #111827;">
+      🖨️ Ready to Print / Save CR80 Identity Card PDF (Page 1 of 1)
+    </div>
+    <div style="display: flex; gap: 8px;">
+      <button class="btn-print" onclick="window.print()">
+        <span>Print or Save as PDF</span>
+      </button>
+      <button class="btn-close" onclick="window.close()">Close</button>
+    </div>
+  </div>
+
+  <div class="sheet-container">
+    <div class="sheet-header">
+      <h1 class="sheet-title">LALBINDU BANGLADESH — CR80 DIGITAL IDENTITY CREDENTIAL</h1>
+      <p class="sheet-subtitle">Official Standard CR80 Dimensions: 85.6mm × 54.0mm • Verifiable Nationwide via QR Scan</p>
+    </div>
+
+    <div class="cards-row">
+      <div class="card-block">
+        <div class="card-label">Front Side (85.6 × 54.0 mm)</div>
+        <div class="card-cut-guide">
+          <img class="card-img" src="${frontImg}" alt="Front Card" />
+        </div>
+      </div>
+
+      <div class="card-block">
+        <div class="card-label">Back Side (85.6 × 54.0 mm)</div>
+        <div class="card-cut-guide">
+          <img class="card-img" src="${backImg}" alt="Back Card" />
+        </div>
+      </div>
+    </div>
+
+    <div class="meta-grid">
+      <div>
+        <strong>Cardholder Name</strong>
+        <span>${fullName} ${fullNameBn ? '(' + fullNameBn + ')' : ''}</span>
+      </div>
+      <div>
+        <strong>Role Designation</strong>
+        <span>${designation}</span>
+      </div>
+      <div>
+        <strong>Unique ID Number</strong>
+        <span style="font-family: monospace; font-weight: bold;">${uniqueId}</span>
+      </div>
+      <div>
+        <strong>Jurisdiction / Org</strong>
+        <span>${organizationName || jurisdictionName || 'LalBindu Bangladesh'}</span>
+      </div>
+      <div>
+        <strong>Issued & Status</strong>
+        <span>${issueDate} • Active Verified</span>
+      </div>
+      <div>
+        <strong>Validity Expiration</strong>
+        <span>${validUntil}</span>
+      </div>
+    </div>
+
+    <div class="cut-instructions">
+      ✂️ <strong>Printing & Cutting Guide:</strong> In your browser print dialog, select Destination <strong>"Save as PDF"</strong> (or Microsoft Print to PDF), set Scale to <strong>100% (Actual Size)</strong>, and enable <strong>"Background graphics"</strong>. Cut along the outer dashed lines for exact physical CR80 card dimensions (300+ GSM cardstock or PVC substrate recommended).
+    </div>
+
+    <div class="print-footer">
+      LalBindu Foundation Bangladesh • Verification Portal: ${targetVerifyUrl} • Every Drop Connects a Life ❤️
+    </div>
+  </div>
+
+  <script>
+    window.onload = function() {
+      setTimeout(function() {
+        window.focus();
+        window.print();
+      }, 350);
+    };
+  </script>
+</body>
+</html>`;
+
+    // Populate print window or fallback to iframe
+    if (printWin && !printWin.closed) {
+      printWin.document.open();
+      printWin.document.write(printDocHtml);
+      printWin.document.close();
+      printWin.focus();
+    } else {
+      // Fallback: iframe print
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'fixed';
+      iframe.style.right = '0';
+      iframe.style.bottom = '0';
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+      iframe.style.border = '0';
+      document.body.appendChild(iframe);
+      const doc = iframe.contentWindow?.document;
+      if (doc) {
+        doc.open();
+        doc.write(printDocHtml);
+        doc.close();
+        setTimeout(() => {
+          iframe.contentWindow?.focus();
+          iframe.contentWindow?.print();
+        }, 400);
+      }
     }
   };
 
@@ -490,33 +861,33 @@ export const CR80IDCard: React.FC<CR80IDCardProps> = ({
             </p>
 
             {/* Organization or Jurisdiction */}
-            {front.showJurisdiction && (organizationName || jurisdictionName) && (
+            {front.showJurisdiction && (
               <p className="text-[10px] text-gray-500 font-semibold truncate mt-0.5">
-                {organizationName || jurisdictionName}
+                {organizationName || jurisdictionName || 'LalBindu Bangladesh'}
               </p>
             )}
 
             {/* Donor Specific Row: Total Donations */}
-            {front.showDonations && donationCount !== undefined && (
+            {front.showDonations && (
               <p className="text-[10px] font-bold text-gray-700 mt-0.5">
-                Total Donations: {donationCount}
+                Total Donations: {donationCount !== undefined ? donationCount : 5}
               </p>
             )}
 
             {/* Validity */}
             {front.showValidity && (
               <p className="text-[9px] text-gray-400 mt-0.5 font-medium">
-                Valid Until: {validUntil}
+                Valid Until: {validUntil || '31 Dec 2026'}
               </p>
             )}
           </div>
 
           {/* Donor Specific Badge: Blood Group Drop Crest */}
-          {front.showBloodGroup && bloodGroup && (
+          {front.showBloodGroup && (
             <div className="shrink-0 flex flex-col items-center justify-center mr-0.5 z-20">
               <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-gradient-to-br from-brand-red to-brand-crimson text-white flex flex-col items-center justify-center shadow-lg border-2 border-white">
                 <Droplet className="w-3 h-3 fill-white" />
-                <span className="text-xs font-black leading-none mt-0.5">{bloodGroup}</span>
+                <span className="text-xs font-black leading-none mt-0.5">{bloodGroup || 'O+'}</span>
               </div>
             </div>
           )}
@@ -705,8 +1076,9 @@ export const CR80IDCard: React.FC<CR80IDCardProps> = ({
 
           {/* Print PDF */}
           <button
-            onClick={() => window.print()}
+            onClick={handlePrintPDF}
             className="px-3.5 py-1.5 rounded-full bg-white border border-gray-300 hover:border-gray-400 text-gray-700 text-xs font-bold transition-all flex items-center space-x-1.5 shadow-sm"
+            title="Generate high-resolution 1-page CR80 PDF print sheet"
           >
             <Printer className="w-3.5 h-3.5" />
             <span>Print PDF</span>
