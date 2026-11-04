@@ -373,28 +373,53 @@ ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.consent_records ENABLE ROW LEVEL SECURITY;
 
 -- Public read policies for reference data
+DROP POLICY IF EXISTS "Public can read administrative unit types" ON public.administrative_unit_types;
 CREATE POLICY "Public can read administrative unit types" ON public.administrative_unit_types FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Public can read active locations" ON public.locations;
 CREATE POLICY "Public can read active locations" ON public.locations FOR SELECT USING (is_active = true);
+
+DROP POLICY IF EXISTS "Public can read role definitions" ON public.role_definitions;
 CREATE POLICY "Public can read role definitions" ON public.role_definitions FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Public can read achievement definitions" ON public.achievement_definitions;
 CREATE POLICY "Public can read achievement definitions" ON public.achievement_definitions FOR SELECT USING (is_active = true);
+
+DROP POLICY IF EXISTS "Public can read id card templates" ON public.id_card_templates;
 CREATE POLICY "Public can read id card templates" ON public.id_card_templates FOR SELECT USING (is_active = true);
+
+DROP POLICY IF EXISTS "Public can read verified organizations" ON public.organizations;
 CREATE POLICY "Public can read verified organizations" ON public.organizations FOR SELECT USING (is_verified = true);
+
+DROP POLICY IF EXISTS "Public can read upcoming campaigns" ON public.campaigns;
 CREATE POLICY "Public can read upcoming campaigns" ON public.campaigns FOR SELECT USING (status IN ('upcoming', 'ongoing'));
 
 -- Profiles: Users can read public profile summaries, edit own profile
+DROP POLICY IF EXISTS "Public can view basic profiles" ON public.profiles;
 CREATE POLICY "Public can view basic profiles" ON public.profiles FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Users can edit own profile" ON public.profiles;
 CREATE POLICY "Users can edit own profile" ON public.profiles FOR UPDATE USING (id = auth.uid());
 
 -- Donor profiles: Public can view consenting available donors; donors manage own settings
+DROP POLICY IF EXISTS "Public can discover consenting donors" ON public.donor_profiles;
 CREATE POLICY "Public can discover consenting donors" ON public.donor_profiles FOR SELECT USING (public_discovery_consent = true);
+
+DROP POLICY IF EXISTS "Donors can update own donor profile" ON public.donor_profiles;
 CREATE POLICY "Donors can update own donor profile" ON public.donor_profiles FOR UPDATE USING (id = auth.uid());
 
 -- ID Cards: Users can read own cards
+DROP POLICY IF EXISTS "Users can view own ID cards" ON public.id_cards;
 CREATE POLICY "Users can view own ID cards" ON public.id_cards FOR SELECT USING (user_id = auth.uid());
 
 -- Blood requests: All authenticated can read open requests; requesters manage own
+DROP POLICY IF EXISTS "Authenticated users can read open requests" ON public.blood_requests;
 CREATE POLICY "Authenticated users can read open requests" ON public.blood_requests FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Requesters can create requests" ON public.blood_requests;
 CREATE POLICY "Requesters can create requests" ON public.blood_requests FOR INSERT WITH CHECK (requester_id = auth.uid());
+
+DROP POLICY IF EXISTS "Requesters can update own requests" ON public.blood_requests;
 CREATE POLICY "Requesters can update own requests" ON public.blood_requests FOR UPDATE USING (requester_id = auth.uid());
 
 -- ------------------------------------------------------------------------------

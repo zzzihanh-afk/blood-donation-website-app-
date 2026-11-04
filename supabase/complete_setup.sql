@@ -2,6 +2,7 @@
 -- LALBINDU NATIONWIDE BLOOD DONATION PLATFORM — COMPLETE ONE-CLICK MASTER SETUP
 -- Run this entire script in your Supabase SQL Editor: https://supabase.com/dashboard/project/_/sql
 -- Includes: All 25+ Tables, RLS Security Policies, Functions, BD Divisions, Roles & Seed Data
+-- Rerunnable: Safe to run multiple times without conflict or constraint errors.
 -- ==============================================================================
 
 -- >>> PART 1: CORE DATABASE SCHEMA & RLS POLICIES <<<
@@ -380,28 +381,53 @@ ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.consent_records ENABLE ROW LEVEL SECURITY;
 
 -- Public read policies for reference data
+DROP POLICY IF EXISTS "Public can read administrative unit types" ON public.administrative_unit_types;
 CREATE POLICY "Public can read administrative unit types" ON public.administrative_unit_types FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Public can read active locations" ON public.locations;
 CREATE POLICY "Public can read active locations" ON public.locations FOR SELECT USING (is_active = true);
+
+DROP POLICY IF EXISTS "Public can read role definitions" ON public.role_definitions;
 CREATE POLICY "Public can read role definitions" ON public.role_definitions FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Public can read achievement definitions" ON public.achievement_definitions;
 CREATE POLICY "Public can read achievement definitions" ON public.achievement_definitions FOR SELECT USING (is_active = true);
+
+DROP POLICY IF EXISTS "Public can read id card templates" ON public.id_card_templates;
 CREATE POLICY "Public can read id card templates" ON public.id_card_templates FOR SELECT USING (is_active = true);
+
+DROP POLICY IF EXISTS "Public can read verified organizations" ON public.organizations;
 CREATE POLICY "Public can read verified organizations" ON public.organizations FOR SELECT USING (is_verified = true);
+
+DROP POLICY IF EXISTS "Public can read upcoming campaigns" ON public.campaigns;
 CREATE POLICY "Public can read upcoming campaigns" ON public.campaigns FOR SELECT USING (status IN ('upcoming', 'ongoing'));
 
 -- Profiles: Users can read public profile summaries, edit own profile
+DROP POLICY IF EXISTS "Public can view basic profiles" ON public.profiles;
 CREATE POLICY "Public can view basic profiles" ON public.profiles FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Users can edit own profile" ON public.profiles;
 CREATE POLICY "Users can edit own profile" ON public.profiles FOR UPDATE USING (id = auth.uid());
 
 -- Donor profiles: Public can view consenting available donors; donors manage own settings
+DROP POLICY IF EXISTS "Public can discover consenting donors" ON public.donor_profiles;
 CREATE POLICY "Public can discover consenting donors" ON public.donor_profiles FOR SELECT USING (public_discovery_consent = true);
+
+DROP POLICY IF EXISTS "Donors can update own donor profile" ON public.donor_profiles;
 CREATE POLICY "Donors can update own donor profile" ON public.donor_profiles FOR UPDATE USING (id = auth.uid());
 
 -- ID Cards: Users can read own cards
+DROP POLICY IF EXISTS "Users can view own ID cards" ON public.id_cards;
 CREATE POLICY "Users can view own ID cards" ON public.id_cards FOR SELECT USING (user_id = auth.uid());
 
 -- Blood requests: All authenticated can read open requests; requesters manage own
+DROP POLICY IF EXISTS "Authenticated users can read open requests" ON public.blood_requests;
 CREATE POLICY "Authenticated users can read open requests" ON public.blood_requests FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Requesters can create requests" ON public.blood_requests;
 CREATE POLICY "Requesters can create requests" ON public.blood_requests FOR INSERT WITH CHECK (requester_id = auth.uid());
+
+DROP POLICY IF EXISTS "Requesters can update own requests" ON public.blood_requests;
 CREATE POLICY "Requesters can update own requests" ON public.blood_requests FOR UPDATE USING (requester_id = auth.uid());
 
 -- ------------------------------------------------------------------------------
@@ -521,47 +547,77 @@ ALTER TABLE public.id_card_template_assets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.id_card_template_audit_logs ENABLE ROW LEVEL SECURITY;
 
 -- Policies for id_card_template_versions
+DROP POLICY IF EXISTS "Public can view published template versions" ON public.id_card_template_versions;
 CREATE POLICY "Public can view published template versions"
 ON public.id_card_template_versions FOR SELECT
 TO anon, authenticated
 USING (version_status = 'published');
 
+DROP POLICY IF EXISTS "Super Admins can manage all template versions" ON public.id_card_template_versions;
 CREATE POLICY "Super Admins can manage all template versions"
 ON public.id_card_template_versions FOR ALL
 TO authenticated
 USING (
     EXISTS (
         SELECT 1 FROM public.user_role_assignments ura
-        WHERE ura.user_id = auth.uid() AND ura.role_id = 'super_admin' AND ura.is_active = TRUE
+        WHERE ura.user_id = auth.uid() AND ura.role_id IN ('super_admin', 'co_super_admin') AND ura.is_active = TRUE
     )
 );
 
 -- Policies for id_card_template_assets
+DROP POLICY IF EXISTS "Public can view template assets" ON public.id_card_template_assets;
 CREATE POLICY "Public can view template assets"
 ON public.id_card_template_assets FOR SELECT
 TO anon, authenticated
 USING (TRUE);
 
+DROP POLICY IF EXISTS "Super Admins can manage template assets" ON public.id_card_template_assets;
 CREATE POLICY "Super Admins can manage template assets"
 ON public.id_card_template_assets FOR ALL
 TO authenticated
 USING (
     EXISTS (
         SELECT 1 FROM public.user_role_assignments ura
-        WHERE ura.user_id = auth.uid() AND ura.role_id = 'super_admin' AND ura.is_active = TRUE
+        WHERE ura.user_id = auth.uid() AND ura.role_id IN ('super_admin', 'co_super_admin') AND ura.is_active = TRUE
     )
 );
 
 -- Policies for id_card_template_audit_logs
+DROP POLICY IF EXISTS "Super Admins can view and write template audit logs" ON public.id_card_template_audit_logs;
 CREATE POLICY "Super Admins can view and write template audit logs"
 ON public.id_card_template_audit_logs FOR ALL
 TO authenticated
 USING (
     EXISTS (
         SELECT 1 FROM public.user_role_assignments ura
-        WHERE ura.user_id = auth.uid() AND ura.role_id = 'super_admin' AND ura.is_active = TRUE
+        WHERE ura.user_id = auth.uid() AND ura.role_id IN ('super_admin', 'co_super_admin') AND ura.is_active = TRUE
     )
 );
+
+-- 6.5. Ensure parent roles and templates exist before versions are inserted
+INSERT INTO public.role_definitions (id, display_name_en, display_name_bn, description, badge_color, rank_level, is_administrative) VALUES
+('super_admin', 'Super Administrator', 'প্রধান প্রশাসক', 'Full platform administrative oversight', '#580F1A', 100, true),
+('co_super_admin', 'Co-Super Administrator (Equal Power)', 'কো-সুপার প্রশাসক (সমান নির্বাহী ক্ষমতা)', 'Full nationwide equal administrative authority', '#580F1A', 100, true),
+('division_admin', 'Division Administrator', 'বিভাগীয় প্রশাসক', 'Regional administrative coordinator', '#0D3B66', 80, true),
+('district_admin', 'District Administrator', 'জেলা সমন্বয়ক ও প্রশাসক', 'District operational coordinator', '#006A4E', 70, true),
+('upazila_admin', 'Upazila Administrator', 'উপজেলা প্রশাসক', 'Sub-district operational lead', '#D84A1B', 60, true),
+('thana_admin', 'Metropolitan Thana Admin', 'মেট্রোপলিটন থানা প্রশাসক', 'Metropolitan urban coordinator', '#008080', 60, true),
+('union_admin', 'Union Administrator', 'ইউনিয়ন সমন্বয়ক', 'Grassroots rural coordinator', '#4A154B', 40, true),
+('donor', 'Voluntary Blood Donor', 'স্বেচ্ছাসেবী রক্তদাতা', 'Verified blood donor', '#C8102E', 10, false),
+('volunteer', 'Registered Volunteer', 'স্বেচ্ছাসেবক', 'Grassroots platform volunteer', '#006A4E', 20, false)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.id_card_templates (id, role_id, primary_color, secondary_color, accent_color, title_en, title_bn, is_active) VALUES
+('tpl-super-admin', 'super_admin', '#580F1A', '#30080E', '#D4AF37', 'Super Administrator Card', 'প্রধান প্রশাসক পরিচয়পত্র', true),
+('tpl-co-super-admin', 'co_super_admin', '#580F1A', '#30080E', '#D4AF37', 'Co-Super Administrator Card', 'কো-সুপার প্রশাসক পরিচয়পত্র', true),
+('tpl-donor', 'donor', '#006A4E', '#C8102E', '#C8102E', 'Voluntary Donor Card', 'স্বেচ্ছাসেবী রক্তদাতা কার্ড', true),
+('tpl-division-admin', 'division_admin', '#0D3B66', '#062038', '#F4D35E', 'Division Administrator Card', 'বিভাগীয় প্রশাসক পরিচয়পত্র', true),
+('tpl-district-admin', 'district_admin', '#006A4E', '#004532', '#A7F3D0', 'District Administrator Card', 'জেলা সমন্বয়ক পরিচয়পত্র', true),
+('tpl-upazila-admin', 'upazila_admin', '#D84A1B', '#93300E', '#FED7AA', 'Upazila Administrator Card', 'উপজেলা প্রশাসক পরিচয়পত্র', true),
+('tpl-thana-admin', 'thana_admin', '#008080', '#004C4C', '#99F6E4', 'Thana Administrator Card', 'থানা প্রশাসক পরিচয়পত্র', true),
+('tpl-union-admin', 'union_admin', '#4A154B', '#2B082C', '#E9D5FF', 'Union Administrator Card', 'ইউনিয়ন সমন্বয়ক পরিচয়পত্র', true),
+('tpl-volunteer', 'volunteer', '#1B4931', '#0C2618', '#A7F3D0', 'Volunteer Card', 'স্বেচ্ছাসেবক পরিচয়পত্র', true)
+ON CONFLICT (id) DO NOTHING;
 
 -- 7. Seed Initial Published Template Versions
 INSERT INTO public.id_card_template_versions 
@@ -730,6 +786,7 @@ ALTER TABLE public.broadcast_notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_notifications ENABLE ROW LEVEL SECURITY;
 
 -- Read policy: Anyone can read active broadcasts intended for all, or their matching segment
+DROP POLICY IF EXISTS "Public & donors can view active broadcasts" ON public.broadcast_notifications;
 CREATE POLICY "Public & donors can view active broadcasts"
     ON public.broadcast_notifications
     FOR SELECT
@@ -742,6 +799,7 @@ CREATE POLICY "Public & donors can view active broadcasts"
     );
 
 -- Insert/Update/Delete policy: Only administrators can dispatch, update or delete broadcasts
+DROP POLICY IF EXISTS "Admins can manage broadcast notifications" ON public.broadcast_notifications;
 CREATE POLICY "Admins can manage broadcast notifications"
     ON public.broadcast_notifications
     FOR ALL
@@ -763,16 +821,19 @@ CREATE POLICY "Admins can manage broadcast notifications"
     );
 
 -- User notifications policies: Users manage their own read receipts
+DROP POLICY IF EXISTS "Users can view their notification read receipts" ON public.user_notifications;
 CREATE POLICY "Users can view their notification read receipts"
     ON public.user_notifications
     FOR SELECT
     USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update their notification read receipts" ON public.user_notifications;
 CREATE POLICY "Users can update their notification read receipts"
     ON public.user_notifications
     FOR INSERT
     WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can modify their notification read receipts" ON public.user_notifications;
 CREATE POLICY "Users can modify their notification read receipts"
     ON public.user_notifications
     FOR UPDATE

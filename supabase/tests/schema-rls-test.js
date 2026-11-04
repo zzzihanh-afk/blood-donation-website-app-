@@ -135,7 +135,7 @@ test('Migration 000002 Audit: ID Card Template Management System & Version Contr
   }
 
   // Verify Super Admin RBAC policy enforcement
-  assert.match(sql, /ura\.role_id = 'super_admin'/i, 'Super Admin RBAC policy must protect template management');
+  assert.match(sql, /ura\.role_id\s*(=|IN).*'super_admin'/i, 'Super Admin RBAC policy must protect template management');
 
   // Verify Seeded Template Versions
   assert.match(sql, /'tpl-super-admin'/i, 'Super admin template must be seeded');

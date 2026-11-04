@@ -50,6 +50,7 @@ ALTER TABLE public.broadcast_notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_notifications ENABLE ROW LEVEL SECURITY;
 
 -- Read policy: Anyone can read active broadcasts intended for all, or their matching segment
+DROP POLICY IF EXISTS "Public & donors can view active broadcasts" ON public.broadcast_notifications;
 CREATE POLICY "Public & donors can view active broadcasts"
     ON public.broadcast_notifications
     FOR SELECT
@@ -62,6 +63,7 @@ CREATE POLICY "Public & donors can view active broadcasts"
     );
 
 -- Insert/Update/Delete policy: Only administrators can dispatch, update or delete broadcasts
+DROP POLICY IF EXISTS "Admins can manage broadcast notifications" ON public.broadcast_notifications;
 CREATE POLICY "Admins can manage broadcast notifications"
     ON public.broadcast_notifications
     FOR ALL
@@ -83,16 +85,19 @@ CREATE POLICY "Admins can manage broadcast notifications"
     );
 
 -- User notifications policies: Users manage their own read receipts
+DROP POLICY IF EXISTS "Users can view their notification read receipts" ON public.user_notifications;
 CREATE POLICY "Users can view their notification read receipts"
     ON public.user_notifications
     FOR SELECT
     USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update their notification read receipts" ON public.user_notifications;
 CREATE POLICY "Users can update their notification read receipts"
     ON public.user_notifications
     FOR INSERT
     WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can modify their notification read receipts" ON public.user_notifications;
 CREATE POLICY "Users can modify their notification read receipts"
     ON public.user_notifications
     FOR UPDATE
