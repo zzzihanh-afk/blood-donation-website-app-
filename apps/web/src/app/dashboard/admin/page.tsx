@@ -57,7 +57,8 @@ import {
 import { 
   NotificationItem, 
   getStoredNotifications, 
-  deleteNotification 
+  deleteNotification,
+  syncNotificationsFromDatabase
 } from '@/lib/notifications';
 import { CreateNotificationModal } from '@/components/notifications/CreateNotificationModal';
 
@@ -186,6 +187,7 @@ export default function AdminDashboardPage() {
     setCampaigns(getStoredCampaigns());
     setDelegations(getCampaignDelegations());
     setNotificationsList(getStoredNotifications());
+    syncNotificationsFromDatabase();
 
     const handleNotifsUpdate = () => {
       setNotificationsList(getStoredNotifications());

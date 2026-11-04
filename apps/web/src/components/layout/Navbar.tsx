@@ -33,7 +33,8 @@ import {
   NotificationItem, 
   getStoredNotifications, 
   markAllNotificationsAsRead, 
-  markNotificationAsRead 
+  markNotificationAsRead,
+  syncNotificationsFromDatabase
 } from '@/lib/notifications';
 import { CreateNotificationModal } from '@/components/notifications/CreateNotificationModal';
 
@@ -57,6 +58,7 @@ export const Navbar: React.FC = () => {
   useEffect(() => {
     setSession(getCurrentSession());
     setNotifications(getStoredNotifications());
+    syncNotificationsFromDatabase();
 
     const handleSessionChange = () => {
       setSession(getCurrentSession());

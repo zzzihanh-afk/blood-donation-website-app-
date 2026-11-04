@@ -1,3 +1,5 @@
+import { getSupabaseBrowserClient, isSupabaseConfigured } from './supabase';
+
 export interface NotificationItem {
   id: string;
   type: 'emergency' | 'achievement' | 'verification' | 'id_card' | 'campaign' | 'system';
@@ -86,6 +88,26 @@ export const INITIAL_NOTIFICATIONS: NotificationItem[] = [
 
 const NOTIFICATIONS_STORAGE_KEY = 'lalbindu_system_notifications';
 
+function mapDbRowToItem(row: any): NotificationItem {
+  return {
+    id: String(row.id),
+    type: row.type || 'system',
+    priority: row.priority || 'normal',
+    titleEn: row.title_en,
+    titleBn: row.title_bn,
+    messageEn: row.message_en,
+    messageBn: row.message_bn,
+    link: row.action_link || '/blood-requests',
+    isRead: false,
+    targetGroup: row.target_group || 'all',
+    targetValue: row.target_value || '',
+    sender: row.sender_name || 'LalBindu Authority',
+    createdAt: row.created_at || new Date().toISOString(),
+    timeEn: 'Just now',
+    timeBn: 'এইমাত্র'
+  };
+}
+
 export function getStoredNotifications(): NotificationItem[] {
   if (typeof window === 'undefined') return INITIAL_NOTIFICATIONS;
   try {
@@ -112,10 +134,68 @@ export function saveNotifications(items: NotificationItem[]): void {
   }
 }
 
+/**
+ * Asynchronously syncs latest broadcast notifications from Supabase
+ */
+export async function syncNotificationsFromDatabase(): Promise<NotificationItem[]> {
+  const supabase = getSupabaseBrowserClient();
+  if (!supabase) return getStoredNotifications();
+
+  try {
+    const { data, error } = await supabase
+      .from('broadcast_notifications')
+      .select('*')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.warn('[LalBindu] Supabase query warning:', error.message);
+      return getStoredNotifications();
+    }
+
+    if (data && data.length > 0) {
+      const dbItems = data.map(mapDbRowToItem);
+      saveNotifications(dbItems);
+      return dbItems;
+    }
+  } catch (err) {
+    console.error('[LalBindu] Failed to fetch notifications from Supabase:', err);
+  }
+  return getStoredNotifications();
+}
+
 export function addNotification(newItem: NotificationItem): NotificationItem[] {
   const current = getStoredNotifications();
   const updated = [newItem, ...current];
   saveNotifications(updated);
+
+  // If Supabase is connected, persist to Supabase
+  const supabase = getSupabaseBrowserClient();
+  if (supabase) {
+    (async () => {
+      try {
+        const { error } = await supabase
+          .from('broadcast_notifications')
+          .insert({
+            type: newItem.type,
+            priority: newItem.priority || 'normal',
+            title_en: newItem.titleEn,
+            title_bn: newItem.titleBn,
+            message_en: newItem.messageEn,
+            message_bn: newItem.messageBn,
+            action_link: newItem.link,
+            target_group: newItem.targetGroup || 'all',
+            target_value: newItem.targetValue || null,
+            sender_name: newItem.sender || 'LalBindu Authority',
+            is_active: true
+          });
+        if (error) console.warn('[LalBindu] Could not sync new notification to Supabase:', error.message);
+      } catch (err) {
+        console.error('[LalBindu] Supabase insert error:', err);
+      }
+    })();
+  }
+
   return updated;
 }
 
@@ -123,6 +203,23 @@ export function deleteNotification(id: string): NotificationItem[] {
   const current = getStoredNotifications();
   const updated = current.filter(n => n.id !== id);
   saveNotifications(updated);
+
+  // If Supabase is connected, mark inactive or delete in Supabase
+  const supabase = getSupabaseBrowserClient();
+  if (supabase) {
+    (async () => {
+      try {
+        const { error } = await supabase
+          .from('broadcast_notifications')
+          .update({ is_active: false })
+          .eq('id', id);
+        if (error) console.warn('[LalBindu] Could not delete notification in Supabase:', error.message);
+      } catch (err) {
+        console.error('[LalBindu] Supabase delete error:', err);
+      }
+    })();
+  }
+
   return updated;
 }
 

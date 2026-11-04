@@ -17,6 +17,7 @@ ON CONFLICT (id) DO NOTHING;
 -- 2. Role Definitions
 INSERT INTO public.role_definitions (id, display_name_en, display_name_bn, description, badge_color, rank_level, is_administrative) VALUES
 ('super_admin', 'Super Administrator', 'প্রধান প্রশাসক', 'Full platform administrative oversight', '#580F1A', 100, true),
+('co_super_admin', 'Co-Super Administrator (Equal Power)', 'কো-সুপার প্রশাসক (সমান নির্বাহী ক্ষমতা)', 'Full nationwide equal administrative authority', '#580F1A', 100, true),
 ('division_admin', 'Division Administrator', 'বিভাগীয় প্রশাসক', 'Regional administrative coordinator', '#0D3B66', 80, true),
 ('district_admin', 'District Administrator', 'জেলা সমন্বয়ক ও প্রশাসক', 'District operational coordinator', '#006A4E', 70, true),
 ('upazila_admin', 'Upazila Administrator', 'উপজেলা প্রশাসক', 'Sub-district operational lead', '#D84A1B', 60, true),
@@ -38,6 +39,7 @@ ON CONFLICT (id) DO NOTHING;
 -- 3. ID Card Templates
 INSERT INTO public.id_card_templates (id, role_id, primary_color, secondary_color, accent_color, title_en, title_bn, is_active) VALUES
 ('super_admin_card', 'super_admin', '#580F1A', '#30080E', '#D4AF37', 'Super Administrator Card', 'প্রধান প্রশাসক পরিচয়পত্র', true),
+('co_super_admin_card', 'co_super_admin', '#580F1A', '#30080E', '#D4AF37', 'Co-Super Administrator Card', 'কো-সুপার প্রশাসক পরিচয়পত্র', true),
 ('division_admin_card', 'division_admin', '#0D3B66', '#062038', '#F4D35E', 'Division Administrator Card', 'বিভাগীয় প্রশাসক পরিচয়পত্র', true),
 ('district_admin_card', 'district_admin', '#006A4E', '#004532', '#E8F5E9', 'District Administrator Card', 'জেলা সমন্বয়ক পরিচয়পত্র', true),
 ('upazila_admin_card', 'upazila_admin', '#D84A1B', '#93300E', '#FFF3E0', 'Upazila Administrator Card', 'উপজেলা প্রশাসক পরিচয়পত্র', true),

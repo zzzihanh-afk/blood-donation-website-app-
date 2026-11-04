@@ -142,3 +142,25 @@ test('Migration 000002 Audit: ID Card Template Management System & Version Contr
   assert.match(sql, /'tpl-donor'/i, 'Donor template must be seeded');
   assert.match(sql, /'tpl-district-admin'/i, 'District admin template must be seeded');
 });
+
+test('Migration 000003 Audit: Notifications & Broadcasts Engine', () => {
+  const migrationPath = path.join(__dirname, '..', 'migrations', '20261104000001_notifications_and_broadcasts.sql');
+  assert.ok(fs.existsSync(migrationPath), 'Migration 000003 file must exist');
+
+  const sql = fs.readFileSync(migrationPath, 'utf8');
+
+  // Verify tables created
+  const notifTables = ['broadcast_notifications', 'user_notifications'];
+  for (const table of notifTables) {
+    const tableRegex = new RegExp(`CREATE TABLE IF NOT EXISTS public\\.${table}\\b`, 'i');
+    assert.match(sql, tableRegex, `Table ${table} must be defined in Migration 000003`);
+    assert.match(sql, new RegExp(`ALTER TABLE public\\.${table} ENABLE ROW LEVEL SECURITY;`, 'i'), `RLS must be enabled on ${table}`);
+  }
+
+  // Verify Admin RBAC policy for broadcasts
+  assert.match(sql, /'super_admin'/i, 'Super Admin must have broadcast clearance');
+  assert.match(sql, /'co_super_admin'/i, 'Co-Super Admin must have broadcast clearance');
+
+  // Verify Seeded Broadcast Notifications
+  assert.match(sql, /Critical Emergency: O\+ Blood Needed/i, 'Seed notification must exist');
+});
