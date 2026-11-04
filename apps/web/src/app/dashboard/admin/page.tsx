@@ -38,7 +38,8 @@ import {
   Share2,
   Trash2,
   Calendar,
-  ExternalLink
+  ExternalLink,
+  Crown
 } from 'lucide-react';
 import { CreateCampaignModal } from '@/components/campaigns/CreateCampaignModal';
 import { 
@@ -70,9 +71,31 @@ export interface SubordinateAppointment {
   appointedDate: string;
   validUntil: string;
   avatarUrl: string;
+  isEqualSuperAdmin?: boolean;
 }
 
 const INITIAL_SUBORDINATE_APPOINTMENTS: SubordinateAppointment[] = [
+  {
+    id: 'adm-00',
+    name: 'Dr. Nusrat Jahan',
+    nameBn: 'ড. নুসরাত জাহান',
+    roleId: 'co_super_admin',
+    role: 'Co-Super Administrator (Equal Power)',
+    roleBn: 'কো-সুপার প্রশাসক (সমান নির্বাহী ক্ষমতা)',
+    jurisdiction: 'National (All Bangladesh)',
+    jurisdictionBn: 'জাতীয় (সমগ্র বাংলাদেশ)',
+    division: 'Dhaka',
+    district: 'National',
+    cardId: 'LA0010002',
+    color: '#580F1A',
+    status: 'Active',
+    appointedDate: '01 Jan 2025',
+    validUntil: '31 Dec 2026',
+    avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80',
+    phone: '+880 1712-334455',
+    email: 'nusrat.superadmin@lalbindu.bd',
+    isEqualSuperAdmin: true
+  },
   {
     id: 'adm-01',
     name: 'Kazi Mahbubur Rahman',
@@ -157,7 +180,13 @@ export default function AdminDashboardPage() {
       const saved = localStorage.getItem('lalbindu_subordinate_appointments');
       if (saved) {
         try {
-          return JSON.parse(saved);
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            if (!parsed.some((p: any) => p.id === 'adm-00')) {
+              return [INITIAL_SUBORDINATE_APPOINTMENTS[0], ...parsed];
+            }
+            return parsed;
+          }
         } catch (e) {
           console.error(e);
         }
@@ -228,32 +257,58 @@ export default function AdminDashboardPage() {
     setTimeout(() => setToastMessage(null), 4000);
   };
 
-  // Submit new appointment
+  // Submit new appointment (Restricted to Super Admin Only)
   const handleCreateAppointment = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Strict Access Control Check
+    if (selectedJurisdiction !== 'national') {
+      alert(lang === 'bn' 
+        ? 'প্রবেশাধিকার সীমাবদ্ধ: শুধুমাত্র ন্যাশনাল সুপার অ্যাডমিনিস্ট্রেটর পোর্টাল থেকে নতুন সমন্বয়ক বা প্রশাসনিক অ্যাকাউন্ট তৈরি করা সম্ভব।' 
+        : 'Access Restricted: Only National Super Administrators can appoint coordinators or create administrative accounts.');
+      return;
+    }
+
     if (!newAppointForm.name.trim() || !newAppointForm.phone.trim()) {
       alert(lang === 'bn' ? 'দয়া করে নাম এবং মোবাইল নম্বর প্রদান করুন।' : 'Please provide full name and phone number.');
       return;
     }
 
-    const roleMap: Record<string, { role: string; roleBn: string; color: string }> = {
+    const roleMap: Record<string, { role: string; roleBn: string; color: string; isSuper?: boolean }> = {
+      co_super_admin: { 
+        role: 'Co-Super Administrator (Equal Power)', 
+        roleBn: 'কো-সুপার প্রশাসক (সমান নির্বাহী ক্ষমতা)', 
+        color: '#580F1A',
+        isSuper: true
+      },
       division_admin: { role: 'Division Administrator', roleBn: 'বিভাগীয় প্রশাসক', color: '#0D3B66' },
       district_admin: { role: 'District Administrator', roleBn: 'জেলা প্রশাসক ও সমন্বয়ক', color: '#006A4E' },
       upazila_admin: { role: 'Upazila Administrator', roleBn: 'উপজেলা প্রশাসক', color: '#D84A1B' },
       thana_admin: { role: 'Thana Administrator', roleBn: 'মেট্রোপলিটন থানা প্রশাসক', color: '#008080' },
-      union_admin: { role: 'Union Administrator', roleBn: 'ইউনিয়ন প্রশাসক', color: '#4A154B' }
+      union_admin: { role: 'Union Administrator', roleBn: 'ইউনিয়ন প্রশাসক', color: '#4A154B' },
+      hospital_admin: { role: 'Hospital Administrator', roleBn: 'হাসপাতাল অ্যাডমিনিস্ট্রেটর', color: '#0077B6' },
+      campaign_manager: { role: 'Campaign Manager', roleBn: 'জাতীয় ক্যাম্পেইন ম্যানেজার', color: '#8A1538' }
     };
 
+    const isCoSuper = newAppointForm.roleId === 'co_super_admin';
     const roleInfo = roleMap[newAppointForm.roleId] || roleMap['district_admin'];
-    const jurisdictionLabel = newAppointForm.specificArea 
-      ? `${newAppointForm.specificArea}, ${newAppointForm.district || newAppointForm.division}`
-      : `${newAppointForm.district || newAppointForm.division} District`;
-    const jurisdictionLabelBn = newAppointForm.specificArea
-      ? `${newAppointForm.specificArea}, ${newAppointForm.district || newAppointForm.division}`
-      : `${newAppointForm.district || newAppointForm.division} জেলা`;
+
+    const jurisdictionLabel = isCoSuper
+      ? 'National (All Bangladesh)'
+      : newAppointForm.specificArea 
+        ? `${newAppointForm.specificArea}, ${newAppointForm.district || newAppointForm.division}`
+        : `${newAppointForm.district || newAppointForm.division} District`;
+
+    const jurisdictionLabelBn = isCoSuper
+      ? 'জাতীয় (সমগ্র বাংলাদেশ)'
+      : newAppointForm.specificArea
+        ? `${newAppointForm.specificArea}, ${newAppointForm.district || newAppointForm.division}`
+        : `${newAppointForm.district || newAppointForm.division} জেলা`;
 
     const randomSuffix = Math.floor(100 + Math.random() * 900);
-    const cardId = `LB-CARD-ADM-${(newAppointForm.district || newAppointForm.division).substring(0, 3).toUpperCase()}-${randomSuffix}`;
+    const cardId = isCoSuper
+      ? `LA00100${Math.floor(10 + Math.random() * 90)}`
+      : `LB-CARD-ADM-${(newAppointForm.district || newAppointForm.division).substring(0, 3).toUpperCase()}-${randomSuffix}`;
 
     const newAppointment: SubordinateAppointment = {
       id: `adm-${Date.now()}`,
@@ -264,8 +319,8 @@ export default function AdminDashboardPage() {
       roleBn: roleInfo.roleBn,
       jurisdiction: jurisdictionLabel,
       jurisdictionBn: jurisdictionLabelBn,
-      division: newAppointForm.division,
-      district: newAppointForm.district,
+      division: isCoSuper ? 'Dhaka' : newAppointForm.division,
+      district: isCoSuper ? 'National' : newAppointForm.district,
       phone: newAppointForm.phone.trim(),
       email: newAppointForm.email.trim() || `${newAppointForm.name.toLowerCase().replace(/\s+/g, '.')}${randomSuffix}@lalbindu.bd`,
       cardId,
@@ -273,7 +328,10 @@ export default function AdminDashboardPage() {
       status: 'Active',
       appointedDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
       validUntil: '31 Dec 2026',
-      avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=300&q=80'
+      avatarUrl: isCoSuper 
+        ? 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80'
+        : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=300&q=80',
+      isEqualSuperAdmin: isCoSuper
     };
 
     const updated = [newAppointment, ...appointments];
@@ -282,11 +340,20 @@ export default function AdminDashboardPage() {
       localStorage.setItem('lalbindu_subordinate_appointments', JSON.stringify(updated));
     }
 
+    // If Co-Super Admin, automatically delegate full campaign authorization
+    if (isCoSuper) {
+      toggleDelegationPermission(newAppointment.id, true);
+    }
+
     setIsAppointModalOpen(false);
     setToastMessage(lang === 'bn' 
-      ? `"${newAppointment.name}" এর জন্য নতুন ${newAppointment.roleBn} পদে নিয়োগ ও আইডি কার্ড (${newAppointment.cardId}) সফলভাবে ইস্যু করা হয়েছে!`
-      : `New appointment successfully issued for "${newAppointment.name}" (${newAppointment.role}) with Card ID ${newAppointment.cardId}!`);
-    setTimeout(() => setToastMessage(null), 5000);
+      ? isCoSuper
+        ? `সুপার অ্যাডমিনের সমান নির্বাহী ক্ষমতাসম্পন্ন কো-সুপার অ্যাডমিন "${newAppointment.name}" (আইডি: ${newAppointment.cardId}) সফলভাবে নিযুক্ত করা হয়েছে!`
+        : `"${newAppointment.name}" এর জন্য নতুন ${newAppointment.roleBn} পদে নিয়োগ ও আইডি কার্ড (${newAppointment.cardId}) সফলভাবে ইস্যু করা হয়েছে!`
+      : isCoSuper
+        ? `Equal-Power Co-Super Administrator "${newAppointment.name}" (${newAppointment.cardId}) appointed with nationwide executive authority!`
+        : `New appointment successfully issued for "${newAppointment.name}" (${newAppointment.role}) with Card ID ${newAppointment.cardId}!`);
+    setTimeout(() => setToastMessage(null), 5500);
 
     // Reset Form
     setNewAppointForm({
@@ -625,6 +692,24 @@ export default function AdminDashboardPage() {
            ========================================================================= */}
         {activeTab === 'admins' && (
           <div className="bg-white rounded-3xl p-6 sm:p-8 card-shadow border border-gray-100 space-y-6">
+            
+            {/* If NOT National Super Admin, display Executive Restriction Warning */}
+            {selectedJurisdiction !== 'national' && (
+              <div className="p-4 rounded-2xl bg-amber-50/90 border border-amber-200 text-amber-900 text-xs flex items-center space-x-3">
+                <Lock className="w-5 h-5 text-amber-700 shrink-0" />
+                <div>
+                  <span className="font-black uppercase tracking-wider text-[10px] bg-amber-200 px-2 py-0.5 rounded-full text-amber-900 mr-2">
+                    {lang === 'bn' ? 'আঞ্চলিক সীমাবদ্ধতা' : 'Executive Restriction'}
+                  </span>
+                  <span className="font-semibold">
+                    {lang === 'bn' 
+                      ? 'সমন্বয়ক ও প্রশাসক নিয়োগ শুধুমাত্র ন্যাশনাল সুপার অ্যাডমিনিস্ট্রেটরের জন্য উন্মুক্ত। আঞ্চলিক প্রশাসকদের (Division/District/Thana) নতুন অ্যাকাউন্ট তৈরি বা ক্ষমতা অর্পণের অনুমতি নেই।' 
+                      : 'Coordinator and administrator appointments are strictly reserved for National Super Administrators. Regional administrative levels hold operational oversight only.'}
+                  </span>
+                </div>
+              </div>
+            )}
+
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h2 className="text-lg font-black text-gray-900">{t.adminDashboard.tabAdmins}</h2>
@@ -634,19 +719,43 @@ export default function AdminDashboardPage() {
                     : 'Every appointed representative holds an individual LalBindu Administrative Digital ID Card.'}
                 </p>
               </div>
-              <button
-                onClick={() => setIsAppointModalOpen(true)}
-                className="px-4 py-2.5 bg-brand-burgundy hover:bg-[#400B13] text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center space-x-1.5 self-start sm:self-auto"
-              >
-                <UserPlus className="w-4 h-4" />
-                <span>{t.adminDashboard.appointNewBtn}</span>
-              </button>
+
+              {selectedJurisdiction === 'national' ? (
+                <button
+                  onClick={() => setIsAppointModalOpen(true)}
+                  className="px-4 py-2.5 bg-gradient-to-r from-brand-burgundy to-brand-red hover:from-[#400B13] hover:to-[#6a0b17] text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center space-x-1.5 self-start sm:self-auto"
+                >
+                  <Crown className="w-4 h-4 text-amber-300" />
+                  <span>{lang === 'bn' ? '+ নতুন সমন্বয়ক / কো-সুপার অ্যাডমিন নিয়োগ' : '+ Appoint Coordinator / Co-Super Admin'}</span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    alert(lang === 'bn' 
+                      ? 'প্রবেশাধিকার সীমাবদ্ধ: শুধুমাত্র ন্যাশনাল সুপার অ্যাডমিনিস্ট্রেটর পোর্টাল থেকে নতুন সমন্বয়ক বা প্রশাসনিক অ্যাকাউন্ট তৈরি করা সম্ভব।' 
+                      : 'Access Restricted: Only National Super Administrators possess the executive authority to appoint coordinators or create administrative accounts.');
+                  }}
+                  className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-500 font-bold text-xs rounded-xl border border-gray-300 transition-all flex items-center space-x-1.5 cursor-not-allowed self-start sm:self-auto"
+                  title="Super Admin Only"
+                >
+                  <Lock className="w-3.5 h-3.5 text-gray-400" />
+                  <span>{lang === 'bn' ? 'সমন্বয়ক নিয়োগ (সুপার অ্যাডমিন নিয়ন্ত্রিত)' : 'Appoint Coordinator (Super Admin Only)'}</span>
+                </button>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {appointments.map((adm) => (
                 <div key={adm.id} className="p-5 rounded-2xl border border-gray-200/80 bg-gray-50 hover:bg-white hover:border-brand-burgundy/30 hover:shadow-md transition-all flex flex-col justify-between">
                   <div>
+                    {/* Equal Super Admin Badge */}
+                    {(adm.isEqualSuperAdmin || adm.roleId === 'co_super_admin') && (
+                      <div className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-900 border border-amber-300 text-[10px] font-black uppercase tracking-wider mb-2.5">
+                        <Crown className="w-3.5 h-3.5 text-amber-600" />
+                        <span>{lang === 'bn' ? 'সমান ক্ষমতা (Equal Super Admin)' : 'Equal Super Admin Authority'}</span>
+                      </div>
+                    )}
+
                     <div className="flex items-center justify-between mb-2.5">
                       <span className="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full text-white shadow-xs" style={{ backgroundColor: adm.color }}>
                         {lang === 'bn' ? adm.roleBn : adm.role}
@@ -680,12 +789,19 @@ export default function AdminDashboardPage() {
                       <span>{t.adminDashboard.viewIdCard}</span>
                       <ChevronRight className="w-3 h-3" />
                     </button>
-                    <button
-                      onClick={() => setManageAccessModalData(adm)}
-                      className="text-xs font-semibold text-gray-600 hover:text-gray-900 px-2.5 py-1 rounded-lg hover:bg-gray-200 transition-all"
-                    >
-                      {t.adminDashboard.manageAccess}
-                    </button>
+
+                    {selectedJurisdiction === 'national' ? (
+                      <button
+                        onClick={() => setManageAccessModalData(adm)}
+                        className="text-xs font-semibold text-gray-600 hover:text-gray-900 px-2.5 py-1 rounded-lg hover:bg-gray-200 transition-all"
+                      >
+                        {t.adminDashboard.manageAccess}
+                      </button>
+                    ) : (
+                      <span className="text-[11px] font-medium text-gray-400 italic">
+                        {lang === 'bn' ? 'কেবল পরিদর্শন' : 'View Only'}
+                      </span>
+                    )}
                   </div>
                 </div>
               ))}
@@ -1042,15 +1158,20 @@ export default function AdminDashboardPage() {
           <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 card-shadow border border-gray-100 relative my-8">
             <div className="flex items-center justify-between border-b border-gray-100 pb-4 mb-5">
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-2xl bg-brand-light flex items-center justify-center text-brand-burgundy font-black">
-                  <UserPlus className="w-5 h-5 text-brand-burgundy" />
+                <div className="w-10 h-10 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-brand-burgundy font-black">
+                  <Crown className="w-5 h-5 text-amber-600" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-black text-gray-900">
-                    {lang === 'bn' ? 'নতুন প্রশাসনিক সমন্বয়ক নিয়োগপত্র' : 'Nominate & Appoint Subordinate Administrator'}
+                  <div className="flex items-center space-x-2">
+                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-brand-burgundy text-white">
+                      Super Admin Authority Only
+                    </span>
+                  </div>
+                  <h3 className="text-lg font-black text-gray-900 mt-0.5">
+                    {lang === 'bn' ? 'সমন্বয়ক ও কো-সুপার অ্যাডমিন নিয়োগ পোর্টাল' : 'Nominate Coordinator / Equal Co-Super Admin'}
                   </h3>
                   <p className="text-xs text-gray-500">
-                    {lang === 'bn' ? 'অফিশিয়াল প্রশাসনিক দায়িত্ব অর্পণ এবং সিআর৮০ ডিজিটাল আইডি কার্ড ইস্যু করুন।' : 'Assign official administrative jurisdiction & generate authorized CR80 ID Card.'}
+                    {lang === 'bn' ? 'শুধুমাত্র জাতীয় সুপার অ্যাডমিনের ক্ষমতায় নতুন সমন্বয়ক নিয়োগ বা সমপর্যায়ের কো-সুপার অ্যাডমিন তৈরি করুন।' : 'Executive authority to appoint regional coordinators or create equal-power Super Admin accounts.'}
                   </p>
                 </div>
               </div>
@@ -1063,6 +1184,48 @@ export default function AdminDashboardPage() {
             </div>
 
             <form onSubmit={handleCreateAppointment} className="space-y-4">
+              
+              {/* Role Selection & Equal Power Highlighting */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  {lang === 'bn' ? 'প্রশাসনিক পদবি ও ক্ষমতার স্তর (Administrative Level)' : 'Administrative Role & Power Level'} <span className="text-brand-red">*</span>
+                </label>
+                <select
+                  value={newAppointForm.roleId}
+                  onChange={(e) => setNewAppointForm({ ...newAppointForm, roleId: e.target.value })}
+                  className="w-full text-xs p-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white font-bold"
+                >
+                  <option value="co_super_admin">
+                    👑 কো-সুপার অ্যাডমিনিস্ট্রেটর (Co-Super Administrator — সমান নির্বাহী ক্ষমতাসম্পন্ন / Equal Super Admin Power)
+                  </option>
+                  <option value="division_admin">বিভাগীয় প্রশাসক (Division Administrator)</option>
+                  <option value="district_admin">জেলা প্রশাসক ও সমন্বয়ক (District Administrator)</option>
+                  <option value="upazila_admin">উপজেলা প্রশাসক (Upazila Administrator)</option>
+                  <option value="thana_admin">মেট্রোপলিটন থানা প্রশাসক (Thana Administrator)</option>
+                  <option value="union_admin">ইউনিয়ন প্রশাসক (Union Administrator)</option>
+                  <option value="hospital_admin">হাসপাতাল অ্যাডমিনিস্ট্রেটর (Hospital Administrator)</option>
+                  <option value="campaign_manager">জাতীয় ক্যাম্পেইন ম্যানেজার (Campaign Manager)</option>
+                </select>
+              </div>
+
+              {/* Special Banner for Equal Super Admin Creation */}
+              {newAppointForm.roleId === 'co_super_admin' && (
+                <div className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-50 to-red-50 border border-amber-300 text-xs text-amber-950 flex items-start space-x-2.5 animate-in fade-in duration-150">
+                  <Crown className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-black text-amber-900">
+                      {lang === 'bn' ? 'সমান নির্বাহী ক্ষমতা অর্পণ (Equal Super Admin Authority)' : 'Delegating Equal Super Admin Authority for Efficiency'}
+                    </p>
+                    <p className="text-[11px] text-amber-800 mt-0.5 leading-relaxed">
+                      {lang === 'bn' 
+                        ? 'এই অ্যাকাউন্টের মাধ্যমে আপনি আপনার সমান নির্বাহী ক্ষমতাসম্পন্ন একজন জাতীয় কো-সুপার অ্যাডমিন তৈরি করছেন। তিনি সমগ্র বাংলাদেশের সমন্বয়ক নিয়োগ, রক্তদান কর্মসূচি পরিচালনা, আইডি কার্ড অনুমোদন ও সিস্টেম নিয়ন্ত্রণ পরিচালনা করতে পারবেন।' 
+                        : 'This creates a Co-Super Administrator with identical executive powers as your primary Super Admin account — enabling them to appoint coordinators, manage nationwide campaigns, customize card templates, and oversee system governance for maximum efficiency.'}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Full Name (EN & BN) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">
@@ -1071,7 +1234,7 @@ export default function AdminDashboardPage() {
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Md. Anisur Rahman"
+                    placeholder="e.g. Dr. Nusrat Jahan"
                     value={newAppointForm.name}
                     onChange={(e) => setNewAppointForm({ ...newAppointForm, name: e.target.value })}
                     className="w-full text-xs p-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-brand-burgundy/20 font-medium"
@@ -1084,7 +1247,7 @@ export default function AdminDashboardPage() {
                   </label>
                   <input
                     type="text"
-                    placeholder="উদাঃ মো. আনিসুর রহমান"
+                    placeholder="উদাঃ ড. নুসরাত জাহান"
                     value={newAppointForm.nameBn}
                     onChange={(e) => setNewAppointForm({ ...newAppointForm, nameBn: e.target.value })}
                     className="w-full text-xs p-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-brand-burgundy/20 font-medium"
@@ -1092,73 +1255,71 @@ export default function AdminDashboardPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">
-                    {lang === 'bn' ? 'প্রশাসনিক পদবি / ভূমিকা' : 'Administrative Role / Designation'} <span className="text-brand-red">*</span>
-                  </label>
-                  <select
-                    value={newAppointForm.roleId}
-                    onChange={(e) => setNewAppointForm({ ...newAppointForm, roleId: e.target.value })}
-                    className="w-full text-xs p-2.5 rounded-xl border border-gray-200 bg-gray-50 font-bold"
-                  >
-                    <option value="division_admin">বিভাগীয় প্রশাসক (Division Administrator)</option>
-                    <option value="district_admin">জেলা প্রশাসক ও সমন্বয়ক (District Administrator)</option>
-                    <option value="upazila_admin">উপজেলা প্রশাসক (Upazila Administrator)</option>
-                    <option value="thana_admin">মেট্রোপলিটন থানা প্রশাসক (Thana Administrator)</option>
-                    <option value="union_admin">ইউনিয়ন প্রশাসক (Union Administrator)</option>
-                  </select>
+              {/* Jurisdiction Division & District */}
+              {newAppointForm.roleId === 'co_super_admin' ? (
+                <div className="p-3 bg-gray-50 rounded-2xl border border-gray-200 text-xs">
+                  <p className="font-bold text-gray-900">
+                    {lang === 'bn' ? 'দায়িত্বপ্রাপ্ত অধিক্ষেত্র: জাতীয় (সমগ্র বাংলাদেশ)' : 'Assigned Jurisdiction: National (All Bangladesh)'}
+                  </p>
+                  <p className="text-[11px] text-gray-500 mt-0.5">
+                    {lang === 'bn' 
+                      ? 'কো-সুপার অ্যাডমিনিস্ট্রেটর কার্ড স্বয়ংক্রিয়ভাবে LA001 সিরিজের জাতীয় পরিচয়পত্র ও স্মৃতিসৌধ ওয়াটারমার্ক ধারণ করবে।' 
+                      : 'Co-Super Administrator ID cards are automatically issued under the LA001 National Series with the National Smriti Soudho insignia.'}
+                  </p>
                 </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">
+                        {lang === 'bn' ? 'দায়িত্বপ্রাপ্ত বিভাগ' : 'Assigned Division'} <span className="text-brand-red">*</span>
+                      </label>
+                      <select
+                        value={newAppointForm.division}
+                        onChange={(e) => setNewAppointForm({ ...newAppointForm, division: e.target.value })}
+                        className="w-full text-xs p-2.5 rounded-xl border border-gray-200 bg-gray-50 font-medium"
+                      >
+                        <option value="Dhaka">Dhaka (ঢাকা)</option>
+                        <option value="Chattogram">Chattogram (চট্টগ্রাম)</option>
+                        <option value="Rajshahi">Rajshahi (রাজশাহী)</option>
+                        <option value="Khulna">Khulna (খুলনা)</option>
+                        <option value="Barishal">Barishal (বরিশাল)</option>
+                        <option value="Sylhet">Sylhet (সিলেট)</option>
+                        <option value="Rangpur">Rangpur (রংপুর)</option>
+                        <option value="Mymensingh">Mymensingh (ময়মনসিংহ)</option>
+                      </select>
+                    </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">
-                    {lang === 'bn' ? 'দায়িত্বপ্রাপ্ত বিভাগ' : 'Assigned Division'} <span className="text-brand-red">*</span>
-                  </label>
-                  <select
-                    value={newAppointForm.division}
-                    onChange={(e) => setNewAppointForm({ ...newAppointForm, division: e.target.value })}
-                    className="w-full text-xs p-2.5 rounded-xl border border-gray-200 bg-gray-50 font-medium"
-                  >
-                    <option value="Dhaka">Dhaka (ঢাকা)</option>
-                    <option value="Chattogram">Chattogram (চট্টগ্রাম)</option>
-                    <option value="Rajshahi">Rajshahi (রাজশাহী)</option>
-                    <option value="Khulna">Khulna (খুলনা)</option>
-                    <option value="Barishal">Barishal (বরিশাল)</option>
-                    <option value="Sylhet">Sylhet (সিলেট)</option>
-                    <option value="Rangpur">Rangpur (রংপুর)</option>
-                    <option value="Mymensingh">Mymensingh (ময়মনসিংহ)</option>
-                  </select>
-                </div>
-              </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">
+                        {lang === 'bn' ? 'দায়িত্বপ্রাপ্ত জেলা / জিলা' : 'Assigned District'}
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Dhaka, Gazipur, Chattogram"
+                        value={newAppointForm.district}
+                        onChange={(e) => setNewAppointForm({ ...newAppointForm, district: e.target.value })}
+                        className="w-full text-xs p-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white font-medium"
+                      />
+                    </div>
+                  </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">
-                    {lang === 'bn' ? 'দায়িত্বপ্রাপ্ত জেলা / জিলা' : 'Assigned District'}
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Dhaka, Gazipur, Chattogram"
-                    value={newAppointForm.district}
-                    onChange={(e) => setNewAppointForm({ ...newAppointForm, district: e.target.value })}
-                    className="w-full text-xs p-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white font-medium"
-                  />
-                </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">
+                      {lang === 'bn' ? 'নির্দিষ্ট এলাকা / থানা / উপজেলা' : 'Specific Area / Thana / Upazila'}
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Gulshan Thana, Savar Upazila"
+                      value={newAppointForm.specificArea}
+                      onChange={(e) => setNewAppointForm({ ...newAppointForm, specificArea: e.target.value })}
+                      className="w-full text-xs p-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white font-medium"
+                    />
+                  </div>
+                </>
+              )}
 
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">
-                    {lang === 'bn' ? 'নির্দিষ্ট এলাকা / থানা / উপজেলা' : 'Specific Area / Thana / Upazila'}
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Gulshan Thana, Savar Upazila"
-                    value={newAppointForm.specificArea}
-                    onChange={(e) => setNewAppointForm({ ...newAppointForm, specificArea: e.target.value })}
-                    className="w-full text-xs p-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white font-medium"
-                  />
-                </div>
-              </div>
-
+              {/* Contact Info */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">

@@ -115,7 +115,7 @@ export const CR80IDCard: React.FC<CR80IDCardProps> = ({
     showDonations: frontConfig.showDonations ?? (roleId === 'donor' || donationCount !== undefined),
     showValidity: frontConfig.showValidity ?? true,
     watermarkType: frontConfig.watermarkType ?? (
-      roleId === 'super_admin' ? 'smriti_soudho' :
+      roleId === 'super_admin' || roleId === 'co_super_admin' ? 'smriti_soudho' :
       roleId === 'division_admin' ? 'sangsad_bhaban' :
       roleId === 'district_admin' ? 'ahsan_manzil' :
       roleId === 'upazila_admin' ? 'shat_gombuj' :
@@ -125,7 +125,7 @@ export const CR80IDCard: React.FC<CR80IDCardProps> = ({
       roleId === 'volunteer' ? 'volunteers' : 'smriti_soudho'
     ),
     badgeIcon: frontConfig.badgeIcon ?? (
-      roleId === 'super_admin' ? 'gold_star' :
+      roleId === 'super_admin' || roleId === 'co_super_admin' ? 'gold_star' :
       roleId === 'division_admin' ? 'blue_star' :
       roleId === 'district_admin' ? 'fort' :
       roleId === 'upazila_admin' ? 'arch' :
@@ -148,6 +148,7 @@ export const CR80IDCard: React.FC<CR80IDCardProps> = ({
   const getRoleDefaultColors = (r: string) => {
     switch (r) {
       case 'super_admin':
+      case 'co_super_admin':
         return { primary: '#580F1A', secondary: '#30080E', accent: '#D4AF37', ribbon: 'Super Admin' };
       case 'division_admin':
         return { primary: '#0D3B66', secondary: '#062038', accent: '#F4D35E', ribbon: 'Division Administrator' };
