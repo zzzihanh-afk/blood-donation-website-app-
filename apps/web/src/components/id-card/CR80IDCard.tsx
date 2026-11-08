@@ -66,6 +66,88 @@ export interface CR80IDCardProps {
   isDemo?: boolean;
 }
 
+const cardImageCache = new Map<string, HTMLImageElement>();
+
+function loadCardImage(src: string, timeoutMs = 3000): Promise<HTMLImageElement | null> {
+  if (typeof window === 'undefined') return Promise.resolve(null);
+  if (cardImageCache.has(src)) {
+    const cached = cardImageCache.get(src)!;
+    if (cached.complete && cached.naturalWidth > 0) {
+      return Promise.resolve(cached);
+    }
+  }
+
+  return new Promise((resolve) => {
+    const img = new window.Image();
+    img.crossOrigin = 'anonymous';
+    let done = false;
+
+    const timer = setTimeout(() => {
+      if (!done) {
+        done = true;
+        resolve(img.complete && img.naturalWidth > 0 ? img : null);
+      }
+    }, timeoutMs);
+
+    img.onload = () => {
+      if (!done) {
+        done = true;
+        clearTimeout(timer);
+        cardImageCache.set(src, img);
+        resolve(img);
+      }
+    };
+
+    img.onerror = () => {
+      if (!done) {
+        done = true;
+        clearTimeout(timer);
+        resolve(null);
+      }
+    };
+
+    img.src = src;
+    if (img.complete && img.naturalWidth > 0) {
+      if (!done) {
+        done = true;
+        clearTimeout(timer);
+        cardImageCache.set(src, img);
+        resolve(img);
+      }
+    }
+  });
+}
+
+function drawFallbackBrandLogo(ctx: CanvasRenderingContext2D, x: number, y: number, center = false) {
+  ctx.save();
+  const startX = center ? x + 10 : x;
+  const dropX = startX + 16;
+  const dropY = y + 24;
+
+  // Red Blood Drop Vector Icon
+  ctx.fillStyle = '#C8102E';
+  ctx.beginPath();
+  ctx.moveTo(dropX, dropY - 22);
+  ctx.bezierCurveTo(dropX + 16, dropY - 6, dropX + 18, dropY + 12, dropX, dropY + 20);
+  ctx.bezierCurveTo(dropX - 18, dropY + 12, dropX - 16, dropY - 6, dropX, dropY - 22);
+  ctx.fill();
+
+  // "Lal" (Burgundy Red) + "Bindu" (Bangladesh Green) Typography
+  ctx.fillStyle = '#C8102E';
+  ctx.font = '900 36px "Inter", -apple-system, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('Lal', dropX + 26, dropY + 8);
+
+  ctx.fillStyle = '#006A4E';
+  ctx.fillText('Bindu', dropX + 80, dropY + 8);
+
+  // Slogan
+  ctx.fillStyle = '#6B7280';
+  ctx.font = 'italic 600 13px "Inter", -apple-system, sans-serif';
+  ctx.fillText('Every Drop Connects a Life.', dropX + 26, dropY + 28);
+  ctx.restore();
+}
+
 export const CR80IDCard: React.FC<CR80IDCardProps> = ({
   fullName,
   fullNameBn,
@@ -180,8 +262,13 @@ export const CR80IDCard: React.FC<CR80IDCardProps> = ({
   const accentColor = settings.accentColor || roleColors.accent;
   const ribbonLabel = settings.ribbonLabel || roleColors.ribbon;
 
-  // Generate QR Code with crisp contrast
+  // Generate QR Code with crisp contrast & preload logo
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const logoUrl = `${window.location.origin}/branding/lalbindu-logo.png`;
+      loadCardImage(logoUrl, 4000);
+    }
+
     QRCode.toDataURL(targetVerifyUrl, {
       width: 260,
       margin: 1,
@@ -237,25 +324,26 @@ export const CR80IDCard: React.FC<CR80IDCardProps> = ({
       ctx.textAlign = 'center';
       ctx.fillText(ribbonLabel.toUpperCase(), canvas.width / 2, 29);
 
-      // LalBindu Brand Text on Left
-      ctx.fillStyle = '#C8102E';
-      ctx.font = '900 38px "Inter", sans-serif';
-      ctx.textAlign = 'left';
-      ctx.fillText('LalBindu', 60, 95);
-      ctx.fillStyle = '#707070';
-      ctx.font = 'italic 600 14px "Inter", sans-serif';
-      ctx.fillText('Every Drop Connects a Life.', 60, 118);
+      // Top Bar: Official LalBindu Logo on Left
+      if (front.showLogo !== false) {
+        try {
+          const origin = typeof window !== 'undefined' ? window.location.origin : '';
+          const logoUrl = origin ? `${origin}/branding/lalbindu-logo.png` : '/branding/lalbindu-logo.png';
+          const logoImg = await loadCardImage(logoUrl, 3000);
 
-      // Try drawing official logo if available
-      try {
-        const logoImg = new window.Image();
-        logoImg.src = '/branding/lalbindu-logo.png';
-        await new Promise((res) => { logoImg.onload = res; logoImg.onerror = res; setTimeout(res, 300); });
-        if (logoImg.complete && logoImg.naturalWidth > 0) {
-          ctx.clearRect(55, 45, 230, 80);
-          ctx.drawImage(logoImg, 60, 50, 190, 52);
+          if (logoImg && logoImg.naturalWidth > 0) {
+            // Keep exact natural aspect ratio of the 1024x682 logo (1.501)
+            // Available height in top bar is ~96px, fitting comfortably above the photo frame at y=180
+            const targetH = 96;
+            const targetW = targetH * (logoImg.naturalWidth / logoImg.naturalHeight);
+            ctx.drawImage(logoImg, 60, 48, targetW, targetH);
+          } else {
+            drawFallbackBrandLogo(ctx, 60, 52);
+          }
+        } catch {
+          drawFallbackBrandLogo(ctx, 60, 52);
         }
-      } catch (e) {}
+      }
 
       // Cardholder Information
       ctx.fillStyle = '#171717';
@@ -427,24 +515,23 @@ export const CR80IDCard: React.FC<CR80IDCardProps> = ({
       }
 
     } else {
-      // BACK SIDE
-      ctx.fillStyle = '#C8102E';
-      ctx.font = '900 38px "Inter", sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('LalBindu', canvas.width / 2, 85);
-      ctx.fillStyle = '#707070';
-      ctx.font = 'italic 600 14px "Inter", sans-serif';
-      ctx.fillText('Every Drop Connects a Life.', canvas.width / 2, 108);
-
+      // BACK SIDE: Official Centered LalBindu Logo
       try {
-        const logoImg = new window.Image();
-        logoImg.src = '/branding/lalbindu-logo.png';
-        await new Promise((res) => { logoImg.onload = res; logoImg.onerror = res; setTimeout(res, 300); });
-        if (logoImg.complete && logoImg.naturalWidth > 0) {
-          ctx.clearRect((canvas.width - 240) / 2, 40, 240, 75);
-          ctx.drawImage(logoImg, (canvas.width - 200) / 2, 45, 200, 54);
+        const origin = typeof window !== 'undefined' ? window.location.origin : '';
+        const logoUrl = origin ? `${origin}/branding/lalbindu-logo.png` : '/branding/lalbindu-logo.png';
+        const logoImg = await loadCardImage(logoUrl, 3000);
+
+        if (logoImg && logoImg.naturalWidth > 0) {
+          const targetH = 90;
+          const targetW = targetH * (logoImg.naturalWidth / logoImg.naturalHeight);
+          const targetX = (canvas.width - targetW) / 2;
+          ctx.drawImage(logoImg, targetX, 42, targetW, targetH);
+        } else {
+          drawFallbackBrandLogo(ctx, (canvas.width - 240) / 2, 48, true);
         }
-      } catch (e) {}
+      } catch {
+        drawFallbackBrandLogo(ctx, (canvas.width - 240) / 2, 48, true);
+      }
 
       // Draw 100% Authentic Geographically Accurate 8-Division Bangladesh Map Watermark on Right
       await drawBangladeshMapOnCanvas(ctx, primaryColor, 580, 50, 380, 520);
@@ -552,6 +639,8 @@ export const CR80IDCard: React.FC<CR80IDCardProps> = ({
     }
 
     // Extract exact SVG strings for Landmarks, Role Emblem Badge, and 8-Division Bangladesh Map
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const logoFullUrl = origin ? `${origin}/branding/lalbindu-logo.png` : '/branding/lalbindu-logo.png';
     const badgeHtml = front.showBadge ? getRoleBadgeHtml(roleId, front.badgeIcon, primaryColor) : '';
     const landmarkSvg = front.watermarkType && front.watermarkType !== 'none'
       ? getLandmarkSvgString(front.watermarkType, primaryColor)
@@ -606,8 +695,8 @@ export const CR80IDCard: React.FC<CR80IDCardProps> = ({
           align-items: center;
           z-index: 20;
         ">
-          <div style="height: 5.5mm; display: flex; align-items: center;">
-            <img src="/branding/lalbindu-logo.png" style="height: 5.5mm; width: auto; object-fit: contain;" alt="LalBindu" />
+          <div style="height: 7.5mm; display: flex; align-items: center;">
+            <img src="${logoFullUrl}" style="height: 7.5mm; width: auto; max-width: 32mm; object-fit: contain;" alt="LalBindu" />
           </div>
           <div style="display: flex; align-items: center;">
             ${badgeHtml}
@@ -767,7 +856,7 @@ export const CR80IDCard: React.FC<CR80IDCardProps> = ({
           justify-content: center;
           z-index: 20;
         ">
-          <img src="/branding/lalbindu-logo.png" style="height: 5.5mm; width: auto; object-fit: contain;" alt="LalBindu" />
+          <img src="${logoFullUrl}" style="height: 7.5mm; width: auto; max-width: 34mm; object-fit: contain;" alt="LalBindu" />
         </div>
 
         <!-- Left-Center Verification QR Code Block -->
@@ -881,6 +970,7 @@ export const CR80IDCard: React.FC<CR80IDCardProps> = ({
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  ${origin ? `<base href="${origin}/">` : ''}
   <title>LalBindu CR80 ID Card — ${fullName} (${uniqueId})</title>
   <style>
     @page {
@@ -1063,12 +1153,23 @@ export const CR80IDCard: React.FC<CR80IDCardProps> = ({
   </div>
 
   <script>
-    window.onload = function() {
-      setTimeout(function() {
-        window.focus();
-        window.print();
-      }, 350);
-    };
+    window.addEventListener('load', function() {
+      var imgs = Array.from(document.querySelectorAll('img'));
+      var promises = imgs.map(function(img) {
+        if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+        return new Promise(function(resolve) {
+          img.onload = resolve;
+          img.onerror = resolve;
+          setTimeout(resolve, 2000);
+        });
+      });
+      Promise.all(promises).then(function() {
+        setTimeout(function() {
+          window.focus();
+          window.print();
+        }, 200);
+      });
+    });
   </script>
 </body>
 </html>`;
