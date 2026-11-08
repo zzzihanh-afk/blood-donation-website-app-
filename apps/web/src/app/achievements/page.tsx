@@ -1,15 +1,184 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useLanguage } from '@/components/LanguageContext';
 import { DEFAULT_ACHIEVEMENTS } from '@lalbindu/business-rules';
+import { getCurrentSession } from '@/lib/session';
 import { Award, CheckCircle2, Lock, Download, Share2, Droplet, Sparkles, Heart, ShieldCheck, Printer, Check } from 'lucide-react';
+
+interface ActiveDonorInfo {
+  fullName: string;
+  fullNameBn: string;
+  donorId: string;
+  bloodGroup: string;
+  district: string;
+  districtBn: string;
+  verifiedDonations: number;
+}
+
+const DEFAULT_DEMO_DONOR: ActiveDonorInfo = {
+  fullName: 'Ahmed Rahman',
+  fullNameBn: 'আহমেদ রহমান',
+  donorId: 'LB-0004278',
+  bloodGroup: 'O+',
+  district: 'Dhaka',
+  districtBn: 'ঢাকা',
+  verifiedDonations: 5
+};
+
+function toBengaliNumber(val: number | string): string {
+  const bnDigits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+  return String(val).replace(/[0-9]/g, (d) => bnDigits[Number(d)]);
+}
+
+function getTierInfo(count: number) {
+  if (count >= 10) {
+    return {
+      titleEn: 'Platinum Lifesaver (Rank 4)',
+      titleBn: 'প্লাটিনাম লাইফসেভার (র‌্যাঙ্ক ৪)'
+    };
+  }
+  if (count >= 5) {
+    return {
+      titleEn: 'Gold Lifesaver (Rank 3)',
+      titleBn: 'গোল্ড লাইফসেভার (র‌্যাঙ্ক ৩)'
+    };
+  }
+  if (count >= 3) {
+    return {
+      titleEn: 'Silver Lifesaver (Rank 2)',
+      titleBn: 'সিলভার লাইফসেভার (র‌্যাঙ্ক ২)'
+    };
+  }
+  if (count >= 1) {
+    return {
+      titleEn: 'Bronze Lifesaver (Rank 1)',
+      titleBn: 'ব্রোঞ্জ লাইফসেভার (র‌্যাঙ্ক ১)'
+    };
+  }
+  return {
+    titleEn: 'New Donor (Registered Member)',
+    titleBn: 'নতুন রক্তদাতা (নিবন্ধিত সদস্য)'
+  };
+}
+
+function getNextMilestoneInfo(count: number) {
+  if (count < 1) {
+    const remaining = 1 - count;
+    return {
+      descEn: `${remaining} more donation to First Drop (1)`,
+      descBn: `প্রথম বিন্দু (১ বার রক্তদান) হতে আর ${toBengaliNumber(remaining)}টি রক্তদান বাকি`
+    };
+  }
+  if (count < 5) {
+    const remaining = 5 - count;
+    return {
+      descEn: `${remaining} more to Life Saver (5)`,
+      descBn: `জীবন রক্ষক (৫ বার) হতে আর ${toBengaliNumber(remaining)}টি রক্তদান বাকি`
+    };
+  }
+  if (count < 10) {
+    const remaining = 10 - count;
+    return {
+      descEn: `${remaining} more to Hero Donor (10)`,
+      descBn: `বীর রক্তদাতা (১০ বার) হতে আর ${toBengaliNumber(remaining)}টি রক্তদান বাকি`
+    };
+  }
+  if (count < 25) {
+    const remaining = 25 - count;
+    return {
+      descEn: `${remaining} more to Guardian of Life (25)`,
+      descBn: `জীবনের অভিভাবক (২৫ বার) হতে আর ${toBengaliNumber(remaining)}টি রক্তদান বাকি`
+    };
+  }
+  return {
+    descEn: 'All Humanitarian Milestones Achieved!',
+    descBn: 'সকল মানবিক মাইলফলক অর্জিত!'
+  };
+}
 
 export default function AchievementsPage() {
   const { t, lang } = useLanguage();
-  const verifiedDonations = 5; // Sample user has 5 verified donations (Life Saver unlocked)
+  const [donorInfo, setDonorInfo] = useState<ActiveDonorInfo>(DEFAULT_DEMO_DONOR);
   const [selectedCertificate, setSelectedCertificate] = useState<typeof DEFAULT_ACHIEVEMENTS[0] | null>(null);
+
+  const loadDonorData = () => {
+    try {
+      const activeRaw = localStorage.getItem('lalbindu_active_donor_profile');
+      if (activeRaw) {
+        const parsed = JSON.parse(activeRaw);
+        if (parsed && (parsed.full_name || parsed.name)) {
+          const uId = parsed.donor_id_number || parsed.cardId || 'LB-0004278';
+          const count = typeof parsed.verified_donation_count === 'number' 
+            ? parsed.verified_donation_count 
+            : (uId === 'LB-0004278' ? 5 : 0);
+
+          setDonorInfo({
+            fullName: parsed.full_name || parsed.name || 'Voluntary Donor',
+            fullNameBn: parsed.fullNameBn || parsed.nameBn || parsed.full_name || parsed.name || 'স্বেচ্ছাসেবী রক্তদাতা',
+            donorId: uId,
+            bloodGroup: parsed.blood_group || parsed.bloodGroup || 'O+',
+            district: parsed.district_name_en || parsed.district || 'Dhaka',
+            districtBn: parsed.district_name_en || parsed.district || 'ঢাকা',
+            verifiedDonations: count
+          });
+          return;
+        }
+      }
+
+      const session = getCurrentSession();
+      if (session && session.role === 'donor') {
+        const uId = session.donorId || (session as any).cardId || 'LB-0004278';
+        const count = typeof (session as any).verified_donation_count === 'number'
+          ? (session as any).verified_donation_count
+          : (uId === 'LB-0004278' ? 5 : 0);
+
+        setDonorInfo({
+          fullName: session.name || 'Voluntary Donor',
+          fullNameBn: session.name || 'স্বেচ্ছাসেবী রক্তদাতা',
+          donorId: uId,
+          bloodGroup: session.bloodGroup || 'O+',
+          district: 'Dhaka',
+          districtBn: 'ঢাকা',
+          verifiedDonations: count
+        });
+        return;
+      }
+
+      if (session && session.role === 'public') {
+        setDonorInfo({
+          fullName: 'Guest Donor',
+          fullNameBn: 'অতিথি রক্তদাতা',
+          donorId: 'GUEST',
+          bloodGroup: 'O+',
+          district: 'Dhaka',
+          districtBn: 'ঢাকা',
+          verifiedDonations: 0
+        });
+        return;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  useEffect(() => {
+    loadDonorData();
+    window.addEventListener('lalbindu_session_changed', loadDonorData);
+    window.addEventListener('lalbindu_verification_updated', loadDonorData);
+    window.addEventListener('storage', loadDonorData);
+
+    return () => {
+      window.removeEventListener('lalbindu_session_changed', loadDonorData);
+      window.removeEventListener('lalbindu_verification_updated', loadDonorData);
+      window.removeEventListener('storage', loadDonorData);
+    };
+  }, []);
+
+  const verifiedDonations = donorInfo.verifiedDonations;
+  const tierInfo = getTierInfo(verifiedDonations);
+  const nextMilestone = getNextMilestoneInfo(verifiedDonations);
 
   // Helper to get medal badge styling matching reference image
   const getBadgeStyle = (id: string, isUnlocked: boolean) => {
@@ -63,17 +232,21 @@ export default function AchievementsPage() {
           <div className="mt-6 bg-white p-4 rounded-3xl card-shadow border border-gray-100 flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div className="w-12 h-12 rounded-2xl bg-brand-light flex items-center justify-center text-brand-red font-black text-xl border border-brand-red/20">
-                {lang === 'bn' ? '৫' : verifiedDonations}
+                {lang === 'bn' ? toBengaliNumber(verifiedDonations) : verifiedDonations}
               </div>
               <div className="text-left">
                 <p className="text-xs text-gray-500">{t.achievementsPage.yourVerifiedDonations}</p>
-                <p className="text-sm font-bold text-gray-900">{t.achievementsPage.tierTitle}</p>
+                <p className="text-sm font-bold text-gray-900">
+                  {lang === 'bn' ? tierInfo.titleBn : tierInfo.titleEn}
+                </p>
               </div>
             </div>
 
             <div className="text-right">
               <p className="text-xs text-gray-500">{t.achievementsPage.nextMilestoneLabel}</p>
-              <p className="text-xs font-bold text-brand-red">{t.achievementsPage.nextMilestoneDesc}</p>
+              <p className="text-xs font-bold text-brand-red">
+                {lang === 'bn' ? nextMilestone.descBn : nextMilestone.descEn}
+              </p>
             </div>
           </div>
         </div>
@@ -130,7 +303,7 @@ export default function AchievementsPage() {
                   <div className="flex items-center justify-between text-xs font-semibold">
                     <span className="text-gray-500">{t.achievementsPage.milestone}</span>
                     <span className="text-gray-900">
-                      {lang === 'bn' ? `${ach.required_count} বার রক্তদান` : `${ach.required_count} Donations`}
+                      {lang === 'bn' ? `${toBengaliNumber(ach.required_count)} বার রক্তদান` : `${ach.required_count} Donations`}
                     </span>
                   </div>
 
@@ -146,10 +319,10 @@ export default function AchievementsPage() {
                   <div className="flex justify-between text-[10px] text-gray-400">
                     <span>
                       {lang === 'bn' 
-                        ? `${progress} / ${ach.required_count} সম্পন্ন`
+                        ? `${toBengaliNumber(progress)} / ${toBengaliNumber(ach.required_count)} সম্পন্ন`
                         : `${progress} / ${ach.required_count} ${t.achievementsPage.completedText}`}
                     </span>
-                    <span>{percentage}%</span>
+                    <span>{lang === 'bn' ? `${toBengaliNumber(percentage)}%` : `${percentage}%`}</span>
                   </div>
 
                   {isUnlocked && (
@@ -215,17 +388,17 @@ export default function AchievementsPage() {
                   {lang === 'bn' ? 'গর্বের সাথে সম্মাননা প্রদান করা হচ্ছে' : 'Proudly Presented To'}
                 </p>
                 <h3 className="text-2xl sm:text-3xl font-black text-brand-red tracking-tight mt-0.5">
-                  Ahmed Rahman
+                  {lang === 'bn' ? (donorInfo.fullNameBn || donorInfo.fullName) : donorInfo.fullName}
                 </h3>
                 <div className="flex items-center justify-center space-x-3 text-xs mt-1">
                   <span className="font-mono font-bold text-gray-700 bg-white px-2.5 py-0.5 rounded-full border border-gray-200">
-                    ID: LB-0004278
+                    ID: {donorInfo.donorId}
                   </span>
                   <span className="font-extrabold text-brand-red bg-red-100 px-2 py-0.5 rounded-full">
-                    O+ POSITIVE
+                    {donorInfo.bloodGroup} POSITIVE
                   </span>
                   <span className="text-gray-600 font-medium">
-                    {lang === 'bn' ? 'ঢাকা জেলা' : 'Dhaka District'}
+                    {lang === 'bn' ? `${donorInfo.districtBn} জেলা` : `${donorInfo.district} District`}
                   </span>
                 </div>
               </div>
@@ -236,13 +409,13 @@ export default function AchievementsPage() {
                   <Sparkles className="w-3.5 h-3.5 text-brand-red" />
                   <span className="text-xs font-black text-brand-red">
                     {lang === 'bn' ? selectedCertificate.title_bn : selectedCertificate.title_en}
-                    {' '}({lang === 'bn' ? `${selectedCertificate.required_count} বার রক্তদান` : `${selectedCertificate.required_count} Donations`})
+                    {' '}({lang === 'bn' ? `${toBengaliNumber(selectedCertificate.required_count)} বার রক্তদান` : `${selectedCertificate.required_count} Donations`})
                   </span>
                 </div>
 
                 <p className="text-xs text-gray-600 leading-relaxed max-w-lg mx-auto">
                   {lang === 'bn' 
-                    ? `সফল ও যাচাইকৃত ${selectedCertificate.required_count} বার রক্তদানের মাধ্যমে বাংলাদেশের বিভিন্ন হাসপাতালে চিকিৎসাধীন সংকটাপন্ন মানুষের জীবন রক্ষায় নিঃস্বার্থ মানবিক অবদানের জন্য এই সনদপত্র প্রদান করা হলো।`
+                    ? `সফল ও যাচাইকৃত ${toBengaliNumber(selectedCertificate.required_count)} বার রক্তদানের মাধ্যমে বাংলাদেশের বিভিন্ন হাসপাতালে চিকিৎসাধীন সংকটাপন্ন মানুষের জীবন রক্ষায় নিঃস্বার্থ মানবিক অবদানের জন্য এই সনদপত্র প্রদান করা হলো।`
                     : `In grateful recognition of ${selectedCertificate.required_count} verified whole-blood donations contributing directly to saving human lives across hospitals in Bangladesh.`}
                 </p>
               </div>
@@ -276,7 +449,7 @@ export default function AchievementsPage() {
                     </div>
                   </div>
                   <span className="text-[9px] font-mono font-bold text-amber-700 mt-1">
-                    LB-CERT-0004278
+                    LB-CERT-{donorInfo.donorId.replace(/[^a-zA-Z0-9]/g, '')}
                   </span>
                 </div>
 
@@ -309,7 +482,7 @@ export default function AchievementsPage() {
 
               <button
                 onClick={() => {
-                  navigator.clipboard.writeText(typeof window !== 'undefined' ? `${window.location.origin}/verify/LB-TOKEN-DNR-0004278` : '');
+                  navigator.clipboard.writeText(typeof window !== 'undefined' ? `${window.location.origin}/verify/LB-TOKEN-DNR-${donorInfo.donorId.replace(/[^a-zA-Z0-9]/g, '')}` : '');
                   alert(lang === 'bn' ? 'সনদের অনলাইন ভেরিফিকেশন লিংক কপি হয়েছে!' : 'Online certificate verification link copied!');
                 }}
                 className="py-2.5 px-4 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-xs transition-all flex items-center space-x-1.5"
