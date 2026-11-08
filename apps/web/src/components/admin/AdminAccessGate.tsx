@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '@/components/LanguageContext';
-import { getCurrentSession, setCurrentSession, isAuthorizedAdmin, UserSession } from '@/lib/session';
+import { getCurrentSession, isAuthorizedAdmin, UserSession } from '@/lib/session';
 import { 
   ShieldAlert, 
   Lock, 
@@ -145,20 +145,13 @@ export const AdminAccessGate: React.FC<AdminAccessGateProps> = ({ children }) =>
               </p>
             </div>
             <div className="flex items-center gap-2 self-start sm:self-auto">
-              <button
-                onClick={() => setCurrentSession('superadmin')}
-                className="px-4 py-2 rounded-xl bg-brand-burgundy hover:bg-[#400B13] text-white text-xs font-black shadow-sm whitespace-nowrap transition-colors flex items-center space-x-1"
+              <Link
+                href="/auth/login"
+                className="px-4 py-2 rounded-xl bg-brand-burgundy hover:bg-[#400B13] text-white text-xs font-black shadow-sm whitespace-nowrap transition-colors flex items-center space-x-1.5"
               >
-                <Crown className="w-3.5 h-3.5 text-amber-300" />
-                <span>{lang === 'bn' ? 'সুপার অ্যাডমিন লগইন' : 'Super Admin (superadmin)'}</span>
-              </button>
-              <button
-                onClick={() => setCurrentSession('co_admin')}
-                className="px-3 py-2 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-bold whitespace-nowrap transition-colors border border-amber-300"
-                title="Sign in under Co-Admin delegated authority"
-              >
-                <span>Co-Admin (coadmin)</span>
-              </button>
+                <Lock className="w-3.5 h-3.5 text-amber-300" />
+                <span>{lang === 'bn' ? 'অ্যাডমিন লগইন' : 'Official Admin Login'}</span>
+              </Link>
             </div>
           </div>
         </div>

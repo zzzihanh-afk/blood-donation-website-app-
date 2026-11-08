@@ -57,18 +57,27 @@ export default function LoginPage() {
       setLoading(false);
 
       if (acc.role === 'super_admin' || acc.id === 'superadmin') {
+        if (typeof window !== 'undefined') {
+          sessionStorage.removeItem('lalbindu_superadmin_masquerading');
+        }
         setCurrentSession('superadmin');
         setSuccessMessage('National Super Admin Authenticated! Entering Administrative Suite...');
         setTimeout(() => {
           router.push('/dashboard/admin');
         }, 600);
       } else if (acc.role === 'co_super_admin' || acc.authorityLevel === 'co_admin') {
+        if (typeof window !== 'undefined') {
+          sessionStorage.removeItem('lalbindu_superadmin_masquerading');
+        }
         setCurrentSession('co_admin');
         setSuccessMessage('Co-Administrator Authenticated under Super Admin Delegation!');
         setTimeout(() => {
           router.push('/dashboard/admin');
         }, 600);
       } else {
+        if (typeof window !== 'undefined') {
+          sessionStorage.removeItem('lalbindu_superadmin_masquerading');
+        }
         const donorProfile = {
           id: acc.id,
           full_name: acc.name,

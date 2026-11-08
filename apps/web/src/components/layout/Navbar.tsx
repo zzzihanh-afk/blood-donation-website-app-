@@ -88,6 +88,16 @@ export const Navbar: React.FC = () => {
   const isSuperOrCo = isSuperOrCoAdmin(session);
   const isSuper = isHighestAuthority(session);
 
+  // Strictly enforce hierarchy: Super Admin can enter Co-Admin account, but Co-Admin CANNOT enter Super Admin
+  const [canReturnToSuperAdmin, setCanReturnToSuperAdmin] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const isMasquerading = sessionStorage.getItem('lalbindu_superadmin_masquerading') === 'true';
+      setCanReturnToSuperAdmin(isMasquerading && !isSuper);
+    }
+  }, [session, isSuper]);
+
   // Close dropdowns on click outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -457,37 +467,44 @@ export const Navbar: React.FC = () => {
                         {t.nav.donorDashboard}
                       </Link>
 
-                      {/* Executive Role Switcher: EXCLUSIVELY for Super Admin and Co-Admin */}
-                      {isSuperOrCo && (
+                      {/* Hierarchy Rule: Super Admin can enter Co-Admin account. Co-Admin CANNOT enter Super Admin. */}
+                      {isSuper ? (
                         <>
                           <div className="border-t border-gray-100 my-1"></div>
-                          {isSuper ? (
-                            <button
-                              onClick={() => {
-                                setCurrentSession('co_admin');
-                                setUserDropdownOpen(false);
-                                router.push('/dashboard/admin');
-                              }}
-                              className="w-full text-left flex items-center px-4 py-2 text-xs font-semibold text-emerald-900 bg-emerald-50/60 hover:bg-emerald-100/70 transition-colors"
-                            >
-                              <ShieldCheck className="w-4 h-4 mr-2.5 text-emerald-600" />
-                              <span>{lang === 'bn' ? 'কো-অ্যাডমিন মোডে পরিবর্তন' : 'Switch to Co-Admin (coadmin)'}</span>
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => {
-                                setCurrentSession('superadmin');
-                                setUserDropdownOpen(false);
-                                router.push('/dashboard/admin');
-                              }}
-                              className="w-full text-left flex items-center px-4 py-2 text-xs font-semibold text-brand-burgundy bg-amber-50/60 hover:bg-amber-100/70 transition-colors"
-                            >
-                              <Crown className="w-4 h-4 mr-2.5 text-amber-600" />
-                              <span>{lang === 'bn' ? 'সুপার অ্যাডমিন মোডে পরিবর্তন' : 'Switch to Super Admin (superadmin)'}</span>
-                            </button>
-                          )}
+                          <button
+                            onClick={() => {
+                              if (typeof window !== 'undefined') {
+                                sessionStorage.setItem('lalbindu_superadmin_masquerading', 'true');
+                              }
+                              setCurrentSession('co_admin');
+                              setUserDropdownOpen(false);
+                              router.push('/dashboard/admin');
+                            }}
+                            className="w-full text-left flex items-center px-4 py-2 text-xs font-semibold text-emerald-900 bg-emerald-50/60 hover:bg-emerald-100/70 transition-colors"
+                          >
+                            <ShieldCheck className="w-4 h-4 mr-2.5 text-emerald-600" />
+                            <span>{lang === 'bn' ? 'কো-অ্যাডমিন অ্যাকাউন্টে প্রবেশ' : 'Enter Co-Admin Account (coadmin)'}</span>
+                          </button>
                         </>
-                      )}
+                      ) : canReturnToSuperAdmin ? (
+                        <>
+                          <div className="border-t border-gray-100 my-1"></div>
+                          <button
+                            onClick={() => {
+                              if (typeof window !== 'undefined') {
+                                sessionStorage.removeItem('lalbindu_superadmin_masquerading');
+                              }
+                              setCurrentSession('superadmin');
+                              setUserDropdownOpen(false);
+                              router.push('/dashboard/admin');
+                            }}
+                            className="w-full text-left flex items-center px-4 py-2 text-xs font-semibold text-brand-burgundy bg-amber-50/60 hover:bg-amber-100/70 transition-colors"
+                          >
+                            <Crown className="w-4 h-4 mr-2.5 text-amber-600" />
+                            <span>{lang === 'bn' ? 'সুপার অ্যাডমিনে ফিরে যান' : 'Return to Super Admin'}</span>
+                          </button>
+                        </>
+                      ) : null}
 
                       {/* Switch to Public Donor View Option */}
                       <div className="border-t border-gray-100 my-1"></div>
@@ -540,7 +557,12 @@ export const Navbar: React.FC = () => {
 
                   <Link
                     href="/auth/login"
-                    onClick={() => setUserDropdownOpen(false)}
+                    onClick={() => {
+                      if (typeof window !== 'undefined') {
+                        sessionStorage.removeItem('lalbindu_superadmin_masquerading');
+                      }
+                      setUserDropdownOpen(false);
+                    }}
                     className="flex items-center px-4 py-2 text-xs text-red-600 hover:bg-red-50 transition-colors"
                   >
                     <LogOut className="w-4 h-4 mr-2.5" />
@@ -601,18 +623,35 @@ export const Navbar: React.FC = () => {
             </div>
             {isAdmin ? (
               <div className="flex items-center space-x-1.5">
-                {isSuperOrCo && (
+                {isSuper ? (
                   <button
                     onClick={() => {
-                      setCurrentSession(isSuper ? 'co_admin' : 'superadmin');
+                      if (typeof window !== 'undefined') {
+                        sessionStorage.setItem('lalbindu_superadmin_masquerading', 'true');
+                      }
+                      setCurrentSession('co_admin');
+                      setMobileMenuOpen(false);
+                      router.push('/dashboard/admin');
+                    }}
+                    className="px-2.5 py-1 text-[11px] font-bold text-emerald-900 bg-emerald-100/70 border border-emerald-300 rounded-full"
+                  >
+                    {lang === 'bn' ? 'কো-অ্যাডমিন প্রবেশ' : 'Enter Co-Admin'}
+                  </button>
+                ) : canReturnToSuperAdmin ? (
+                  <button
+                    onClick={() => {
+                      if (typeof window !== 'undefined') {
+                        sessionStorage.removeItem('lalbindu_superadmin_masquerading');
+                      }
+                      setCurrentSession('superadmin');
                       setMobileMenuOpen(false);
                       router.push('/dashboard/admin');
                     }}
                     className="px-2.5 py-1 text-[11px] font-bold text-amber-900 bg-amber-100/70 border border-amber-300 rounded-full"
                   >
-                    {isSuper ? 'Co-Admin' : 'Super Admin'}
+                    {lang === 'bn' ? 'সুপার অ্যাডমিন' : 'Super Admin'}
                   </button>
-                )}
+                ) : null}
                 <button
                   onClick={() => {
                     setCurrentSession('donor');
