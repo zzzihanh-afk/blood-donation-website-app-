@@ -165,6 +165,7 @@ export function saveCampaigns(campaigns: CampaignItem[]): void {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(CAMPAIGNS_STORAGE_KEY, JSON.stringify(campaigns));
+    window.dispatchEvent(new Event('lalbindu_campaigns_updated'));
   } catch (err) {
     console.error('Error saving campaigns to localStorage:', err);
   }
@@ -186,32 +187,71 @@ export function deleteCampaign(campaignId: string): CampaignItem[] {
 
 const REGISTERED_CAMPAIGNS_KEY = 'lalbindu_donor_registered_campaigns';
 
-export function getRegisteredCampaignIds(): string[] {
+export function getRegisteredCampaignIds(donorId?: string): string[] {
   if (typeof window === 'undefined') return [];
   try {
     const raw = localStorage.getItem(REGISTERED_CAMPAIGNS_KEY);
-    return raw ? JSON.parse(raw) : [];
+    const globalIds: string[] = raw ? JSON.parse(raw) : [];
+
+    let specificId = donorId;
+    if (!specificId) {
+      try {
+        const activeRaw = localStorage.getItem('lalbindu_active_donor_profile');
+        if (activeRaw) {
+          const parsed = JSON.parse(activeRaw);
+          specificId = parsed.donor_id_number || parsed.cardId || parsed.id;
+        }
+      } catch {}
+    }
+
+    let donorIds: string[] = [];
+    if (specificId) {
+      const donorRaw = localStorage.getItem(`${REGISTERED_CAMPAIGNS_KEY}_${specificId}`);
+      if (donorRaw) {
+        donorIds = JSON.parse(donorRaw);
+      }
+    }
+
+    return Array.from(new Set([...globalIds, ...donorIds]));
   } catch {
     return [];
   }
 }
 
-export function saveRegisteredCampaignId(campaignId: string): string[] {
+export function saveRegisteredCampaignId(campaignId: string, donorId?: string): string[] {
   if (typeof window === 'undefined') return [];
   try {
     const current = getRegisteredCampaignIds();
-    if (!current.includes(campaignId)) {
-      const updated = [...current, campaignId];
-      localStorage.setItem(REGISTERED_CAMPAIGNS_KEY, JSON.stringify(updated));
-      return updated;
+    const updated = Array.from(new Set([...current, campaignId]));
+    localStorage.setItem(REGISTERED_CAMPAIGNS_KEY, JSON.stringify(updated));
+
+    let specificId = donorId;
+    if (!specificId) {
+      try {
+        const activeRaw = localStorage.getItem('lalbindu_active_donor_profile');
+        if (activeRaw) {
+          const parsed = JSON.parse(activeRaw);
+          specificId = parsed.donor_id_number || parsed.cardId || parsed.id;
+        }
+      } catch {}
     }
-    return current;
+
+    if (specificId) {
+      const donorKey = `${REGISTERED_CAMPAIGNS_KEY}_${specificId}`;
+      const donorRaw = localStorage.getItem(donorKey);
+      const donorList: string[] = donorRaw ? JSON.parse(donorRaw) : [];
+      if (!donorList.includes(campaignId)) {
+        localStorage.setItem(donorKey, JSON.stringify([...donorList, campaignId]));
+      }
+    }
+
+    return updated;
   } catch {
     return [];
   }
 }
 
-export function registerCampaignDonor(campaignId: string): { success: boolean; updated: CampaignItem[] } {
+export function registerCampaignDonor(campaignId: string, donorId?: string): { success: boolean; updated: CampaignItem[] } {
   const current = getStoredCampaigns();
   const updated = current.map(c => {
     if (c.id === campaignId && c.registeredCount < c.slotsAvailable) {
@@ -220,10 +260,55 @@ export function registerCampaignDonor(campaignId: string): { success: boolean; u
     return c;
   });
   saveCampaigns(updated);
-  saveRegisteredCampaignId(campaignId);
+  saveRegisteredCampaignId(campaignId, donorId);
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new Event('lalbindu_campaigns_updated'));
   }
+  return { success: true, updated };
+}
+
+export function unregisterCampaignDonor(campaignId: string, donorId?: string): { success: boolean; updated: CampaignItem[] } {
+  const current = getStoredCampaigns();
+  const updated = current.map(c => {
+    if (c.id === campaignId && c.registeredCount > 0) {
+      return { ...c, registeredCount: c.registeredCount - 1 };
+    }
+    return c;
+  });
+  saveCampaigns(updated);
+
+  if (typeof window !== 'undefined') {
+    try {
+      const currentIds = getRegisteredCampaignIds();
+      const updatedIds = currentIds.filter(id => id !== campaignId);
+      localStorage.setItem(REGISTERED_CAMPAIGNS_KEY, JSON.stringify(updatedIds));
+
+      let specificId = donorId;
+      if (!specificId) {
+        try {
+          const activeRaw = localStorage.getItem('lalbindu_active_donor_profile');
+          if (activeRaw) {
+            const parsed = JSON.parse(activeRaw);
+            specificId = parsed.donor_id_number || parsed.cardId || parsed.id;
+          }
+        } catch {}
+      }
+
+      if (specificId) {
+        const donorKey = `${REGISTERED_CAMPAIGNS_KEY}_${specificId}`;
+        const donorRaw = localStorage.getItem(donorKey);
+        if (donorRaw) {
+          const donorList: string[] = JSON.parse(donorRaw);
+          localStorage.setItem(donorKey, JSON.stringify(donorList.filter(id => id !== campaignId)));
+        }
+      }
+
+      window.dispatchEvent(new Event('lalbindu_campaigns_updated'));
+    } catch (e) {
+      console.error('Error unregistering campaign:', e);
+    }
+  }
+
   return { success: true, updated };
 }
 

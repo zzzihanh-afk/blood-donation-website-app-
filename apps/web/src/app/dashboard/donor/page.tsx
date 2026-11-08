@@ -52,6 +52,8 @@ import { compressImageFile } from '@/lib/imageUtils';
 import {
   getStoredCampaigns,
   getRegisteredCampaignIds,
+  registerCampaignDonor,
+  unregisterCampaignDonor,
   CampaignItem
 } from '@/lib/campaigns';
 
@@ -158,12 +160,25 @@ export default function DonorDashboardPage() {
 
   // Registered campaigns state
   const [registeredCampaigns, setRegisteredCampaigns] = useState<CampaignItem[]>([]);
+  const [allUpcomingCampaigns, setAllUpcomingCampaigns] = useState<CampaignItem[]>([]);
+  const [campaignToast, setCampaignToast] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
 
   const loadDonorCampaigns = () => {
     try {
-      const regIds = getRegisteredCampaignIds();
+      let donorId = donor.donor_id_number;
+      try {
+        const activeRaw = localStorage.getItem('lalbindu_active_donor_profile');
+        if (activeRaw) {
+          const parsed = JSON.parse(activeRaw);
+          donorId = parsed.donor_id_number || parsed.cardId || donor.donor_id_number;
+        }
+      } catch {}
+
+      const allCamp = getStoredCampaigns();
+      setAllUpcomingCampaigns(allCamp);
+
+      const regIds = getRegisteredCampaignIds(donorId);
       if (regIds.length > 0) {
-        const allCamp = getStoredCampaigns();
         const matched = allCamp.filter(c => regIds.includes(c.id));
         setRegisteredCampaigns(matched);
       } else {
@@ -172,6 +187,54 @@ export default function DonorDashboardPage() {
     } catch {
       setRegisteredCampaigns([]);
     }
+  };
+
+  const handleJoinCampaign = (campaignId: string, campaignTitle: string) => {
+    let donorId = donor.donor_id_number;
+    try {
+      const activeRaw = localStorage.getItem('lalbindu_active_donor_profile');
+      if (activeRaw) {
+        const parsed = JSON.parse(activeRaw);
+        donorId = parsed.donor_id_number || parsed.cardId || donor.donor_id_number;
+      }
+    } catch {}
+
+    registerCampaignDonor(campaignId, donorId);
+    loadDonorCampaigns();
+    setCampaignToast({
+      message: lang === 'bn' 
+        ? `"${campaignTitle}" রক্তদান কর্মসূচিতে আপনার নিবন্ধন নিশ্চিত হয়েছে! ক্যাম্পের ২৪ ঘণ্টা পূর্বে এসএমএস পাঠানো হবে।`
+        : `You have successfully registered for "${campaignTitle}"! An SMS alert will arrive 24 hours prior.`,
+      type: 'success'
+    });
+    setTimeout(() => setCampaignToast(null), 5000);
+  };
+
+  const handleCancelCampaign = (campaignId: string, campaignTitle: string) => {
+    if (!confirm(lang === 'bn' 
+      ? `আপনি কি নিশ্চিত যে "${campaignTitle}" রক্তদান কর্মসূচির নিবন্ধন বাতিল করতে চান?` 
+      : `Are you sure you want to cancel your registration for "${campaignTitle}"?`)) {
+      return;
+    }
+
+    let donorId = donor.donor_id_number;
+    try {
+      const activeRaw = localStorage.getItem('lalbindu_active_donor_profile');
+      if (activeRaw) {
+        const parsed = JSON.parse(activeRaw);
+        donorId = parsed.donor_id_number || parsed.cardId || donor.donor_id_number;
+      }
+    } catch {}
+
+    unregisterCampaignDonor(campaignId, donorId);
+    loadDonorCampaigns();
+    setCampaignToast({
+      message: lang === 'bn' 
+        ? `"${campaignTitle}" কর্মসূচির নিবন্ধন প্রত্যাহার করা হয়েছে।`
+        : `Registration for "${campaignTitle}" has been cancelled.`,
+      type: 'info'
+    });
+    setTimeout(() => setCampaignToast(null), 4000);
   };
 
   const handleUploadDonorPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -282,6 +345,7 @@ export default function DonorDashboardPage() {
     } catch (e) {
       console.error('Error hydrating donor data:', e);
     }
+    loadDonorCampaigns();
   };
 
   const refreshHistoryAndProfile = () => {
@@ -306,6 +370,7 @@ export default function DonorDashboardPage() {
       setOriginUrl(window.location.origin);
     }
     loadDonorProfile();
+    loadDonorCampaigns();
 
     window.addEventListener('lalbindu_session_changed', refreshHistoryAndProfile);
     window.addEventListener('lalbindu_verification_updated', refreshHistoryAndProfile);
@@ -329,6 +394,7 @@ export default function DonorDashboardPage() {
     if (donor.donor_id_number) {
       const updatedHistory = getDonorHistory(donor.donor_id_number, donor.full_name);
       setHistoryRecords(updatedHistory);
+      loadDonorCampaigns();
     }
   }, [donor.donor_id_number, donor.full_name]);
 
@@ -750,7 +816,7 @@ export default function DonorDashboardPage() {
                   {lang === 'bn' ? 'নিবন্ধিত রক্তদান কর্মসূচি' : 'Registered Blood Donation Campaigns'}
                 </span>
                 <span className="px-2 py-0.5 rounded-full bg-red-100 text-brand-red text-[10px] font-black">
-                  {registeredCampaigns.length} {lang === 'bn' ? 'টি' : 'Campaigns'}
+                  {registeredCampaigns.length} {lang === 'bn' ? 'টি নিবন্ধিত' : 'Registered'}
                 </span>
               </div>
               <h2 className="text-xl font-black text-gray-900 tracking-tight mt-1">
@@ -758,78 +824,160 @@ export default function DonorDashboardPage() {
               </h2>
             </div>
 
-            <Link
-              href="/campaigns"
-              className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-brand-light hover:bg-red-100 text-brand-red text-xs font-bold border border-brand-red/20 transition-all shrink-0"
-            >
-              <span>{lang === 'bn' ? 'সকল ক্যাম্প দেখুন' : 'Explore All Campaigns'}</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
+            <div className="flex items-center space-x-2">
+              <Link
+                href="/campaigns"
+                className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-brand-light hover:bg-red-100 text-brand-red text-xs font-bold border border-brand-red/20 transition-all shrink-0"
+              >
+                <span>{lang === 'bn' ? 'সকল বিভাগীয় ক্যাম্প দেখুন' : 'Explore All Campaigns'}</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
           </div>
 
-          <div className="pt-4">
+          {/* Action Notification Toast */}
+          {campaignToast && (
+            <div className={`mt-4 p-3.5 rounded-2xl text-xs font-bold flex items-center space-x-2 shadow-sm animate-in fade-in duration-200 ${
+              campaignToast.type === 'success' 
+                ? 'bg-emerald-50 text-brand-green border border-emerald-200' 
+                : 'bg-amber-50 text-amber-800 border border-amber-200'
+            }`}>
+              <CheckCircle2 className="w-4 h-4 shrink-0 text-brand-green" />
+              <span>{campaignToast.message}</span>
+            </div>
+          )}
+
+          <div className="pt-4 space-y-6">
             {registeredCampaigns.length === 0 ? (
-              <div className="text-center py-8 px-4 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
-                <p className="text-xs font-bold text-gray-700">
+              <div className="p-6 bg-gray-50 rounded-2xl border border-dashed border-gray-200 text-center">
+                <div className="w-12 h-12 mx-auto rounded-2xl bg-red-50 text-brand-red flex items-center justify-center mb-2">
+                  <Calendar className="w-6 h-6" />
+                </div>
+                <h3 className="text-sm font-black text-gray-800">
                   {lang === 'bn' ? 'আপনি এখনো কোনো রক্তদান কর্মসূচিতে নিবন্ধন করেননি।' : 'You have not registered for any upcoming blood drives yet.'}
-                </p>
-                <p className="text-[11px] text-gray-500 mt-1 max-w-md mx-auto">
+                </h3>
+                <p className="text-xs text-gray-500 mt-1 max-w-lg mx-auto">
                   {lang === 'bn' 
-                    ? 'আপনার অঞ্চলের উন্মুক্ত বা প্রাতিষ্ঠানিক রক্তদান কর্মসূচিতে অংশ নিয়ে সরাসরি জীবন বাঁচাতে যুক্ত হোন।' 
-                    : 'Join an upcoming institutional or community blood drive across Bangladesh to save lives together.'}
+                    ? 'আপনার অঞ্চলের উন্মুক্ত বা প্রাতিষ্ঠানিক রক্তদান কর্মসূচিতে অংশ নিয়ে সরাসরি জীবন বাঁচাতে যুক্ত হোন। নিচের যেকোনো আসন্ন ক্যাম্পে ১-ক্লিকে এখনই যোগ দিন।' 
+                    : 'Join an upcoming institutional or community blood drive across Bangladesh. Use the 1-click button below to instantly register.'}
                 </p>
-                <Link
-                  href="/campaigns"
-                  className="mt-4 inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-brand-red hover:bg-brand-crimson text-white text-xs font-bold shadow-sm transition-all"
-                >
-                  <Calendar className="w-3.5 h-3.5" />
-                  <span>{lang === 'bn' ? 'রক্তদান কর্মসূচিতে নিবন্ধন করুন' : 'Browse & Join a Campaign'}</span>
-                </Link>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {registeredCampaigns.map((camp) => (
-                  <div key={camp.id} className="p-5 rounded-2xl bg-[#FFF8F8] border border-red-100 flex flex-col justify-between">
-                    <div>
-                      <div className="flex items-center justify-between gap-2 mb-2">
-                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-brand-green text-[10px] font-black uppercase flex items-center gap-1">
-                          <CheckCircle2 className="w-3 h-3" />
-                          {lang === 'bn' ? 'নিবন্ধন নিশ্চিত' : 'Confirmed Registration'}
-                        </span>
-                        <span className="text-[11px] font-bold text-brand-red">
-                          {camp.date}
-                        </span>
+              <div>
+                <h3 className="text-xs font-black text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-brand-green" />
+                  <span>{lang === 'bn' ? 'নিশ্চিতকৃত ক্যাম্প নিবন্ধনসমূহ' : 'Confirmed Registrations'}</span>
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {registeredCampaigns.map((camp) => (
+                    <div key={camp.id} className="p-5 rounded-2xl bg-[#FFF8F8] border border-red-100 flex flex-col justify-between shadow-xs">
+                      <div>
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-brand-green text-[10px] font-black uppercase flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3" />
+                            {lang === 'bn' ? 'নিবন্ধন নিশ্চিত' : 'Confirmed Registration'}
+                          </span>
+                          <span className="text-[11px] font-bold text-brand-red">
+                            {camp.date}
+                          </span>
+                        </div>
+
+                        <h4 className="text-sm font-black text-gray-900 leading-snug">
+                          {lang === 'bn' ? (camp.title_bn || camp.title_en) : camp.title_en}
+                        </h4>
+
+                        <p className="text-xs text-gray-600 mt-1.5 flex items-center gap-1.5">
+                          <MapPin className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                          <span>{lang === 'bn' ? (camp.venueBn || camp.venue) : camp.venue} ({camp.district})</span>
+                        </p>
+
+                        <p className="text-[11px] text-gray-500 mt-1 flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                          <span>{camp.time}</span>
+                        </p>
                       </div>
 
-                      <h3 className="text-sm font-black text-gray-900 leading-snug">
-                        {lang === 'bn' ? (camp.title_bn || camp.title_en) : camp.title_en}
-                      </h3>
-
-                      <p className="text-xs text-gray-600 mt-1 flex items-center gap-1.5">
-                        <MapPin className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                        <span>{lang === 'bn' ? (camp.venueBn || camp.venue) : camp.venue}</span>
-                      </p>
-
-                      <p className="text-[11px] text-gray-500 mt-1 flex items-center gap-1.5">
-                        <Clock className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                        <span>{camp.time}</span>
-                      </p>
+                      <div className="mt-4 pt-3 border-t border-red-100/60 flex items-center justify-between text-xs">
+                        <button
+                          onClick={() => handleCancelCampaign(camp.id, lang === 'bn' ? (camp.title_bn || camp.title_en) : camp.title_en)}
+                          className="text-[11px] font-bold text-gray-400 hover:text-brand-red flex items-center gap-1 transition-colors"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                          <span>{lang === 'bn' ? 'নিবন্ধন প্রত্যাহার' : 'Cancel Registration'}</span>
+                        </button>
+                        <Link
+                          href="/campaigns"
+                          className="text-[11px] font-bold text-brand-red hover:underline flex items-center gap-1"
+                        >
+                          <span>{lang === 'bn' ? 'ক্যাম্প বিবরণ' : 'Details'}</span>
+                          <ArrowRight className="w-3 h-3" />
+                        </Link>
+                      </div>
                     </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
-                    <div className="mt-4 pt-3 border-t border-red-100/60 flex items-center justify-between text-xs">
-                      <span className="text-[11px] font-bold text-gray-500">
-                        {lang === 'bn' ? (camp.organizerBn || camp.organizer) : camp.organizer}
-                      </span>
-                      <Link
-                        href="/campaigns"
-                        className="text-[11px] font-bold text-brand-red hover:underline flex items-center gap-1"
-                      >
-                        <span>{lang === 'bn' ? 'ক্যাম্প বিবরণ' : 'Details'}</span>
-                        <ArrowRight className="w-3 h-3" />
-                      </Link>
-                    </div>
-                  </div>
-                ))}
+            {/* UPCOMING AVAILABLE DRIVES TO JOIN (1-Click Action) */}
+            {allUpcomingCampaigns.filter(c => !registeredCampaigns.some(r => r.id === c.id)).length > 0 && (
+              <div className="pt-2">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-xs font-black text-gray-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <Droplet className="w-3.5 h-3.5 fill-brand-red text-brand-red" />
+                    <span>
+                      {registeredCampaigns.length === 0
+                        ? (lang === 'bn' ? 'আসন্ন রক্তদান কর্মসূচি — সরাসরি ১ ক্লিকে যুক্ত হোন' : 'Available Upcoming Blood Drives — Join in 1 Click')
+                        : (lang === 'bn' ? 'অন্য কোনো রক্তদান ড্রাইভে যোগ দিতে চান?' : 'Available Upcoming Blood Drives You Can Also Join')}
+                    </span>
+                  </h4>
+                  <Link href="/campaigns" className="text-xs font-bold text-brand-red hover:underline flex items-center gap-1">
+                    <span>{lang === 'bn' ? 'সকল দেখুন' : 'View All'}</span>
+                    <ArrowRight className="w-3 h-3" />
+                  </Link>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {allUpcomingCampaigns
+                    .filter(c => !registeredCampaigns.some(r => r.id === c.id))
+                    .slice(0, 4)
+                    .map((camp) => (
+                      <div key={camp.id} className="p-4 rounded-2xl bg-white border border-gray-200 hover:border-red-200 hover:shadow-sm transition-all flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between gap-2 mb-1.5">
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-50 text-brand-red">
+                              {camp.date}
+                            </span>
+                            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                              {camp.slotsAvailable - camp.registeredCount} {lang === 'bn' ? 'টি স্লট বাকি' : 'slots left'}
+                            </span>
+                          </div>
+
+                          <h5 className="text-xs font-black text-gray-900 leading-snug">
+                            {lang === 'bn' ? (camp.title_bn || camp.title_en) : camp.title_en}
+                          </h5>
+
+                          <p className="text-[11px] text-gray-500 mt-1 flex items-center gap-1">
+                            <MapPin className="w-3 h-3 text-gray-400 shrink-0" />
+                            <span className="truncate">{lang === 'bn' ? (camp.venueBn || camp.venue) : camp.venue}</span>
+                          </p>
+                        </div>
+
+                        <div className="mt-3 pt-2.5 border-t border-gray-100 flex items-center justify-between gap-2">
+                          <span className="text-[10px] font-medium text-gray-500 truncate max-w-[50%]">
+                            {lang === 'bn' ? (camp.organizerBn || camp.organizer) : camp.organizer}
+                          </span>
+                          <button
+                            onClick={() => handleJoinCampaign(camp.id, lang === 'bn' ? (camp.title_bn || camp.title_en) : camp.title_en)}
+                            className="px-3 py-1.5 rounded-xl bg-brand-red hover:bg-brand-crimson text-white text-[11px] font-bold shadow-xs transition-all flex items-center space-x-1 shrink-0"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>{lang === 'bn' ? 'ড্রাইভে যোগ দিন' : 'Join Drive'}</span>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                </div>
               </div>
             )}
           </div>
