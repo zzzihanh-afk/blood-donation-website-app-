@@ -473,6 +473,15 @@ export default function DonorDashboardPage() {
 
   const toggleAvailability = (newStatus: AvailabilityStatus) => {
     setAvailabilityStatus(newStatus);
+    try {
+      const activeRaw = localStorage.getItem('lalbindu_active_donor_profile');
+      if (activeRaw) {
+        const parsed = JSON.parse(activeRaw);
+        parsed.availability_status = newStatus;
+        localStorage.setItem('lalbindu_active_donor_profile', JSON.stringify(parsed));
+      }
+      window.dispatchEvent(new Event('lalbindu_donors_updated'));
+    } catch {}
   };
 
   const getStatusLabel = (status: AvailabilityStatus) => {

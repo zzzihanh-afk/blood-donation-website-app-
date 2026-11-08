@@ -14,6 +14,7 @@ import { Droplet, ArrowRight, ShieldCheck, CheckCircle2, Crown, AlertCircle, Loc
 import { getCurrentSession, setCurrentSession, UserSession } from '@/lib/session';
 import { getStoredAccounts, saveStoredAccounts, createAccountByAuthority, AccountUser } from '@/lib/accounts';
 import { compressImageFile, compressImageDataUrl } from '@/lib/imageUtils';
+import { saveCustomDonor } from '@/lib/donors';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -248,6 +249,12 @@ export default function RegisterPage() {
             const stripped = { ...activeDonorProfile, avatar_url: '' };
             localStorage.setItem('lalbindu_active_donor_profile', JSON.stringify(stripped));
           } catch {}
+
+        try {
+          saveCustomDonor(activeDonorProfile as any);
+        } catch (eCust) {
+          console.warn('Custom donor save fallback:', eCust);
+        }
         }
 
         // 3. Immediately switch active session to new donor account

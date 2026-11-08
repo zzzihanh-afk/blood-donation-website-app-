@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Image from 'next/image';
 import { useLanguage } from '@/components/LanguageContext';
 import { 
@@ -18,24 +18,84 @@ import {
   Phone, 
   Award, 
   X, 
-  HeartHandshake,
-  ShieldCheck,
-  Send
+  HeartHandshake, 
+  ShieldCheck, 
+  Send 
 } from 'lucide-react';
+import { 
+  getAllDiscoverableDonors, 
+  DiscoverableDonor 
+} from '@/lib/donors';
+
+function matchesDivision(donorDiv: string | undefined, selectedDivId: string): boolean {
+  if (selectedDivId === 'All') return true;
+  if (!donorDiv) return false;
+  const dNorm = donorDiv.trim().toLowerCase();
+  const divObj = BANGLADESH_DIVISIONS.find(d => d.id === selectedDivId);
+  if (!divObj) return dNorm === selectedDivId.toLowerCase();
+  const divEn = divObj.name_en.toLowerCase();
+  const divBn = divObj.name_bn.toLowerCase();
+  const divId = divObj.id.toLowerCase();
+  return (
+    dNorm === divEn ||
+    dNorm === divBn ||
+    dNorm === divId ||
+    dNorm.includes(divEn) ||
+    divEn.includes(dNorm)
+  );
+}
+
+function matchesDistrict(donorDist: string | undefined, selectedDistId: string): boolean {
+  if (selectedDistId === 'All') return true;
+  if (!donorDist) return false;
+  const dNorm = donorDist.trim().toLowerCase();
+  const distObj = BANGLADESH_KEY_DISTRICTS.find(d => d.id === selectedDistId);
+  if (!distObj) return dNorm === selectedDistId.toLowerCase();
+  const distEn = distObj.name_en.toLowerCase();
+  const distBn = distObj.name_bn.toLowerCase();
+  const distId = distObj.id.toLowerCase();
+  return (
+    dNorm === distEn ||
+    dNorm === distBn ||
+    dNorm === distId ||
+    dNorm.includes(distEn) ||
+    distEn.includes(dNorm)
+  );
+}
 
 export default function FindDonorPage() {
   const { t, lang } = useLanguage();
+  const [donors, setDonors] = useState<DiscoverableDonor[]>([]);
   const [selectedBloodGroup, setSelectedBloodGroup] = useState<string>('All');
   const [selectedDivision, setSelectedDivision] = useState<string>('All');
   const [selectedDistrict, setSelectedDistrict] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
-  const [contactModalDonor, setContactModalDonor] = useState<typeof SAMPLE_DONORS[0] | null>(null);
+  const [contactModalDonor, setContactModalDonor] = useState<DiscoverableDonor | null>(null);
   const [requestSent, setRequestSent] = useState(false);
   const [requestFormData, setRequestFormData] = useState({
     patientHospital: '',
     contactMobile: '',
     urgencyNote: ''
   });
+
+  // Hydrate donors on mount and sync reactively with account registrations/updates
+  useEffect(() => {
+    const refreshDonors = () => {
+      setDonors(getAllDiscoverableDonors());
+    };
+    refreshDonors();
+
+    window.addEventListener('lalbindu_donors_updated', refreshDonors);
+    window.addEventListener('lalbindu_accounts_updated', refreshDonors);
+    window.addEventListener('lalbindu_session_changed', refreshDonors);
+    window.addEventListener('storage', refreshDonors);
+    return () => {
+      window.removeEventListener('lalbindu_donors_updated', refreshDonors);
+      window.removeEventListener('lalbindu_accounts_updated', refreshDonors);
+      window.removeEventListener('lalbindu_session_changed', refreshDonors);
+      window.removeEventListener('storage', refreshDonors);
+    };
+  }, []);
 
   // Available districts filtered by selected division
   const filteredDistricts = useMemo(() => {
@@ -45,36 +105,31 @@ export default function FindDonorPage() {
 
   // Filtered donors list
   const filteredDonors = useMemo(() => {
-    return SAMPLE_DONORS.filter(donor => {
+    return donors.filter(donor => {
       // Blood Group filter
       if (selectedBloodGroup !== 'All' && donor.blood_group !== selectedBloodGroup) {
         return false;
       }
       // Division filter
-      if (selectedDivision !== 'All') {
-        const divisionObj = BANGLADESH_DIVISIONS.find(d => d.id === selectedDivision);
-        if (divisionObj && donor.division_name_en !== divisionObj.name_en) {
-          return false;
-        }
+      if (!matchesDivision(donor.division_name_en, selectedDivision)) {
+        return false;
       }
       // District filter
-      if (selectedDistrict !== 'All') {
-        const districtObj = BANGLADESH_KEY_DISTRICTS.find(d => d.id === selectedDistrict);
-        if (districtObj && donor.district_name_en !== districtObj.name_en) {
-          return false;
-        }
+      if (!matchesDistrict(donor.district_name_en, selectedDistrict)) {
+        return false;
       }
       // Text query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
-        const matchesName = donor.full_name.toLowerCase().includes(q);
-        const matchesLocation = donor.district_name_en.toLowerCase().includes(q) || donor.upazila_name_en.toLowerCase().includes(q);
-        const matchesId = donor.donor_id_number.toLowerCase().includes(q);
-        if (!matchesName && !matchesLocation && !matchesId) return false;
+        const matchesName = (donor.full_name || '').toLowerCase().includes(q) || ((donor as any).fullNameBn || '').toLowerCase().includes(q);
+        const matchesLocation = (donor.district_name_en || '').toLowerCase().includes(q) || (donor.upazila_name_en || '').toLowerCase().includes(q) || (donor.division_name_en || '').toLowerCase().includes(q);
+        const matchesId = (donor.donor_id_number || '').toLowerCase().includes(q);
+        const matchesBlood = (donor.blood_group || '').toLowerCase().includes(q);
+        if (!matchesName && !matchesLocation && !matchesId && !matchesBlood) return false;
       }
       return true;
     });
-  }, [selectedBloodGroup, selectedDivision, selectedDistrict, searchQuery]);
+  }, [donors, selectedBloodGroup, selectedDivision, selectedDistrict, searchQuery]);
 
   const handleSendContactRequest = (e: React.FormEvent) => {
     e.preventDefault();
@@ -124,7 +179,7 @@ export default function FindDonorPage() {
             <Droplet className="w-3.5 h-3.5 fill-brand-red" />
             <span>{t.findDonorPage.tag}</span>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-black text-gray-900 tracking-tight">
+          <h1 className="text-3xl font-black text-gray-900 tracking-tight">
             {t.findDonorPage.title}
           </h1>
           <p className="text-sm text-gray-600 mt-1">
@@ -193,7 +248,7 @@ export default function FindDonorPage() {
                   placeholder={t.findDonorPage.searchPlaceholder}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2.5 text-xs font-semibold rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-red/20 focus:border-brand-red"
+                  className="w-full text-xs px-3 py-2.5 pl-9 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-red/20 focus:border-brand-red"
                 />
                 <Search className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
               </div>
@@ -246,8 +301,12 @@ export default function FindDonorPage() {
                   </div>
                 </div>
 
-                <span className="px-2.5 py-1 bg-green-100 text-brand-green text-[10px] font-extrabold rounded-full uppercase">
-                  {t.findDonorPage.available}
+                <span className={`px-2.5 py-1 text-[10px] font-extrabold rounded-full uppercase ${
+                  donor.availability_status === 'available'
+                    ? 'bg-green-100 text-brand-green'
+                    : 'bg-amber-100 text-amber-800'
+                }`}>
+                  {donor.availability_status === 'available' ? t.findDonorPage.available : (lang === 'bn' ? 'সাময়িক বিরতি' : 'Paused')}
                 </span>
               </div>
 
