@@ -150,7 +150,8 @@ export default function DonorDashboardPage() {
   const { t, lang } = useLanguage();
   const [donor, setDonor] = useState({
     ...SAMPLE_DONORS[0],
-    fullNameBn: 'আহমেদ রহমান'
+    fullNameBn: 'আহমেদ রহমান',
+    avatar_url: ''
   });
   const [originUrl, setOriginUrl] = useState('');
   const [availabilityStatus, setAvailabilityStatus] = useState<AvailabilityStatus>('available');
@@ -310,7 +311,13 @@ export default function DonorDashboardPage() {
             blood_group: parsed.blood_group || parsed.bloodGroup || prev.blood_group,
             district_name_en: parsed.district_name_en || parsed.district || prev.district_name_en,
             division_name_en: parsed.division_name_en || parsed.division || prev.division_name_en,
-            avatar_url: parsed.avatar_url || parsed.avatarUrl || prev.avatar_url,
+            avatar_url: (() => {
+              let uAvatar = typeof parsed.avatar_url === 'string' ? parsed.avatar_url : (typeof parsed.avatarUrl === 'string' ? parsed.avatarUrl : '');
+              if (donorIdNum !== 'LB-0004278' && uAvatar && (uAvatar.includes('photo-1507003211169') || uAvatar.includes('photo-1535713875002'))) {
+                return '';
+              }
+              return uAvatar;
+            })(),
             verified_donation_count: verifiedCount,
             last_donation_date: lastDate
           }));
@@ -337,7 +344,13 @@ export default function DonorDashboardPage() {
           fullNameBn: session.name,
           donor_id_number: donorIdNum,
           blood_group: (session.bloodGroup as any) || prev.blood_group,
-          avatar_url: session.avatarUrl || prev.avatar_url,
+          avatar_url: (() => {
+          let sAvatar = session.avatarUrl || '';
+          if (donorIdNum !== 'LB-0004278' && sAvatar && (sAvatar.includes('photo-1507003211169') || sAvatar.includes('photo-1535713875002'))) {
+            return '';
+          }
+          return sAvatar;
+        })(),
           verified_donation_count: verifiedCount,
           last_donation_date: lastDate
         }));
@@ -638,7 +651,19 @@ export default function DonorDashboardPage() {
                         const activeRaw = localStorage.getItem('lalbindu_active_donor_profile');
                         const activeProfile = activeRaw ? JSON.parse(activeRaw) : {};
                         activeProfile.avatar_url = '';
+                        activeProfile.avatarUrl = '';
                         localStorage.setItem('lalbindu_active_donor_profile', JSON.stringify(activeProfile));
+
+                        const accountsRaw = localStorage.getItem('lalbindu_registered_accounts_v1');
+                        if (accountsRaw) {
+                          const accounts = JSON.parse(accountsRaw);
+                          const idx = accounts.findIndex((a: any) => a.id === donor.id || a.cardId === donor.donor_id_number);
+                          if (idx >= 0) {
+                            accounts[idx].avatarUrl = '';
+                            localStorage.setItem('lalbindu_registered_accounts_v1', JSON.stringify(accounts));
+                          }
+                        }
+                        window.dispatchEvent(new Event('lalbindu_session_changed'));
                       } catch (e) {}
                     }}
                     className="text-[11px] font-bold text-gray-400 hover:text-red-600 transition-colors cursor-pointer"

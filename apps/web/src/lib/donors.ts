@@ -123,7 +123,7 @@ export function getAllDiscoverableDonors(): DiscoverableDonor[] {
           fullNameBn: acc.nameBn || acc.name,
           phone: acc.phone,
           email: acc.email || '',
-          avatar_url: acc.avatarUrl || '',
+          avatar_url: acc.avatarUrl && !acc.avatarUrl.includes('images.unsplash.com/photo-1507003211169') ? acc.avatarUrl : '',
           donor_id_number: cardId,
           blood_group: acc.bloodGroup || 'O+',
           verified_donation_count: (acc as any).verified_donation_count || 0,
@@ -165,7 +165,9 @@ export function getAllDiscoverableDonors(): DiscoverableDonor[] {
           fullNameBn: active.fullNameBn || active.nameBn || existing?.fullNameBn || active.full_name || active.name,
           phone: active.phone || existing?.phone || '+8801700000000',
           email: active.email || existing?.email || '',
-          avatar_url: active.avatar_url || existing?.avatar_url || '',
+          avatar_url: typeof active.avatar_url === 'string'
+            ? (active.avatar_url.includes('images.unsplash.com/photo-1507003211169') ? '' : active.avatar_url)
+            : (existing?.avatar_url || ''),
           donor_id_number: cardId,
           blood_group: active.blood_group || active.bloodGroup || existing?.blood_group || 'O+',
           verified_donation_count: typeof active.verified_donation_count === 'number'

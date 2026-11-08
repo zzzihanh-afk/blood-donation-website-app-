@@ -149,7 +149,11 @@ export function getCurrentSession(): UserSession {
             canCreateAccounts: match.canCreateAccounts,
             canDelegateAuthority: match.canDelegateAuthority,
             delegatedBy: match.delegatedBy,
-            avatarUrl: match.avatarUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=100&q=80'
+            avatarUrl: match.role === 'donor'
+              ? (match.avatarUrl && !match.avatarUrl.includes('images.unsplash.com/photo-1507003211169') 
+                  ? match.avatarUrl 
+                  : (match.cardId === 'LB-0004278' ? (match.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80') : ''))
+              : (match.avatarUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=100&q=80')
           };
         }
       }
