@@ -95,8 +95,8 @@ function getDonorTierInfo(count: number) {
     return {
       rankEn: 'Rank 4',
       rankBn: 'র‌্যাঙ্ক ৪',
-      titleEn: 'Platinum Lifesaver',
-      titleBn: 'প্লাটিনাম লাইফসেভার',
+      titleEn: 'Platinum Lifesaver (Rank 4)',
+      titleBn: 'প্লাটিনাম লাইফসেভার (র‌্যাঙ্ক ৪)',
       color: 'text-purple-600',
       bgColor: 'bg-purple-50',
       borderColor: 'border-purple-200'
@@ -106,8 +106,8 @@ function getDonorTierInfo(count: number) {
     return {
       rankEn: 'Rank 3',
       rankBn: 'র‌্যাঙ্ক ৩',
-      titleEn: 'Gold Lifesaver',
-      titleBn: 'গোল্ড লাইফসেভার',
+      titleEn: 'Gold Lifesaver (Rank 3)',
+      titleBn: 'গোল্ড লাইফসেভার (র‌্যাঙ্ক ৩)',
       color: 'text-amber-600',
       bgColor: 'bg-amber-50',
       borderColor: 'border-amber-200'
@@ -117,8 +117,8 @@ function getDonorTierInfo(count: number) {
     return {
       rankEn: 'Rank 2',
       rankBn: 'র‌্যাঙ্ক ২',
-      titleEn: 'Silver Lifesaver',
-      titleBn: 'সিলভার লাইফসেভার',
+      titleEn: 'Silver Lifesaver (Rank 2)',
+      titleBn: 'সিলভার লাইফসেভার (র‌্যাঙ্ক ২)',
       color: 'text-brand-green',
       bgColor: 'bg-emerald-50',
       borderColor: 'border-emerald-200'
@@ -128,21 +128,21 @@ function getDonorTierInfo(count: number) {
     return {
       rankEn: 'Rank 1',
       rankBn: 'র‌্যাঙ্ক ১',
-      titleEn: 'Bronze Lifesaver',
-      titleBn: 'ব্রোঞ্জ লাইফসেভার',
+      titleEn: 'Bronze Lifesaver (Rank 1)',
+      titleBn: 'ব্রোঞ্জ লাইফসেভার (র‌্যাঙ্ক ১)',
       color: 'text-orange-600',
       bgColor: 'bg-orange-50',
       borderColor: 'border-orange-200'
     };
   }
   return {
-    rankEn: 'New Donor',
-    rankBn: 'নতুন রক্তদাতা',
-    titleEn: 'Registered Member',
-    titleBn: 'নিবন্ধিত সদস্য',
-    color: 'text-brand-red',
-    bgColor: 'bg-red-50',
-    borderColor: 'border-red-200'
+    rankEn: 'Rank 0',
+    rankBn: 'র‌্যাঙ্ক ০',
+    titleEn: 'New Donor (Rank 0)',
+    titleBn: 'নতুন রক্তদাতা (র‌্যাঙ্ক ০)',
+    color: 'text-gray-700',
+    bgColor: 'bg-gray-50',
+    borderColor: 'border-gray-200'
   };
 }
 
@@ -694,7 +694,7 @@ export default function DonorDashboardPage() {
                 {lang === 'bn' ? tierInfo.rankBn : tierInfo.rankEn}
               </span>
               <span className="text-[10px] font-bold text-gray-500 uppercase">
-                {lang === 'bn' ? tierInfo.titleBn : t.donorDashboard.tier}
+                {lang === 'bn' ? tierInfo.titleBn : tierInfo.titleEn}
               </span>
             </div>
           </div>

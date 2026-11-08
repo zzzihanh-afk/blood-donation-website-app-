@@ -18,13 +18,13 @@ interface ActiveDonorInfo {
 }
 
 const DEFAULT_DEMO_DONOR: ActiveDonorInfo = {
-  fullName: 'Ahmed Rahman',
-  fullNameBn: 'আহমেদ রহমান',
-  donorId: 'LB-0004278',
+  fullName: 'Voluntary Donor',
+  fullNameBn: 'স্বেচ্ছাসেবী রক্তদাতা',
+  donorId: 'LB-0000000',
   bloodGroup: 'O+',
   district: 'Dhaka',
   districtBn: 'ঢাকা',
-  verifiedDonations: 5
+  verifiedDonations: 0
 };
 
 function toBengaliNumber(val: number | string): string {
@@ -58,8 +58,8 @@ function getTierInfo(count: number) {
     };
   }
   return {
-    titleEn: 'New Donor (Registered Member)',
-    titleBn: 'নতুন রক্তদাতা (নিবন্ধিত সদস্য)'
+    titleEn: 'New Donor (Rank 0)',
+    titleBn: 'নতুন রক্তদাতা (র‌্যাঙ্ক ০)'
   };
 }
 
