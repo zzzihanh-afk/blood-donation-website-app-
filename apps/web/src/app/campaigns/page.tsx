@@ -9,6 +9,7 @@ import {
   addCampaign, 
   deleteCampaign, 
   registerCampaignDonor,
+  getRegisteredCampaignIds,
   checkCanCreateCampaign,
   getSimulatedRole,
   setSimulatedRole
@@ -41,7 +42,7 @@ export default function CampaignsPage() {
   // Campaigns list state with localStorage sync
   const [campaigns, setCampaigns] = useState<CampaignItem[]>([]);
   const [selectedDivision, setSelectedDivision] = useState<string>('all');
-  const [registeredCampaignId, setRegisteredCampaignId] = useState<string | null>(null);
+  const [registeredCampaignIds, setRegisteredCampaignIds] = useState<string[]>([]);
 
   // Role Access Control Simulation State
   const [currentRole, setCurrentRole] = useState<string>('super_admin');
@@ -52,6 +53,7 @@ export default function CampaignsPage() {
   // Load initial data on mount
   useEffect(() => {
     setCampaigns(getStoredCampaigns());
+    setRegisteredCampaignIds(getRegisteredCampaignIds());
     const savedRole = getSimulatedRole();
     setCurrentRole(savedRole);
   }, []);
@@ -95,9 +97,9 @@ export default function CampaignsPage() {
   };
 
   const handleRegister = (id: string) => {
-    setRegisteredCampaignId(id);
     const { updated } = registerCampaignDonor(id);
     setCampaigns(updated);
+    setRegisteredCampaignIds(prev => Array.from(new Set([...prev, id])));
     setToastMessage(lang === 'bn' 
       ? 'আপনি সফলভাবে এই রক্তদান কর্মসূচিতে অংশগ্রহণের নিবন্ধন করেছেন! ক্যাম্পের ২৪ ঘণ্টা পূর্বে আপনাকে এসএমএস অ্যালার্ট পাঠানো হবে।' 
       : 'You have registered for this blood drive! SMS notification will arrive 24 hours prior.');
@@ -383,16 +385,16 @@ export default function CampaignsPage() {
                 <div className="space-y-2 pt-2">
                   <button
                     onClick={() => handleRegister(camp.id)}
-                    disabled={registeredCampaignId === camp.id || camp.registeredCount >= camp.slotsAvailable}
+                    disabled={registeredCampaignIds.includes(camp.id) || camp.registeredCount >= camp.slotsAvailable}
                     className={`w-full py-2.5 px-4 rounded-xl font-bold text-xs shadow-md transition-all flex items-center justify-center space-x-2 ${
-                      registeredCampaignId === camp.id
+                      registeredCampaignIds.includes(camp.id)
                         ? 'bg-brand-green text-white cursor-default'
                         : camp.registeredCount >= camp.slotsAvailable
                         ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
                         : 'bg-brand-red hover:bg-brand-crimson text-white'
                     }`}
                   >
-                    {registeredCampaignId === camp.id ? (
+                    {registeredCampaignIds.includes(camp.id) ? (
                       <>
                         <CheckCircle2 className="w-4 h-4" />
                         <span>{t.campaignsPage.registeredBtn}</span>

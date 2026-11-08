@@ -148,7 +148,7 @@ export const Navbar: React.FC = () => {
           
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-3 group">
-            <div className="relative w-44 h-12">
+            <div className="relative w-44 h-12" style={{ width: '176px', height: '48px', maxWidth: '100%' }}>
               <Image 
                 src="/branding/lalbindu-logo.png" 
                 alt="LalBindu Logo" 

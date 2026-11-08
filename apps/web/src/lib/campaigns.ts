@@ -184,6 +184,33 @@ export function deleteCampaign(campaignId: string): CampaignItem[] {
   return updated;
 }
 
+const REGISTERED_CAMPAIGNS_KEY = 'lalbindu_donor_registered_campaigns';
+
+export function getRegisteredCampaignIds(): string[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(REGISTERED_CAMPAIGNS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveRegisteredCampaignId(campaignId: string): string[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const current = getRegisteredCampaignIds();
+    if (!current.includes(campaignId)) {
+      const updated = [...current, campaignId];
+      localStorage.setItem(REGISTERED_CAMPAIGNS_KEY, JSON.stringify(updated));
+      return updated;
+    }
+    return current;
+  } catch {
+    return [];
+  }
+}
+
 export function registerCampaignDonor(campaignId: string): { success: boolean; updated: CampaignItem[] } {
   const current = getStoredCampaigns();
   const updated = current.map(c => {
@@ -193,6 +220,10 @@ export function registerCampaignDonor(campaignId: string): { success: boolean; u
     return c;
   });
   saveCampaigns(updated);
+  saveRegisteredCampaignId(campaignId);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('lalbindu_campaigns_updated'));
+  }
   return { success: true, updated };
 }
 
