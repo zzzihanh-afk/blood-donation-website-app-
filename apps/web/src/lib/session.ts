@@ -113,7 +113,7 @@ const SESSION_STORAGE_KEY = 'lalbindu_active_session_role';
  * unless previously switched or authorized.
  */
 export function getCurrentSession(): UserSession {
-  if (typeof window === 'undefined') return KNOWN_SESSIONS.superadmin;
+  if (typeof window === 'undefined') return KNOWN_SESSIONS.donor;
   try {
     const savedRole = localStorage.getItem(SESSION_STORAGE_KEY);
     if (savedRole) {

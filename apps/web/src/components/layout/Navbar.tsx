@@ -36,7 +36,8 @@ import {
   isAuthorizedAdmin, 
   isHighestAuthority, 
   isSuperOrCoAdmin, 
-  UserSession 
+  UserSession,
+  KNOWN_SESSIONS
 } from '@/lib/session';
 import { 
   NotificationItem, 
@@ -58,13 +59,15 @@ export const Navbar: React.FC = () => {
   const [isCreateNotifOpen, setIsCreateNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [session, setSession] = useState<UserSession>(() => getCurrentSession());
+  const [session, setSession] = useState<UserSession>(KNOWN_SESSIONS.donor);
+  const [mounted, setMounted] = useState(false);
 
   const notifRef = useRef<HTMLDivElement>(null);
   const userRef = useRef<HTMLDivElement>(null);
 
   // Sync session and notifications reactively
   useEffect(() => {
+    setMounted(true);
     setSession(getCurrentSession());
     setNotifications(getStoredNotifications());
     syncNotificationsFromDatabase();
@@ -84,9 +87,9 @@ export const Navbar: React.FC = () => {
     };
   }, []);
 
-  const isAdmin = isAuthorizedAdmin(session);
-  const isSuperOrCo = isSuperOrCoAdmin(session);
-  const isSuper = isHighestAuthority(session);
+  const isAdmin = mounted ? isAuthorizedAdmin(session) : false;
+  const isSuperOrCo = mounted ? isSuperOrCoAdmin(session) : false;
+  const isSuper = mounted ? isHighestAuthority(session) : false;
 
   // Strictly enforce hierarchy: Super Admin can enter Co-Admin account, but Co-Admin CANNOT enter Super Admin
   const [canReturnToSuperAdmin, setCanReturnToSuperAdmin] = useState(false);
