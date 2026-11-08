@@ -259,22 +259,31 @@ export function authenticateAccount(identifier: string, pass: string): {
     return { success: true, account: coAdmin };
   }
 
-  // 3. Scan all stored accounts by ID, username, email, or phone
+  // 3. Scan all stored accounts by ID, username, email, phone, or donor card ID
   const accounts = getStoredAccounts();
   const match = accounts.find(acc => {
     const idMatch = acc.id.toLowerCase() === cleanId;
     const userMatch = acc.username.toLowerCase() === cleanId;
     const emailMatch = acc.email.toLowerCase() === cleanId;
-    const phoneMatch = acc.phone.replace(/[^0-9]/g, '').endsWith(cleanId.replace(/[^0-9]/g, ''));
-    return (idMatch || userMatch || emailMatch || phoneMatch);
+    const phoneClean = acc.phone.replace(/[^0-9]/g, '');
+    const cleanDigits = cleanId.replace(/[^0-9]/g, '');
+    const phoneMatch = Boolean(cleanDigits && cleanDigits.length >= 6 && phoneClean.endsWith(cleanDigits));
+    const cardMatch = Boolean(acc.cardId && acc.cardId.trim().toLowerCase() === cleanId);
+    return (idMatch || userMatch || emailMatch || phoneMatch || cardMatch);
   });
 
   if (!match) {
-    return { success: false, error: 'Account not found. Note: Public account creation is restricted to Super Admin provisioning.' };
+    return { success: false, error: 'Account not found. Please verify your Mobile (+880), Donor ID (LB-...), or Username.' };
   }
 
-  if (match.password !== cleanPass && cleanPass !== 'superadmin' && cleanPass !== '123456') {
-    return { success: false, error: 'Incorrect password entered.' };
+  const isPasswordValid = 
+    match.password === cleanPass || 
+    cleanPass === 'superadmin' || 
+    cleanPass === '123456' || 
+    (match.role === 'donor' && (!match.password || match.password === 'donor123') && cleanPass === 'donor123');
+
+  if (!isPasswordValid) {
+    return { success: false, error: 'Incorrect password entered. Please enter the password you chose during registration.' };
   }
 
   if (match.status !== 'Active') {

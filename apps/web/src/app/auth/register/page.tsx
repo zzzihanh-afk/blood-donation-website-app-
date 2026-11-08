@@ -10,7 +10,7 @@ import {
   getDistrictsByDivision,
   getUpazilasByDistrict 
 } from '@/lib/bangladeshLocations';
-import { Droplet, ArrowRight, ShieldCheck, CheckCircle2, Crown, AlertCircle, Lock, UserPlus, Sparkles, Camera, Upload, Trash2 } from 'lucide-react';
+import { Droplet, ArrowRight, ShieldCheck, CheckCircle2, Crown, AlertCircle, Lock, UserPlus, Sparkles, Camera, Upload, Trash2, Eye, EyeOff } from 'lucide-react';
 import { getCurrentSession, setCurrentSession, UserSession } from '@/lib/session';
 import { getStoredAccounts, saveStoredAccounts, createAccountByAuthority, AccountUser } from '@/lib/accounts';
 import { compressImageFile, compressImageDataUrl } from '@/lib/imageUtils';
@@ -26,6 +26,8 @@ export default function RegisterPage() {
   // Form State
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [roleToCreate, setRoleToCreate] = useState<'donor' | 'co_super_admin' | 'division_admin'>('donor');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formData, setFormData] = useState({
     fullName: '',
     fullNameBn: '',
@@ -33,6 +35,7 @@ export default function RegisterPage() {
     phone: '',
     email: '',
     password: '',
+    confirmPassword: '',
     bloodGroup: 'O+',
     divisionId: 'Dhaka',
     districtId: 'Dhaka',
@@ -99,6 +102,16 @@ export default function RegisterPage() {
 
     if (!formData.phone.trim() || formData.phone.trim().length < 8) {
       setStatusMessage({ type: 'error', text: 'Please enter a valid mobile number (+880).' });
+      return;
+    }
+
+    if (!formData.password || formData.password.length < 4) {
+      setStatusMessage({ type: 'error', text: 'Please choose a password (minimum 4 characters) to log into your account in the future.' });
+      return;
+    }
+
+    if (formData.confirmPassword && formData.password !== formData.confirmPassword) {
+      setStatusMessage({ type: 'error', text: 'Passwords do not match. Please re-enter your password correctly.' });
       return;
     }
 
@@ -593,19 +606,60 @@ export default function RegisterPage() {
               />
             </div>
 
-            {/* If in executive mode, allow setting temporary password */}
-            {isSuperAdminMode && adminMode === 'executive' && (
+            {/* Account Password & Confirm Password */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 bg-red-50/40 rounded-2xl border border-red-100">
               <div>
-                <label className="block font-bold text-gray-700 mb-1 text-xs">Temporary Password</label>
-                <input
-                  type="text"
-                  placeholder="e.g. coadmin or admin123"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white font-mono text-xs"
-                />
+                <label className="block font-bold text-gray-700 mb-1 text-xs">
+                  {isSuperAdminMode && adminMode === 'executive' ? 'Account Password *' : 'Create Password *'} <span className="text-[10px] text-gray-400 font-normal">পাসওয়ার্ড</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    placeholder="Min 4 characters"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    className="w-full pl-9 pr-9 py-2.5 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-brand-burgundy/20 font-medium text-xs text-gray-900 transition-all font-mono"
+                  />
+                  <Lock className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 cursor-pointer"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
-            )}
+
+              <div>
+                <label className="block font-bold text-gray-700 mb-1 text-xs">
+                  Confirm Password * <span className="text-[10px] text-gray-400 font-normal">নিশ্চিত করুন</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    required
+                    placeholder="Re-enter password"
+                    value={formData.confirmPassword}
+                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                    className="w-full pl-9 pr-9 py-2.5 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-brand-burgundy/20 font-medium text-xs text-gray-900 transition-all font-mono"
+                  />
+                  <Lock className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 cursor-pointer"
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <p className="sm:col-span-2 text-[10px] text-gray-500 font-medium">
+                💡 Remember this password. You will use it along with your Mobile (+880) or Donor ID to sign into your account.
+              </p>
+            </div>
 
             {/* Terms and Clinical Screening Guidelines */}
             <div className="p-3.5 rounded-2xl bg-red-50/60 border border-red-100/70 text-xs text-gray-700">

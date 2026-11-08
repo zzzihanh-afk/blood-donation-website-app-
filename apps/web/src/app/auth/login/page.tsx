@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Phone, Mail, Lock, ArrowRight, ShieldCheck, Droplet, CheckCircle2, Crown, AlertCircle, KeyRound, UserCheck } from 'lucide-react';
+import { Phone, Mail, Lock, ArrowRight, ShieldCheck, Droplet, CheckCircle2, Crown, AlertCircle, KeyRound, UserCheck, Eye, EyeOff } from 'lucide-react';
 import { normalizeBangladeshPhone } from '@lalbindu/validation';
 import { authenticateAccount } from '@/lib/accounts';
 import { setCurrentSession } from '@/lib/session';
@@ -14,6 +14,7 @@ export default function LoginPage() {
   const [authMode, setAuthMode] = useState<'credentials' | 'phone'>('credentials');
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [phone, setPhone] = useState('');
   const [otpSent, setOtpSent] = useState(false);
   const [otpCode, setOtpCode] = useState('');
@@ -300,13 +301,13 @@ export default function LoginPage() {
             <form onSubmit={handleCredentialsLogin} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">
-                  User ID / Username / Official Email
+                  Mobile (+880) / Donor ID (LB-...) / Username / Email
                 </label>
                 <div className="relative">
                   <input
                     type="text"
                     required
-                    placeholder="e.g. superadmin or coadmin"
+                    placeholder="e.g. 018XXXXXXXX, LB-0082782, or superadmin"
                     value={identifier}
                     onChange={(e) => setIdentifier(e.target.value)}
                     className="w-full pl-9 pr-4 py-2.5 text-xs font-semibold rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-burgundy/20 focus:border-brand-burgundy font-mono"
@@ -316,17 +317,27 @@ export default function LoginPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Password</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-gray-700">Password</label>
+                  <span className="text-[10px] text-gray-400">Default for demo: donor123</span>
+                </div>
                 <div className="relative">
                   <input
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     required
-                    placeholder="••••••••"
+                    placeholder="Enter your password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2.5 text-xs font-semibold rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-burgundy/20 focus:border-brand-burgundy font-mono"
+                    className="w-full pl-9 pr-9 py-2.5 text-xs font-semibold rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-burgundy/20 focus:border-brand-burgundy font-mono"
                   />
                   <Lock className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 cursor-pointer"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
               </div>
 
@@ -335,7 +346,7 @@ export default function LoginPage() {
                 disabled={loading}
                 className="w-full py-3 rounded-xl bg-gradient-to-r from-brand-burgundy to-brand-red hover:from-[#400B13] hover:to-[#6a0b17] text-white font-black text-xs shadow-md transition-all flex items-center justify-center space-x-2"
               >
-                <span>{loading ? 'Verifying Authority...' : 'Sign In with Authority'}</span>
+                <span>{loading ? 'Verifying Account...' : 'Sign In'}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </form>
