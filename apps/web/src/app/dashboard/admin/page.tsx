@@ -80,6 +80,7 @@ import {
   createAccountByAuthority, 
   delegateCoAdminAuthority, 
   updateAccountAuthorityStatus, 
+  updateAccountRole,
   getPendingApplications, 
   approvePendingApplication, 
   PendingApplication 
@@ -228,7 +229,7 @@ export default function AdminDashboardPage() {
     nameBn: '',
     username: '',
     password: '',
-    role: 'donor' as 'donor' | 'co_super_admin' | 'division_admin',
+    role: 'donor' as 'donor' | 'co_super_admin' | 'district_admin' | 'division_admin' | 'upazila_admin' | 'hospital_admin',
     phone: '',
     email: '',
     bloodGroup: 'O+',
@@ -285,6 +286,11 @@ export default function AdminDashboardPage() {
   };
 
   const isSuperAdmin = isHighestAuthority(session);
+  const isDistrictAdmin = session?.role === 'district_admin';
+  const isDivisionAdmin = session?.role === 'division_admin';
+  const isUpazilaAdmin = session?.role === 'upazila_admin';
+  const isHospitalAdmin = session?.role === 'hospital_admin';
+  const isCoSuperAdmin = session?.role === 'co_super_admin';
 
   useEffect(() => {
     setCampaigns(getStoredCampaigns());
@@ -619,7 +625,7 @@ export default function AdminDashboardPage() {
     }
 
     const username = newAccountForm.username.trim() || newAccountForm.email.split('@')[0] || `usr-${Date.now().toString(36)}`;
-    const pass = newAccountForm.password.trim() || (newAccountForm.role === 'co_super_admin' ? 'coadmin' : 'donor123');
+    const pass = newAccountForm.password.trim() || (newAccountForm.role === 'co_super_admin' ? 'coadmin' : (newAccountForm.role !== 'donor' ? 'admin123' : 'donor123'));
 
     const res = createAccountByAuthority(
       {
@@ -648,28 +654,71 @@ export default function AdminDashboardPage() {
     // If administrative, also add to subordinate appointments
     if (newAccountForm.role !== 'donor') {
       const isCoSuper = newAccountForm.role === 'co_super_admin';
+      const isDistrict = newAccountForm.role === 'district_admin';
+      const isDivision = newAccountForm.role === 'division_admin';
+      const isUpazila = newAccountForm.role === 'upazila_admin';
+      const isHospital = newAccountForm.role === 'hospital_admin';
+
+      let roleTitle = 'District Administrator';
+      let roleTitleBn = 'জেলা প্রশাসক ও সমন্বয়ক';
+      let jurTitle = `${newAccountForm.district} District`;
+      let jurTitleBn = `${newAccountForm.district} জেলা`;
+      let badgeColor = '#006A4E';
+
+      if (isCoSuper) {
+        roleTitle = 'Co-Super Administrator (Equal Power)';
+        roleTitleBn = 'কো-সুপার প্রশাসক (সমান নির্বাহী ক্ষমতা)';
+        jurTitle = 'National (All Bangladesh)';
+        jurTitleBn = 'জাতীয় (সমগ্র বাংলাদেশ)';
+        badgeColor = '#580F1A';
+      } else if (isDistrict) {
+        roleTitle = 'District Administrator';
+        roleTitleBn = 'জেলা প্রশাসক ও সমন্বয়ক';
+        jurTitle = `${newAccountForm.district} District`;
+        jurTitleBn = `${newAccountForm.district} জেলা`;
+        badgeColor = '#006A4E';
+      } else if (isDivision) {
+        roleTitle = 'Division Administrator';
+        roleTitleBn = 'বিভাগীয় প্রশাসক';
+        jurTitle = `${newAccountForm.division} Division`;
+        jurTitleBn = `${newAccountForm.division} বিভাগ`;
+        badgeColor = '#0D3B66';
+      } else if (isUpazila) {
+        roleTitle = 'Upazila Administrator';
+        roleTitleBn = 'উপজেলা প্রশাসক';
+        jurTitle = `${newAccountForm.upazila}, ${newAccountForm.district}`;
+        jurTitleBn = `${newAccountForm.upazila}, ${newAccountForm.district}`;
+        badgeColor = '#D84A1B';
+      } else if (isHospital) {
+        roleTitle = 'Hospital Administrator';
+        roleTitleBn = 'হাসপাতাল অ্যাডমিনিস্ট্রেটর';
+        jurTitle = `${newAccountForm.district} Medical Hub`;
+        jurTitleBn = `${newAccountForm.district} মেডিকেল হাব`;
+        badgeColor = '#0077B6';
+      }
+
       const newAppointment: SubordinateAppointment = {
         id: res.account.id,
         name: res.account.name,
         nameBn: res.account.nameBn,
         roleId: res.account.role,
-        role: isCoSuper ? 'Co-Super Administrator (Equal Power)' : 'Division Administrator',
-        roleBn: isCoSuper ? 'কো-সুপার প্রশাসক (সমান নির্বাহী ক্ষমতা)' : 'বিভাগীয় প্রশাসক',
-        jurisdiction: isCoSuper ? 'National (All Bangladesh)' : `${newAccountForm.division} Division`,
-        jurisdictionBn: isCoSuper ? 'জাতীয় (সমগ্র বাংলাদেশ)' : `${newAccountForm.division} বিভাগ`,
+        role: roleTitle,
+        roleBn: roleTitleBn,
+        jurisdiction: jurTitle,
+        jurisdictionBn: jurTitleBn,
         division: newAccountForm.division,
         district: newAccountForm.district,
         phone: res.account.phone,
         email: res.account.email,
         cardId: res.account.cardId,
-        color: isCoSuper ? '#580F1A' : '#0D3B66',
+        color: badgeColor,
         status: 'Active',
         appointedDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
         validUntil: '31 Dec 2026',
         avatarUrl: res.account.avatarUrl || newAccountForm.avatarUrl || '',
         isEqualSuperAdmin: isCoSuper
       };
-      const updated = [newAppointment, ...appointments];
+      const updated = [newAppointment, ...appointments.filter(a => a.id !== newAppointment.id)];
       setAppointments(updated);
       localStorage.setItem('lalbindu_subordinate_appointments', JSON.stringify(updated));
     }
@@ -742,35 +791,75 @@ export default function AdminDashboardPage() {
         <div className={`p-5 rounded-3xl border shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4 ${
           isSuperAdmin 
             ? 'bg-gradient-to-r from-brand-burgundy via-[#400B13] to-[#200408] text-white border-amber-500/40'
+            : isDistrictAdmin
+            ? 'bg-gradient-to-r from-emerald-50 via-teal-50 to-green-50 text-gray-900 border-emerald-300'
+            : isDivisionAdmin
+            ? 'bg-gradient-to-r from-blue-50 via-indigo-50 to-cyan-50 text-gray-900 border-blue-300'
             : 'bg-gradient-to-r from-amber-50 to-emerald-50 text-gray-900 border-amber-300'
         }`}>
           <div className="flex items-center space-x-3.5">
             <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border shadow-inner ${
               isSuperAdmin 
                 ? 'bg-amber-400/20 text-amber-300 border-amber-400/40' 
-                : 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                : isDistrictAdmin
+                ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                : isDivisionAdmin
+                ? 'bg-blue-100 text-blue-800 border-blue-300'
+                : 'bg-amber-100 text-amber-800 border-amber-300'
             }`}>
-              {isSuperAdmin ? <Crown className="w-6 h-6 text-amber-300 animate-pulse" /> : <ShieldCheck className="w-6 h-6 text-emerald-700" />}
+              {isSuperAdmin ? (
+                <Crown className="w-6 h-6 text-amber-300 animate-pulse" />
+              ) : (
+                <ShieldCheck className={`w-6 h-6 ${isDistrictAdmin ? 'text-emerald-700' : isDivisionAdmin ? 'text-blue-700' : 'text-amber-700'}`} />
+              )}
             </div>
             <div>
               <div className="flex items-center space-x-2">
                 <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full ${
-                  isSuperAdmin ? 'bg-amber-400 text-gray-950 shadow-xs' : 'bg-emerald-200 text-emerald-950'
+                  isSuperAdmin 
+                    ? 'bg-amber-400 text-gray-950 shadow-xs' 
+                    : isDistrictAdmin
+                    ? 'bg-emerald-200 text-emerald-950'
+                    : isDivisionAdmin
+                    ? 'bg-blue-200 text-blue-950'
+                    : 'bg-amber-200 text-amber-950'
                 }`}>
-                  {isSuperAdmin ? 'Highest Platform Authority' : 'Delegated Co-Admin Clearance'}
+                  {isSuperAdmin 
+                    ? 'Highest Platform Authority' 
+                    : isDistrictAdmin
+                    ? (lang === 'bn' ? 'জেলা প্রশাসক ক্লিয়ারেন্স' : 'District Administrative Clearance')
+                    : isDivisionAdmin
+                    ? (lang === 'bn' ? 'বিভাগীয় প্রশাসক ক্লিয়ারেন্স' : 'Division Administrative Clearance')
+                    : (lang === 'bn' ? 'অর্পিত কো-অ্যাডমিন ক্লিয়ারেন্স' : 'Delegated Co-Admin Clearance')}
                 </span>
                 <span className={`text-[11px] font-mono ${isSuperAdmin ? 'text-amber-200' : 'text-gray-600'}`}>
-                  Signed in as: <strong>{session.id || 'superadmin'}</strong>
+                  Signed in as: <strong>{session.adminId || session.id || 'superadmin'}</strong>
                 </span>
               </div>
               <h2 className="text-sm sm:text-base font-black mt-1">
                 {isSuperAdmin 
                   ? 'National Super Administrator (Master Root Authority)' 
+                  : isDistrictAdmin
+                  ? (lang === 'bn'
+                      ? `জেলা প্রশাসক (${session.name}) • ${session.district || 'চট্টগ্রাম'} জেলা সমন্বয়`
+                      : `District Administrator (${session.name}) • ${session.district || 'Chattogram'} District Oversight`)
+                  : isDivisionAdmin
+                  ? (lang === 'bn'
+                      ? `বিভাগীয় প্রশাসক (${session.name}) • ${session.division || 'ঢাকা'} বিভাগীয় সমন্বয়`
+                      : `Division Administrator (${session.name}) • ${session.division || 'Dhaka'} Division Oversight`)
                   : `Co-Administrator (${session.name}) • Delegated Authority`}
               </h2>
               <p className={`text-xs mt-0.5 ${isSuperAdmin ? 'text-amber-100/80' : 'text-gray-600'}`}>
                 {isSuperAdmin 
                   ? 'Exclusive Authority: Only Super Admin can create accounts and delegate Co-Admins across Bangladesh.' 
+                  : isDistrictAdmin
+                  ? (lang === 'bn'
+                      ? 'জেলা পর্যায়ে রক্তদান কর্মসূচি, হাসপাতাল সমন্বয় ও দাতা যাচাইকরণের প্রশাসনিক ক্ষমতাপ্রাপ্ত।'
+                      : 'Authorized for district-level blood drives, hospital coordination, and clinical donor verifications.')
+                  : isDivisionAdmin
+                  ? (lang === 'bn'
+                      ? 'বিভাগীয় পর্যায়ে জেলা সমন্বয় ও জরুরি রক্ত সঞ্চালন তদারকির ক্ষমতাপ্রাপ্ত।'
+                      : 'Authorized for division-wide regional coordination and emergency blood mobilization.')
                   : 'Operating under executive delegation from Super Admin (superadmin). Authorized for donor onboarding & clinical verification.'}
               </p>
             </div>
@@ -1517,18 +1606,47 @@ export default function AdminDashboardPage() {
                             </div>
                           </td>
                           <td className="p-3">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
-                              acc.authorityLevel === 'highest'
-                                ? 'bg-amber-100 text-amber-900 border border-amber-300'
-                                : acc.authorityLevel === 'co_admin'
-                                ? 'bg-purple-100 text-purple-900 border border-purple-200'
-                                : 'bg-gray-100 text-gray-800'
-                            }`}>
-                              {acc.authorityLevel === 'highest' ? '👑 Highest Authority' : acc.authorityLevel === 'co_admin' ? '🛡️ Delegated Co-Admin' : '🩸 Verified Donor'}
-                            </span>
-                            {acc.delegatedBy && (
-                              <p className="text-[9px] text-gray-400 mt-0.5">By {acc.delegatedBy}</p>
-                            )}
+                            {(() => {
+                              const isSuper = acc.role === 'super_admin' || acc.id === 'superadmin' || acc.authorityLevel === 'highest';
+                              const isCo = acc.role === 'co_super_admin' || acc.authorityLevel === 'co_admin';
+                              const isDist = acc.role === 'district_admin';
+                              const isDiv = acc.role === 'division_admin';
+                              const isUpz = acc.role === 'upazila_admin';
+                              const isHosp = acc.role === 'hospital_admin';
+
+                              let badgeClasses = 'bg-gray-100 text-gray-800';
+                              let badgeLabel = '🩸 Voluntary Donor';
+                              if (isSuper) {
+                                badgeClasses = 'bg-amber-100 text-amber-900 border border-amber-300';
+                                badgeLabel = '👑 Super Admin';
+                              } else if (isCo) {
+                                badgeClasses = 'bg-purple-100 text-purple-900 border border-purple-200';
+                                badgeLabel = '🛡️ Co-Super Admin';
+                              } else if (isDist) {
+                                badgeClasses = 'bg-emerald-100 text-emerald-900 border border-emerald-300';
+                                badgeLabel = `🏛️ District Admin (${acc.district || 'District'})`;
+                              } else if (isDiv) {
+                                badgeClasses = 'bg-blue-100 text-blue-900 border border-blue-300';
+                                badgeLabel = `🛡️ Division Admin (${acc.division || 'Division'})`;
+                              } else if (isUpz) {
+                                badgeClasses = 'bg-orange-100 text-orange-900 border border-orange-300';
+                                badgeLabel = `🏢 Upazila Admin (${acc.upazila || 'Upazila'})`;
+                              } else if (isHosp) {
+                                badgeClasses = 'bg-cyan-100 text-cyan-900 border border-cyan-300';
+                                badgeLabel = '🏥 Hospital Admin';
+                              }
+
+                              return (
+                                <div>
+                                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${badgeClasses}`}>
+                                    {badgeLabel}
+                                  </span>
+                                  {acc.delegatedBy && (
+                                    <p className="text-[9px] text-gray-400 mt-0.5">By {acc.delegatedBy}</p>
+                                  )}
+                                </div>
+                              );
+                            })()}
                           </td>
                           <td className="p-3 font-mono font-bold text-gray-800">
                             {acc.username || acc.id}
@@ -1545,17 +1663,44 @@ export default function AdminDashboardPage() {
                           </td>
                           <td className="p-3 text-right">
                             {acc.id !== 'superadmin' ? (
-                              <button
-                                onClick={() => {
-                                  const nextStatus = acc.status === 'Active' ? 'Suspended' : 'Active';
-                                  updateAccountAuthorityStatus(acc.id, nextStatus, session.role, session.id);
-                                  setToastMessage(`Account status changed to ${nextStatus}.`);
-                                  setTimeout(() => setToastMessage(null), 3000);
-                                }}
-                                className="text-[11px] font-semibold text-gray-600 hover:text-brand-burgundy underline"
-                              >
-                                {acc.status === 'Active' ? 'Suspend' : 'Activate'}
-                              </button>
+                              <div className="flex items-center justify-end space-x-2">
+                                {isSuperAdmin && (
+                                  <select
+                                    value={acc.role}
+                                    onChange={(e) => {
+                                      const newRole = e.target.value as any;
+                                      const res = updateAccountRole(acc.id, newRole, session?.role || 'super_admin', session?.id || 'superadmin');
+                                      if (res.success) {
+                                        setAccountsList(getStoredAccounts());
+                                        setToastMessage(lang === 'bn' 
+                                          ? `"${acc.name}" এর পদবি "${newRole}" এ পরিবর্তন হয়েছে।` 
+                                          : `Role for "${acc.name}" changed to "${newRole}".`);
+                                        setTimeout(() => setToastMessage(null), 3000);
+                                      }
+                                    }}
+                                    className="text-[10px] font-bold py-1 px-1.5 rounded-lg border border-gray-200 bg-gray-50 focus:bg-white text-gray-700"
+                                    title={lang === 'bn' ? 'পদবি পরিবর্তন করুন' : 'Change Role'}
+                                  >
+                                    <option value="district_admin">🏛️ District Admin</option>
+                                    <option value="division_admin">🛡️ Division Admin</option>
+                                    <option value="co_super_admin">👑 Co-Super Admin</option>
+                                    <option value="upazila_admin">🏢 Upazila Admin</option>
+                                    <option value="hospital_admin">🏥 Hospital Admin</option>
+                                    <option value="donor">🩸 Donor</option>
+                                  </select>
+                                )}
+                                <button
+                                  onClick={() => {
+                                    const nextStatus = acc.status === 'Active' ? 'Suspended' : 'Active';
+                                    updateAccountAuthorityStatus(acc.id, nextStatus, session.role, session.id);
+                                    setToastMessage(`Account status changed to ${nextStatus}.`);
+                                    setTimeout(() => setToastMessage(null), 3000);
+                                  }}
+                                  className="text-[11px] font-semibold text-gray-600 hover:text-brand-burgundy underline shrink-0"
+                                >
+                                  {acc.status === 'Active' ? 'Suspend' : 'Activate'}
+                                </button>
+                              </div>
                             ) : (
                               <span className="text-[10px] text-amber-700 font-bold">Master Root</span>
                             )}
@@ -2266,11 +2411,30 @@ export default function AdminDashboardPage() {
                   {isSuperAdmin && (
                     <option value="co_super_admin">👑 Co-Super Administrator (কো-সুপার অ্যাডমিন — অর্পিত ক্ষমতা)</option>
                   )}
+                  <option value="district_admin">🏛️ District Administrator (জেলা প্রশাসক ও সমন্বয়ক)</option>
                   <option value="division_admin">🛡️ Division Administrator (বিভাগীয় প্রশাসক)</option>
+                  <option value="upazila_admin">🏢 Upazila Administrator (উপজেলা প্রশাসক)</option>
+                  <option value="hospital_admin">🏥 Hospital Administrator (হাসপাতাল অ্যাডমিনিস্ট্রেটর)</option>
                 </select>
                 {newAccountForm.role === 'co_super_admin' && (
                   <p className="text-[11px] text-amber-800 mt-1 font-medium">
-                    This delegates executive authority as a Co-Admin to verify donors, dispatch alerts, and oversee platform tasks.
+                    {lang === 'bn' 
+                      ? 'এটি সুপার অ্যাডমিনের সমকক্ষ অর্পিত ক্ষমতাসম্পন্ন কো-সুপার অ্যাডমিন অ্যাকাউন্ট তৈরি করে।' 
+                      : 'This delegates executive authority as a Co-Admin to verify donors, dispatch alerts, and oversee platform tasks.'}
+                  </p>
+                )}
+                {newAccountForm.role === 'district_admin' && (
+                  <p className="text-[11px] text-emerald-800 mt-1 font-medium">
+                    {lang === 'bn' 
+                      ? 'এই অ্যাকাউন্টটি সংশ্লিষ্ট জেলার জেলা প্রশাসক হিসেবে রক্তদান কর্মসূচি, হাসপাতাল ও দাতা যাচাইকরণ পরিচালনা করবে।' 
+                      : 'This creates a District Administrator with full coordination authority over blood drives, hospitals, and verifications in the selected district.'}
+                  </p>
+                )}
+                {newAccountForm.role === 'division_admin' && (
+                  <p className="text-[11px] text-blue-800 mt-1 font-medium">
+                    {lang === 'bn' 
+                      ? 'এই অ্যাকাউন্টটি সমগ্র বিভাগের প্রশাসনিক সমন্বয়ক হিসেবে কাজ করবে।' 
+                      : 'This creates a Division Administrator with regional coordination oversight across the division.'}
                   </p>
                 )}
               </div>
@@ -2390,7 +2554,7 @@ export default function AdminDashboardPage() {
                   <input
                     type="text"
                     required
-                    placeholder={newAccountForm.role === 'co_super_admin' ? 'coadmin' : 'donor123'}
+                    placeholder={newAccountForm.role === 'co_super_admin' ? 'coadmin' : (newAccountForm.role !== 'donor' ? 'admin123' : 'donor123')}
                     value={newAccountForm.password}
                     onChange={(e) => setNewAccountForm({ ...newAccountForm, password: e.target.value })}
                     className="w-full p-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white font-mono font-semibold"

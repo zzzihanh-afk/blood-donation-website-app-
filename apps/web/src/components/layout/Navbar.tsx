@@ -415,11 +415,11 @@ export const Navbar: React.FC = () => {
                   }`}>
                     {isAdmin ? (
                       <>
-                        <ShieldCheck className="w-2.5 h-2.5 mr-0.5 text-brand-burgundy" /> {session.roleLabelEn}
+                        <ShieldCheck className="w-2.5 h-2.5 mr-0.5 text-brand-burgundy" /> {lang === 'bn' ? (session.roleLabelBn || session.roleLabelEn) : session.roleLabelEn}
                       </>
                     ) : (
                       <>
-                        <Droplet className="w-2.5 h-2.5 mr-0.5 fill-brand-red" /> {session.roleLabelEn}
+                        <Droplet className="w-2.5 h-2.5 mr-0.5 fill-brand-red" /> {lang === 'bn' ? (session.roleLabelBn || session.roleLabelEn) : session.roleLabelEn}
                       </>
                     )}
                   </div>
@@ -436,6 +436,12 @@ export const Navbar: React.FC = () => {
                       {isAdmin 
                         ? (session.role === 'super_admin' || session.id === 'superadmin' || session.authorityLevel === 'highest'
                             ? (lang === 'bn' ? `জাতীয় সুপার অ্যাডমিন আইডি: ${session.adminId || 'superadmin'}` : `National Super Admin ID: ${session.adminId || 'superadmin'}`)
+                            : session.role === 'district_admin'
+                            ? (lang === 'bn' ? `জেলা প্রশাসক আইডি: ${session.adminId || session.id}` : `District Admin ID: ${session.adminId || session.id}`)
+                            : session.role === 'division_admin'
+                            ? (lang === 'bn' ? `বিভাগীয় প্রশাসক আইডি: ${session.adminId || session.id}` : `Division Admin ID: ${session.adminId || session.id}`)
+                            : session.role === 'upazila_admin'
+                            ? (lang === 'bn' ? `উপজেলা প্রশাসক আইডি: ${session.adminId || session.id}` : `Upazila Admin ID: ${session.adminId || session.id}`)
                             : (lang === 'bn' ? `কো-অ্যাডমিন আইডি: ${session.adminId || 'coadmin'}` : `Co-Admin ID: ${session.adminId || 'coadmin'}`))
                         : (lang === 'bn' ? `যাচাইকৃত দাতা আইডি: ${session.donorId}` : `Verified Donor ID: ${session.donorId}`)}
                     </p>

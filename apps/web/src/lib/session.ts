@@ -2,12 +2,15 @@ export interface UserSession {
   id: string;
   name: string;
   email: string;
-  role: 'donor' | 'super_admin' | 'co_super_admin' | 'division_admin' | 'public';
+  role: 'donor' | 'super_admin' | 'co_super_admin' | 'division_admin' | 'district_admin' | 'upazila_admin' | 'hospital_admin' | 'public';
   roleLabelEn: string;
   roleLabelBn: string;
   avatarUrl: string;
   donorId?: string;
   adminId?: string;
+  division?: string;
+  district?: string;
+  upazila?: string;
   bloodGroup?: string;
   authorityLevel?: 'highest' | 'co_admin' | 'regional' | 'standard';
   canCreateAccounts?: boolean;
@@ -126,34 +129,58 @@ export function getCurrentSession(): UserSession {
         const accounts = JSON.parse(rawAccounts);
         const match = accounts.find((a: any) => a.id === savedRole || a.username === savedRole);
         if (match) {
+          const isSuper = match.role === 'super_admin' || match.id === 'superadmin' || match.isSuperAdmin === true;
+          const isCoSuper = match.role === 'co_super_admin' || match.authorityLevel === 'co_admin' || match.id === 'coadmin';
+          const isDistrict = match.role === 'district_admin';
+          const isDivision = match.role === 'division_admin';
+          const isUpazila = match.role === 'upazila_admin';
+          const isHospital = match.role === 'hospital_admin';
+
+          let roleLabelEn = 'Verified Donor';
+          let roleLabelBn = 'যাচাইকৃত রক্তদাতা';
+          if (isSuper) {
+            roleLabelEn = 'National Super Admin (Highest Authority)';
+            roleLabelBn = 'ন্যাশনাল সুপার অ্যাডমিনিস্ট্রেটর';
+          } else if (isCoSuper) {
+            roleLabelEn = 'Co-Administrator (Delegated)';
+            roleLabelBn = 'কো-অ্যাডমিনিস্ট্রেটর';
+          } else if (isDistrict) {
+            roleLabelEn = match.district ? `District Administrator (${match.district})` : 'District Administrator';
+            roleLabelBn = match.district ? `জেলা প্রশাসক (${match.district})` : 'জেলা প্রশাসক ও সমন্বয়ক';
+          } else if (isDivision) {
+            roleLabelEn = match.division ? `Division Administrator (${match.division})` : 'Division Administrator';
+            roleLabelBn = match.division ? `বিভাগীয় প্রশাসক (${match.division})` : 'বিভাগীয় প্রশাসক';
+          } else if (isUpazila) {
+            roleLabelEn = match.upazila ? `Upazila Administrator (${match.upazila})` : 'Upazila Administrator';
+            roleLabelBn = match.upazila ? `উপজেলা প্রশাসক (${match.upazila})` : 'উপজেলা প্রশাসক';
+          } else if (isHospital) {
+            roleLabelEn = 'Hospital Administrator';
+            roleLabelBn = 'হাসপাতাল অ্যাডমিনিস্ট্রেটর';
+          }
+
+          const isDonor = match.role === 'donor';
+
           return {
             id: match.id,
             name: match.name,
             email: match.email,
             role: match.role,
-            roleLabelEn: match.role === 'super_admin' 
-              ? 'National Super Admin (Highest Authority)' 
-              : match.role === 'co_super_admin' 
-              ? 'Co-Administrator (Delegated)' 
-              : 'Verified Donor',
-            roleLabelBn: match.role === 'super_admin'
-              ? 'ন্যাশনাল সুপার অ্যাডমিনিস্ট্রেটর'
-              : match.role === 'co_super_admin'
-              ? 'কো-অ্যাডমিনিস্ট্রেটর'
-              : 'যাচাইকৃত রক্তদাতা',
-            adminId: match.role !== 'donor' ? match.id : undefined,
-            donorId: match.role === 'donor' ? match.cardId : undefined,
+            roleLabelEn,
+            roleLabelBn,
+            adminId: !isDonor ? (match.cardId || match.id) : undefined,
+            donorId: isDonor ? match.cardId : undefined,
+            division: match.division,
+            district: match.district,
+            upazila: match.upazila,
             bloodGroup: match.bloodGroup,
-            authorityLevel: match.authorityLevel,
-            isSuperAdmin: match.isSuperAdmin,
-            canCreateAccounts: match.canCreateAccounts,
-            canDelegateAuthority: match.canDelegateAuthority,
+            authorityLevel: isSuper ? 'highest' : (isCoSuper ? 'co_admin' : (!isDonor ? 'regional' : 'standard')),
+            isSuperAdmin: isSuper,
+            canCreateAccounts: match.canCreateAccounts || isSuper || isCoSuper || isDistrict || isDivision,
+            canDelegateAuthority: isSuper,
             delegatedBy: match.delegatedBy,
-            avatarUrl: match.role === 'donor'
-              ? (match.avatarUrl && !match.avatarUrl.includes('images.unsplash.com/photo-1507003211169') 
-                  ? match.avatarUrl 
-                  : (match.cardId === 'LB-0004278' ? (match.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80') : ''))
-              : (match.avatarUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=100&q=80')
+            avatarUrl: match.avatarUrl && !match.avatarUrl.includes('images.unsplash.com/photo-1507003211169') 
+              ? match.avatarUrl 
+              : ''
           };
         }
       }
@@ -191,7 +218,15 @@ export function setCurrentSession(roleKey: 'donor' | 'super_admin' | 'superadmin
  * Check if the active role has administrator privileges.
  */
 export function isAuthorizedAdmin(session: UserSession): boolean {
-  return session.role === 'super_admin' || session.role === 'co_super_admin' || session.role === 'division_admin';
+  return session.role === 'super_admin' || 
+         session.role === 'co_super_admin' || 
+         session.role === 'division_admin' || 
+         session.role === 'district_admin' || 
+         session.role === 'upazila_admin' || 
+         session.role === 'hospital_admin' ||
+         session.authorityLevel === 'highest' ||
+         session.authorityLevel === 'co_admin' ||
+         session.authorityLevel === 'regional';
 }
 
 /**

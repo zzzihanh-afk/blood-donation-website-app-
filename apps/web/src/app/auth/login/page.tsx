@@ -61,7 +61,7 @@ export default function LoginPage() {
         if (typeof window !== 'undefined') {
           sessionStorage.removeItem('lalbindu_superadmin_masquerading');
         }
-        setCurrentSession('superadmin');
+        setCurrentSession(acc.id === 'superadmin' ? 'superadmin' : acc.id);
         setSuccessMessage('National Super Admin Authenticated! Entering Administrative Suite...');
         setTimeout(() => {
           router.push('/dashboard/admin');
@@ -70,8 +70,35 @@ export default function LoginPage() {
         if (typeof window !== 'undefined') {
           sessionStorage.removeItem('lalbindu_superadmin_masquerading');
         }
-        setCurrentSession('co_admin');
+        setCurrentSession(acc.id);
         setSuccessMessage('Co-Administrator Authenticated under Super Admin Delegation!');
+        setTimeout(() => {
+          router.push('/dashboard/admin');
+        }, 600);
+      } else if (acc.role === 'district_admin') {
+        if (typeof window !== 'undefined') {
+          sessionStorage.removeItem('lalbindu_superadmin_masquerading');
+        }
+        setCurrentSession(acc.id);
+        setSuccessMessage(`District Administrator (${acc.district || 'District'}) Authenticated! Entering Administrative Suite...`);
+        setTimeout(() => {
+          router.push('/dashboard/admin');
+        }, 600);
+      } else if (acc.role === 'division_admin') {
+        if (typeof window !== 'undefined') {
+          sessionStorage.removeItem('lalbindu_superadmin_masquerading');
+        }
+        setCurrentSession(acc.id);
+        setSuccessMessage(`Division Administrator (${acc.division || 'Division'}) Authenticated! Entering Administrative Suite...`);
+        setTimeout(() => {
+          router.push('/dashboard/admin');
+        }, 600);
+      } else if (acc.role === 'upazila_admin' || acc.role === 'hospital_admin') {
+        if (typeof window !== 'undefined') {
+          sessionStorage.removeItem('lalbindu_superadmin_masquerading');
+        }
+        setCurrentSession(acc.id);
+        setSuccessMessage('Regional Administrative Officer Authenticated! Entering Administrative Suite...');
         setTimeout(() => {
           router.push('/dashboard/admin');
         }, 600);

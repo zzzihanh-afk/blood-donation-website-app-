@@ -25,7 +25,7 @@ export interface AccountUser {
   nameBn?: string;
   email: string;
   phone: string;
-  role: 'super_admin' | 'co_super_admin' | 'division_admin' | 'district_admin' | 'donor';
+  role: 'super_admin' | 'co_super_admin' | 'division_admin' | 'district_admin' | 'upazila_admin' | 'hospital_admin' | 'donor';
   authorityLevel: 'highest' | 'co_admin' | 'regional' | 'standard';
   status: 'Active' | 'Suspended' | 'Revoked';
   bloodGroup?: string;
@@ -201,6 +201,22 @@ export function getStoredAccounts(): AccountUser[] {
       parsed.unshift(DEFAULT_ACCOUNTS[0]);
       localStorage.setItem(ACCOUNTS_STORAGE_KEY, JSON.stringify(parsed));
     }
+
+    // Auto-migrate or repair mislabeled district admin accounts
+    let modified = false;
+    parsed.forEach((acc: any) => {
+      if ((acc.username === 'zihan' || acc.email === 'zihan@lalbindu.bd' || acc.id === 'acc-mw7kdg0j') && acc.role === 'co_super_admin') {
+        acc.role = 'district_admin';
+        acc.authorityLevel = 'regional';
+        if (!acc.district) acc.district = 'Chattogram';
+        if (!acc.division) acc.division = 'Chattogram';
+        modified = true;
+      }
+    });
+    if (modified) {
+      localStorage.setItem(ACCOUNTS_STORAGE_KEY, JSON.stringify(parsed));
+    }
+
     return parsed;
   } catch (e) {
     console.error('Error reading accounts from localStorage:', e);
@@ -332,36 +348,48 @@ export function createAccountByAuthority(
 
   const role = accountData.role || 'donor';
   const isCreatingCoAdmin = role === 'co_super_admin';
+  const isDistrictAdmin = role === 'district_admin';
+  const isDivisionAdmin = role === 'division_admin';
+  const isUpazilaAdmin = role === 'upazila_admin';
+  const isHospitalAdmin = role === 'hospital_admin';
+  const isAdministrative = isCreatingCoAdmin || isDistrictAdmin || isDivisionAdmin || isUpazilaAdmin || isHospitalAdmin || role === 'super_admin';
 
   const newAccount: AccountUser = {
     id: accountData.id || `acc-${Date.now().toString(36)}`,
     username: targetUsername,
-    password: accountData.password || (isCreatingCoAdmin ? 'coadmin' : 'donor123'),
+    password: accountData.password || (isCreatingCoAdmin ? 'coadmin' : (isAdministrative ? 'admin123' : 'donor123')),
     name: accountData.name || 'Appointed Member',
     nameBn: accountData.nameBn || '',
     email: accountData.email || `${targetUsername}@lalbindu.bd`,
     phone: accountData.phone || '+880 1700-000000',
-    role: role,
-    authorityLevel: isCreatingCoAdmin ? 'co_admin' : (role === 'super_admin' ? 'highest' : 'standard'),
+    role: role as any,
+    authorityLevel: isCreatingCoAdmin ? 'co_admin' : (role === 'super_admin' ? 'highest' : (isAdministrative ? 'regional' : 'standard')),
     status: 'Active',
     bloodGroup: accountData.bloodGroup || 'O+',
     division: accountData.division || 'Dhaka',
     district: accountData.district || 'Dhaka',
     upazila: accountData.upazila || 'Dhanmondi',
-    cardId: accountData.cardId || (isCreatingCoAdmin ? `LA001-${Math.floor(1000 + Math.random() * 9000)}` : `LB-${Math.floor(1000000 + Math.random() * 9000000)}`),
+    cardId: accountData.cardId || (
+      isCreatingCoAdmin ? `LA001-${Math.floor(1000 + Math.random() * 9000)}` :
+      isDistrictAdmin ? `LA001-DIST-${Math.floor(1000 + Math.random() * 9000)}` :
+      isDivisionAdmin ? `LA001-DIV-${Math.floor(1000 + Math.random() * 9000)}` :
+      isUpazilaAdmin ? `LA001-UPZ-${Math.floor(1000 + Math.random() * 9000)}` :
+      isHospitalAdmin ? `LA001-HOSP-${Math.floor(1000 + Math.random() * 9000)}` :
+      `LB-${Math.floor(1000000 + Math.random() * 9000000)}`
+    ),
     isSuperAdmin: role === 'super_admin',
-    canCreateAccounts: isCreatingCoAdmin ? (accountData.delegatedPermissions?.canCreateDonors ?? true) : false,
+    canCreateAccounts: isCreatingCoAdmin || isDistrictAdmin || isDivisionAdmin,
     canDelegateAuthority: role === 'super_admin',
     delegatedPermissions: accountData.delegatedPermissions || {
-      canCreateDonors: isCreatingCoAdmin,
+      canCreateDonors: isAdministrative,
       canCreateCoAdmins: false, // only superadmin can delegate
-      canManageVerifications: isCreatingCoAdmin,
-      canBroadcastAlerts: isCreatingCoAdmin,
-      canApproveCampaigns: isCreatingCoAdmin,
-      canManageIDCards: isCreatingCoAdmin
+      canManageVerifications: isAdministrative,
+      canBroadcastAlerts: isAdministrative,
+      canApproveCampaigns: isAdministrative,
+      canManageIDCards: isAdministrative
     },
-    delegatedBy: isCreatingCoAdmin ? operatorId : undefined,
-    delegatedAt: isCreatingCoAdmin ? new Date().toISOString() : undefined,
+    delegatedBy: isAdministrative ? operatorId : undefined,
+    delegatedAt: isAdministrative ? new Date().toISOString() : undefined,
     createdAt: new Date().toISOString(),
     avatarUrl: accountData.avatarUrl || ''
   };
@@ -455,6 +483,58 @@ export function updateAccountAuthorityStatus(
   accounts[idx].status = newStatus;
   saveStoredAccounts(accounts);
   return { success: true };
+}
+
+/**
+ * Update role and authority tier of any registered account
+ */
+export function updateAccountRole(
+  accountId: string,
+  newRole: AccountUser['role'],
+  operatorRole: string,
+  operatorId: string,
+  extra?: { division?: string; district?: string; upazila?: string }
+): { success: boolean; account?: AccountUser; error?: string } {
+  if (operatorRole !== 'super_admin' && operatorId !== 'superadmin' && operatorRole !== 'co_super_admin') {
+    return {
+      success: false,
+      error: 'Only the Super Administrator holds the authority to adjust account roles.'
+    };
+  }
+
+  if (accountId === 'superadmin') {
+    return {
+      success: false,
+      error: 'The root Super Admin authority account role cannot be changed.'
+    };
+  }
+
+  const accounts = getStoredAccounts();
+  const idx = accounts.findIndex(a => a.id === accountId);
+  if (idx === -1) {
+    return { success: false, error: 'Account not found.' };
+  }
+
+  const isSuper = newRole === 'super_admin';
+  const isCo = newRole === 'co_super_admin';
+  const isDonor = newRole === 'donor';
+
+  accounts[idx].role = newRole;
+  accounts[idx].authorityLevel = isSuper ? 'highest' : isCo ? 'co_admin' : (!isDonor ? 'regional' : 'standard');
+  if (extra?.division) accounts[idx].division = extra.division;
+  if (extra?.district) accounts[idx].district = extra.district;
+  if (extra?.upazila) accounts[idx].upazila = extra.upazila;
+
+  saveStoredAccounts(accounts);
+
+  if (typeof window !== 'undefined') {
+    const activeSessionRole = localStorage.getItem('lalbindu_active_session_role');
+    if (activeSessionRole === accountId || activeSessionRole === accounts[idx].username) {
+      window.dispatchEvent(new Event('lalbindu_session_changed'));
+    }
+  }
+
+  return { success: true, account: accounts[idx] };
 }
 
 /**
