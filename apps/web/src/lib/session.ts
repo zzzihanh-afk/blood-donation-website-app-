@@ -175,7 +175,7 @@ export function getCurrentSession(): UserSession {
             bloodGroup: match.bloodGroup,
             authorityLevel: isSuper ? 'highest' : (isCoSuper ? 'co_admin' : (!isDonor ? 'regional' : 'standard')),
             isSuperAdmin: isSuper,
-            canCreateAccounts: match.canCreateAccounts || isSuper || isCoSuper || isDistrict || isDivision,
+            canCreateAccounts: isSuper || isCoSuper,
             canDelegateAuthority: isSuper,
             delegatedBy: match.delegatedBy,
             avatarUrl: match.avatarUrl && !match.avatarUrl.includes('images.unsplash.com/photo-1507003211169') 

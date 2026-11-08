@@ -290,7 +290,8 @@ export default function AdminDashboardPage() {
   const isDivisionAdmin = session?.role === 'division_admin';
   const isUpazilaAdmin = session?.role === 'upazila_admin';
   const isHospitalAdmin = session?.role === 'hospital_admin';
-  const isCoSuperAdmin = session?.role === 'co_super_admin';
+  const isCoSuperAdmin = session?.role === 'co_super_admin' || session?.authorityLevel === 'co_admin' || session?.id === 'coadmin';
+  const canCreateAccounts = isSuperAdmin || isCoSuperAdmin;
 
   useEffect(() => {
     setCampaigns(getStoredCampaigns());
@@ -446,7 +447,7 @@ export default function AdminDashboardPage() {
     e.preventDefault();
 
     // Strict Access Control Check
-    if (selectedJurisdiction !== 'national') {
+    if (!isSuperAdmin || selectedJurisdiction !== 'national') {
       alert(lang === 'bn' 
         ? 'প্রবেশাধিকার সীমাবদ্ধ: শুধুমাত্র ন্যাশনাল সুপার অ্যাডমিনিস্ট্রেটর পোর্টাল থেকে নতুন সমন্বয়ক বা প্রশাসনিক অ্যাকাউন্ট তৈরি করা সম্ভব।' 
         : 'Access Restricted: Only National Super Administrators can appoint coordinators or create administrative accounts.');
@@ -616,9 +617,15 @@ export default function AdminDashboardPage() {
     }
   };
 
-  // Create account directly with Super Admin authority
+  // Create account directly with Super Admin or Co-Admin authority
   const handleCreateCustomAccount = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canCreateAccounts) {
+      alert(lang === 'bn' 
+        ? 'অননুমোদিত: শুধুমাত্র জাতীয় সুপার অ্যাডমিন এবং কো-অ্যাডমিন নতুন অ্যাকাউন্ট তৈরি করার অনুমতিপ্রাপ্ত।' 
+        : 'Access Restricted: Only the National Super Admin and Co-Admins hold clearance to create or provision accounts.');
+      return;
+    }
     if (!newAccountForm.name.trim() || !newAccountForm.phone.trim()) {
       alert('Please provide full name and mobile number.');
       return;
@@ -795,6 +802,10 @@ export default function AdminDashboardPage() {
             ? 'bg-gradient-to-r from-emerald-50 via-teal-50 to-green-50 text-gray-900 border-emerald-300'
             : isDivisionAdmin
             ? 'bg-gradient-to-r from-blue-50 via-indigo-50 to-cyan-50 text-gray-900 border-blue-300'
+            : isHospitalAdmin
+            ? 'bg-gradient-to-r from-cyan-50 via-teal-50 to-sky-50 text-gray-900 border-cyan-300'
+            : isUpazilaAdmin
+            ? 'bg-gradient-to-r from-orange-50 via-amber-50 to-yellow-50 text-gray-900 border-orange-300'
             : 'bg-gradient-to-r from-amber-50 to-emerald-50 text-gray-900 border-amber-300'
         }`}>
           <div className="flex items-center space-x-3.5">
@@ -805,12 +816,18 @@ export default function AdminDashboardPage() {
                 ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
                 : isDivisionAdmin
                 ? 'bg-blue-100 text-blue-800 border-blue-300'
+                : isHospitalAdmin
+                ? 'bg-cyan-100 text-cyan-800 border-cyan-300'
+                : isUpazilaAdmin
+                ? 'bg-orange-100 text-orange-800 border-orange-300'
                 : 'bg-amber-100 text-amber-800 border-amber-300'
             }`}>
               {isSuperAdmin ? (
                 <Crown className="w-6 h-6 text-amber-300 animate-pulse" />
+              ) : isHospitalAdmin ? (
+                <ShieldCheck className="w-6 h-6 text-cyan-700" />
               ) : (
-                <ShieldCheck className={`w-6 h-6 ${isDistrictAdmin ? 'text-emerald-700' : isDivisionAdmin ? 'text-blue-700' : 'text-amber-700'}`} />
+                <ShieldCheck className={`w-6 h-6 ${isDistrictAdmin ? 'text-emerald-700' : isDivisionAdmin ? 'text-blue-700' : isUpazilaAdmin ? 'text-orange-700' : 'text-amber-700'}`} />
               )}
             </div>
             <div>
@@ -822,6 +839,10 @@ export default function AdminDashboardPage() {
                     ? 'bg-emerald-200 text-emerald-950'
                     : isDivisionAdmin
                     ? 'bg-blue-200 text-blue-950'
+                    : isHospitalAdmin
+                    ? 'bg-cyan-200 text-cyan-950'
+                    : isUpazilaAdmin
+                    ? 'bg-orange-200 text-orange-950'
                     : 'bg-amber-200 text-amber-950'
                 }`}>
                   {isSuperAdmin 
@@ -830,6 +851,10 @@ export default function AdminDashboardPage() {
                     ? (lang === 'bn' ? 'জেলা প্রশাসক ক্লিয়ারেন্স' : 'District Administrative Clearance')
                     : isDivisionAdmin
                     ? (lang === 'bn' ? 'বিভাগীয় প্রশাসক ক্লিয়ারেন্স' : 'Division Administrative Clearance')
+                    : isHospitalAdmin
+                    ? (lang === 'bn' ? 'হাসপাতাল প্রশাসক ক্লিয়ারেন্স' : 'Hospital Administrative Clearance')
+                    : isUpazilaAdmin
+                    ? (lang === 'bn' ? 'উপজেলা প্রশাসক ক্লিয়ারেন্স' : 'Upazila Administrative Clearance')
                     : (lang === 'bn' ? 'অর্পিত কো-অ্যাডমিন ক্লিয়ারেন্স' : 'Delegated Co-Admin Clearance')}
                 </span>
                 <span className={`text-[11px] font-mono ${isSuperAdmin ? 'text-amber-200' : 'text-gray-600'}`}>
@@ -847,11 +872,19 @@ export default function AdminDashboardPage() {
                   ? (lang === 'bn'
                       ? `বিভাগীয় প্রশাসক (${session.name}) • ${session.division || 'ঢাকা'} বিভাগীয় সমন্বয়`
                       : `Division Administrator (${session.name}) • ${session.division || 'Dhaka'} Division Oversight`)
+                  : isHospitalAdmin
+                  ? (lang === 'bn'
+                      ? `হাসপাতাল অ্যাডমিনিস্ট্রেটর (${session.name}) • ${session.district || 'ঢাকা'} মেডিকেল হাব`
+                      : `Hospital Administrator (${session.name}) • ${session.district || 'Dhaka'} Medical Hub Oversight`)
+                  : isUpazilaAdmin
+                  ? (lang === 'bn'
+                      ? `উপজেলা প্রশাসক (${session.name}) • ${session.upazila || 'উপজেলা'} সমন্বয়`
+                      : `Upazila Administrator (${session.name}) • ${session.upazila || 'Local'} Upazila Oversight`)
                   : `Co-Administrator (${session.name}) • Delegated Authority`}
               </h2>
               <p className={`text-xs mt-0.5 ${isSuperAdmin ? 'text-amber-100/80' : 'text-gray-600'}`}>
                 {isSuperAdmin 
-                  ? 'Exclusive Authority: Only Super Admin can create accounts and delegate Co-Admins across Bangladesh.' 
+                  ? 'Exclusive Authority: Only Super Admin and Co-Admins can create accounts and delegate Co-Admins across Bangladesh.' 
                   : isDistrictAdmin
                   ? (lang === 'bn'
                       ? 'জেলা পর্যায়ে রক্তদান কর্মসূচি, হাসপাতাল সমন্বয় ও দাতা যাচাইকরণের প্রশাসনিক ক্ষমতাপ্রাপ্ত।'
@@ -860,20 +893,38 @@ export default function AdminDashboardPage() {
                   ? (lang === 'bn'
                       ? 'বিভাগীয় পর্যায়ে জেলা সমন্বয় ও জরুরি রক্ত সঞ্চালন তদারকির ক্ষমতাপ্রাপ্ত।'
                       : 'Authorized for division-wide regional coordination and emergency blood mobilization.')
+                  : isHospitalAdmin
+                  ? (lang === 'bn'
+                      ? 'হাসপাতাল পর্যায়ে রক্তের মজুদ তদারকি, জরুরি রক্তের চাহিদা অনুমোদন ও দাতা সমন্বয়ের ক্ষমতাপ্রাপ্ত।'
+                      : 'Authorized for hospital blood inventory oversight, emergency requisition sign-offs, and clinical coordination.')
+                  : isUpazilaAdmin
+                  ? (lang === 'bn'
+                      ? 'উপজেলা পর্যায়ে তৃণমূল রক্তদাতা ও জরুরি যোগাযোগের ক্ষমতাপ্রাপ্ত।'
+                      : 'Authorized for grassroots donor mobilization and upazila emergency coordination.')
                   : 'Operating under executive delegation from Super Admin (superadmin). Authorized for donor onboarding & clinical verification.'}
               </p>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2 self-start md:self-auto">
-            {/* Create Account Button (Super Admin or Delegated Co-Admin) */}
-            <button
-              onClick={() => setIsCreateAccountModalOpen(true)}
-              className="px-4 py-2 rounded-xl bg-white text-brand-burgundy hover:bg-gray-100 text-xs font-black shadow-sm transition-all flex items-center space-x-1.5"
-            >
-              <UserPlus className="w-4 h-4 text-brand-burgundy" />
-              <span>{lang === 'bn' ? '+ নতুন অ্যাকাউন্ট তৈরি' : '+ Create Account'}</span>
-            </button>
+            {/* Create Account Button (ONLY Super Admin or Delegated Co-Admin) */}
+            {canCreateAccounts ? (
+              <button
+                onClick={() => setIsCreateAccountModalOpen(true)}
+                className="px-4 py-2 rounded-xl bg-white text-brand-burgundy hover:bg-gray-100 text-xs font-black shadow-sm transition-all flex items-center space-x-1.5"
+              >
+                <UserPlus className="w-4 h-4 text-brand-burgundy" />
+                <span>{lang === 'bn' ? '+ নতুন অ্যাকাউন্ট তৈরি' : '+ Create Account'}</span>
+              </button>
+            ) : (
+              <span
+                className="px-3 py-2 rounded-xl bg-gray-100/90 text-gray-400 text-xs font-bold flex items-center space-x-1 cursor-not-allowed border border-gray-200/60"
+                title={lang === 'bn' ? 'শুধুমাত্র সুপার অ্যাডমিন এবং কো-অ্যাডমিন নতুন অ্যাকাউন্ট তৈরি করতে পারেন।' : 'Only Super Admin and Co-Admins hold clearance to create accounts.'}
+              >
+                <Lock className="w-3.5 h-3.5" />
+                <span>{lang === 'bn' ? 'অ্যাকাউন্ট তৈরি (লক)' : 'Create Account (Locked)'}</span>
+              </span>
+            )}
 
             {/* Delegate Co-Admin Button (SUPER ADMIN EXCLUSIVE) */}
             {isSuperAdmin ? (
@@ -1404,43 +1455,47 @@ export default function AdminDashboardPage() {
               </div>
 
               <div className="flex items-center gap-2 self-start sm:self-auto">
-                {/* Create Account Button */}
-                <button
-                  onClick={() => setIsCreateAccountModalOpen(true)}
-                  className="px-3.5 py-2 bg-white border border-brand-burgundy/30 hover:bg-brand-light text-brand-burgundy font-bold text-xs rounded-xl shadow-xs transition-all flex items-center space-x-1"
-                >
-                  <UserPlus className="w-3.5 h-3.5" />
-                  <span>{lang === 'bn' ? '+ অ্যাকাউন্ট তৈরি' : '+ Create Account'}</span>
-                </button>
-
-                {selectedJurisdiction === 'national' ? (
+                {/* Create Account Button (Super Admin & Co-Admin Only) */}
+                {canCreateAccounts && (
                   <button
-                    onClick={() => {
-                      setNewAppointForm({
-                        ...newAppointForm,
-                        roleId: 'co_super_admin'
-                      });
-                      setIsAppointModalOpen(true);
-                    }}
-                    className="px-4 py-2 bg-gradient-to-r from-brand-burgundy to-brand-red hover:from-[#400B13] hover:to-[#6a0b17] text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center space-x-1.5"
+                    onClick={() => setIsCreateAccountModalOpen(true)}
+                    className="px-3.5 py-2 bg-white border border-brand-burgundy/30 hover:bg-brand-light text-brand-burgundy font-bold text-xs rounded-xl shadow-xs transition-all flex items-center space-x-1"
                   >
-                    <Crown className="w-4 h-4 text-amber-300" />
-                    <span>{lang === 'bn' ? '👑 কো-অ্যাডমিন অর্পণ' : '👑 Delegate Co-Admin'}</span>
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => {
-                      alert(lang === 'bn' 
-                        ? 'প্রবেশাধিকার সীমাবদ্ধ: শুধুমাত্র ন্যাশনাল সুপার অ্যাডমিনিস্ট্রেটর পোর্টাল থেকে নতুন সমন্বয়ক বা প্রশাসনিক অ্যাকাউন্ট তৈরি করা সম্ভব।' 
-                        : 'Access Restricted: Only National Super Administrators possess the executive authority to appoint coordinators or create administrative accounts.');
-                    }}
-                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-500 font-bold text-xs rounded-xl border border-gray-300 transition-all flex items-center space-x-1.5 cursor-not-allowed"
-                    title="Super Admin Only"
-                  >
-                    <Lock className="w-3.5 h-3.5 text-gray-400" />
-                    <span>{lang === 'bn' ? 'ক্ষমতা অর্পণ (লকড)' : 'Delegate (Locked)'}</span>
+                    <UserPlus className="w-3.5 h-3.5" />
+                    <span>{lang === 'bn' ? '+ অ্যাকাউন্ট তৈরি' : '+ Create Account'}</span>
                   </button>
                 )}
+
+                {isSuperAdmin ? (
+                  selectedJurisdiction === 'national' ? (
+                    <button
+                      onClick={() => {
+                        setNewAppointForm({
+                          ...newAppointForm,
+                          roleId: 'co_super_admin'
+                        });
+                        setIsAppointModalOpen(true);
+                      }}
+                      className="px-4 py-2 bg-gradient-to-r from-brand-burgundy to-brand-red hover:from-[#400B13] hover:to-[#6a0b17] text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center space-x-1.5"
+                    >
+                      <Crown className="w-4 h-4 text-amber-300" />
+                      <span>{lang === 'bn' ? '👑 কো-অ্যাডমিন অর্পণ' : '👑 Delegate Co-Admin'}</span>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        alert(lang === 'bn' 
+                          ? 'প্রবেশাধিকার সীমাবদ্ধ: শুধুমাত্র ন্যাশনাল সুপার অ্যাডমিনিস্ট্রেটর পোর্টাল থেকে নতুন সমন্বয়ক বা প্রশাসনিক অ্যাকাউন্ট তৈরি করা সম্ভব।' 
+                          : 'Access Restricted: Only National Super Administrators possess the executive authority to appoint coordinators or create administrative accounts.');
+                      }}
+                      className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-500 font-bold text-xs rounded-xl border border-gray-300 transition-all flex items-center space-x-1.5 cursor-not-allowed"
+                      title="Super Admin Only"
+                    >
+                      <Lock className="w-3.5 h-3.5 text-gray-400" />
+                      <span>{lang === 'bn' ? 'ক্ষমতা অর্পণ (লকড)' : 'Delegate (Locked)'}</span>
+                    </button>
+                  )
+                ) : null}
               </div>
             </div>
 
@@ -1566,12 +1621,14 @@ export default function AdminDashboardPage() {
                         : 'Official account roster governed under Super Admin authority. Only verified credentials can authenticate.'}
                     </span>
                   </div>
-                  <button
-                    onClick={() => setIsCreateAccountModalOpen(true)}
-                    className="px-3 py-1.5 rounded-xl bg-brand-burgundy text-white font-bold text-xs shadow-xs hover:bg-[#400B13] shrink-0"
-                  >
-                    + {lang === 'bn' ? 'অ্যাকাউন্ট তৈরি' : 'Create Account'}
-                  </button>
+                  {canCreateAccounts && (
+                    <button
+                      onClick={() => setIsCreateAccountModalOpen(true)}
+                      className="px-3 py-1.5 rounded-xl bg-brand-burgundy text-white font-bold text-xs shadow-xs hover:bg-[#400B13] shrink-0"
+                    >
+                      + {lang === 'bn' ? 'অ্যাকাউন্ট তৈরি' : 'Create Account'}
+                    </button>
+                  )}
                 </div>
 
                 <div className="overflow-x-auto rounded-2xl border border-gray-100">
@@ -2363,9 +2420,9 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* =========================================================================
-          MODAL 0: CREATE ACCOUNT / PROVISION USER (SUPER ADMIN AUTHORITY)
+          MODAL 0: CREATE ACCOUNT / PROVISION USER (SUPER ADMIN & CO-ADMIN AUTHORITY)
          ========================================================================= */}
-      {isCreateAccountModalOpen && (
+      {isCreateAccountModalOpen && canCreateAccounts && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 card-shadow border border-gray-100 relative my-8">
             <div className="flex items-center justify-between border-b border-gray-100 pb-4 mb-5">
@@ -2658,9 +2715,9 @@ export default function AdminDashboardPage() {
       )}
 
       {/* =========================================================================
-          MODAL 1: APPOINT NEW COORDINATOR / NOMINATION WORKFLOW
+          MODAL 1: APPOINT NEW COORDINATOR / NOMINATION WORKFLOW (SUPER ADMIN ONLY)
          ========================================================================= */}
-      {isAppointModalOpen && (
+      {isAppointModalOpen && isSuperAdmin && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 card-shadow border border-gray-100 relative my-8">
             <div className="flex items-center justify-between border-b border-gray-100 pb-4 mb-5">

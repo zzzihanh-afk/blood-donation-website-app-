@@ -213,6 +213,18 @@ export function getStoredAccounts(): AccountUser[] {
         modified = true;
       }
     });
+
+    // Enforce governance: ONLY super_admin and co_super_admin hold canCreateAccounts clearance
+    parsed.forEach((acc: any) => {
+      const isSuper = acc.role === 'super_admin' || acc.id === 'superadmin';
+      const isCo = acc.role === 'co_super_admin' || acc.id === 'coadmin' || acc.authorityLevel === 'co_admin';
+      const shouldHaveCreatePermission = isSuper || isCo;
+      if (acc.canCreateAccounts !== shouldHaveCreatePermission) {
+        acc.canCreateAccounts = shouldHaveCreatePermission;
+        modified = true;
+      }
+    });
+
     if (modified) {
       localStorage.setItem(ACCOUNTS_STORAGE_KEY, JSON.stringify(parsed));
     }
@@ -378,7 +390,7 @@ export function createAccountByAuthority(
       `LB-${Math.floor(1000000 + Math.random() * 9000000)}`
     ),
     isSuperAdmin: role === 'super_admin',
-    canCreateAccounts: isCreatingCoAdmin || isDistrictAdmin || isDivisionAdmin,
+    canCreateAccounts: isCreatingCoAdmin || role === 'super_admin',
     canDelegateAuthority: role === 'super_admin',
     delegatedPermissions: accountData.delegatedPermissions || {
       canCreateDonors: isAdministrative,
@@ -521,6 +533,7 @@ export function updateAccountRole(
 
   accounts[idx].role = newRole;
   accounts[idx].authorityLevel = isSuper ? 'highest' : isCo ? 'co_admin' : (!isDonor ? 'regional' : 'standard');
+  accounts[idx].canCreateAccounts = isSuper || isCo;
   if (extra?.division) accounts[idx].division = extra.division;
   if (extra?.district) accounts[idx].district = extra.district;
   if (extra?.upazila) accounts[idx].upazila = extra.upazila;
