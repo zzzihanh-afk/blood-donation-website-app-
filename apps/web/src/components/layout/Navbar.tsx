@@ -160,13 +160,14 @@ export const Navbar: React.FC = () => {
           </Link>
 
           {/* Desktop Navigation Links */}
-          <nav className="hidden xl:flex items-center space-x-1 lg:space-x-2">
+          <nav className="hidden xl:flex items-center space-x-1 lg:space-x-2" suppressHydrationWarning>
             {navLinks.map((link) => {
               const isActive = pathname === link.href;
               return (
                 <Link
                   key={link.href}
                   href={link.href}
+                  suppressHydrationWarning
                   className={`px-3 py-2 rounded-full text-sm font-medium transition-all ${
                     isActive
                       ? 'bg-brand-red text-white shadow-sm'
@@ -368,6 +369,7 @@ export const Navbar: React.FC = () => {
             {/* User Profile Pill / Dropdown */}
             <div className="relative" ref={userRef}>
               <button
+                suppressHydrationWarning
                 onClick={() => {
                   setUserDropdownOpen(!userDropdownOpen);
                   setNotifDropdownOpen(false);
@@ -599,11 +601,12 @@ export const Navbar: React.FC = () => {
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
         <div className="md:hidden bg-white border-b border-gray-200 px-4 pt-2 pb-6 space-y-3">
-          <div className="space-y-1">
+          <div className="space-y-1" suppressHydrationWarning>
             {navLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
+                suppressHydrationWarning
                 onClick={() => setMobileMenuOpen(false)}
                 className="block px-3 py-2 rounded-lg text-sm font-semibold text-gray-800 hover:bg-brand-light hover:text-brand-red"
               >

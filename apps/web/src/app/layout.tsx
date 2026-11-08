@@ -16,8 +16,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className="antialiased min-h-screen flex flex-col justify-between selection:bg-brand-red selection:text-white">
+    <html lang="en" suppressHydrationWarning>
+      <body className="antialiased min-h-screen flex flex-col justify-between selection:bg-brand-red selection:text-white" suppressHydrationWarning>
         <LanguageProvider>
           <Navbar />
           <main className="flex-grow">
