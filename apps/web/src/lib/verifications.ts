@@ -282,21 +282,33 @@ export function rejectDonationVerification(
  * Retrieve verified donation history for a specific donor
  */
 export function getDonorHistory(donorId: string, donorName?: string): DonationHistoryRecord[] {
-  if (typeof window === 'undefined') return DEFAULT_DONOR_HISTORY;
+  if (typeof window === 'undefined') {
+    return (donorId === 'LB-0004278' || donorId === 'usr-donor-01') ? DEFAULT_DONOR_HISTORY : [];
+  }
   try {
     const raw = localStorage.getItem(HISTORY_STORAGE_KEY);
     const history: DonationHistoryRecord[] = raw ? JSON.parse(raw) : DEFAULT_DONOR_HISTORY;
     
+    // Filter history records strictly for this specific donor ID
+    const donorHistory = history.filter(h => 
+      Boolean(donorId && h.donorId && h.donorId.trim().toLowerCase() === donorId.trim().toLowerCase())
+    );
+
     // Also merge any approved verifications that match this donor
     const verifications = getStoredVerifications();
     const approvedMatches = verifications.filter(v => 
       v.status === 'approved' && 
-      (v.donorId === donorId || (donorName && v.donorName.toLowerCase() === donorName.toLowerCase()))
+      ((donorId && v.donorId && v.donorId.trim().toLowerCase() === donorId.trim().toLowerCase()) || 
+       (donorName && v.donorName && v.donorName.trim().toLowerCase() === donorName.trim().toLowerCase()))
     );
 
-    const merged = [...history];
+    const merged = [...donorHistory];
     approvedMatches.forEach(app => {
-      const exists = merged.some(h => h.bagNumber === app.bagNumber && h.donationDate === app.donationDate);
+      const exists = merged.some(h => 
+        (h.bagNumber && app.bagNumber && h.bagNumber === app.bagNumber) ||
+        (h.id === `hist-${app.id}`) ||
+        (h.donationDate === app.donationDate && h.hospitalName === app.hospitalName)
+      );
       if (!exists) {
         merged.unshift({
           id: `hist-${app.id}`,
@@ -312,8 +324,16 @@ export function getDonorHistory(donorId: string, donorName?: string): DonationHi
       }
     });
 
+    // Special case for demo donor Ahmed Rahman: if no custom records yet, show demo history
+    if (merged.length === 0 && (donorId === 'LB-0004278' || donorId === 'usr-donor-01')) {
+      return DEFAULT_DONOR_HISTORY;
+    }
+
     return merged;
   } catch (e) {
-    return DEFAULT_DONOR_HISTORY;
+    if (donorId === 'LB-0004278' || donorId === 'usr-donor-01') {
+      return DEFAULT_DONOR_HISTORY;
+    }
+    return [];
   }
 }

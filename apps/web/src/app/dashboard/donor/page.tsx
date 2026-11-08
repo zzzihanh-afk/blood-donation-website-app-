@@ -75,6 +75,67 @@ const INITIAL_DONOR_CONTACT_REQUESTS: IncomingContactRequest[] = [
   }
 ];
 
+function toBengaliNumber(val: number | string): string {
+  const bnDigits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+  return String(val).replace(/[0-9]/g, (d) => bnDigits[Number(d)]);
+}
+
+function getDonorTierInfo(count: number) {
+  if (count >= 10) {
+    return {
+      rankEn: 'Rank 4',
+      rankBn: 'র‌্যাঙ্ক ৪',
+      titleEn: 'Platinum Lifesaver',
+      titleBn: 'প্লাটিনাম লাইফসেভার',
+      color: 'text-purple-600',
+      bgColor: 'bg-purple-50',
+      borderColor: 'border-purple-200'
+    };
+  }
+  if (count >= 5) {
+    return {
+      rankEn: 'Rank 3',
+      rankBn: 'র‌্যাঙ্ক ৩',
+      titleEn: 'Gold Lifesaver',
+      titleBn: 'গোল্ড লাইফসেভার',
+      color: 'text-amber-600',
+      bgColor: 'bg-amber-50',
+      borderColor: 'border-amber-200'
+    };
+  }
+  if (count >= 3) {
+    return {
+      rankEn: 'Rank 2',
+      rankBn: 'র‌্যাঙ্ক ২',
+      titleEn: 'Silver Lifesaver',
+      titleBn: 'সিলভার লাইফসেভার',
+      color: 'text-brand-green',
+      bgColor: 'bg-emerald-50',
+      borderColor: 'border-emerald-200'
+    };
+  }
+  if (count >= 1) {
+    return {
+      rankEn: 'Rank 1',
+      rankBn: 'র‌্যাঙ্ক ১',
+      titleEn: 'Bronze Lifesaver',
+      titleBn: 'ব্রোঞ্জ লাইফসেভার',
+      color: 'text-orange-600',
+      bgColor: 'bg-orange-50',
+      borderColor: 'border-orange-200'
+    };
+  }
+  return {
+    rankEn: 'New Donor',
+    rankBn: 'নতুন রক্তদাতা',
+    titleEn: 'Registered Member',
+    titleBn: 'নিবন্ধিত সদস্য',
+    color: 'text-brand-red',
+    bgColor: 'bg-red-50',
+    borderColor: 'border-red-200'
+  };
+}
+
 export default function DonorDashboardPage() {
   const { t, lang } = useLanguage();
   const [donor, setDonor] = useState({
@@ -84,7 +145,7 @@ export default function DonorDashboardPage() {
   const [originUrl, setOriginUrl] = useState('');
   const [availabilityStatus, setAvailabilityStatus] = useState<AvailabilityStatus>('available');
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
-  const [incomingRequests, setIncomingRequests] = useState<IncomingContactRequest[]>(INITIAL_DONOR_CONTACT_REQUESTS);
+  const [incomingRequests, setIncomingRequests] = useState<IncomingContactRequest[]>([]);
   const donorPhotoInputRef = useRef<HTMLInputElement>(null);
 
   const handleUploadDonorPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -125,9 +186,7 @@ export default function DonorDashboardPage() {
   };
 
   // Donation proof submission & history state
-  const [historyRecords, setHistoryRecords] = useState<DonationHistoryRecord[]>(() => {
-    return getDonorHistory(donor.donor_id_number || 'LB-0004278', donor.full_name);
-  });
+  const [historyRecords, setHistoryRecords] = useState<DonationHistoryRecord[]>([]);
   const [isSubmitRecordModalOpen, setIsSubmitRecordModalOpen] = useState(false);
   const [submitRecordForm, setSubmitRecordForm] = useState({
     hospitalName: '',
@@ -145,18 +204,26 @@ export default function DonorDashboardPage() {
       if (activeRaw) {
         const parsed = JSON.parse(activeRaw);
         if (parsed && (parsed.full_name || parsed.name)) {
+          const donorIdNum = parsed.donor_id_number || parsed.cardId || 'LB-0004278';
+          const verifiedCount = typeof parsed.verified_donation_count === 'number' 
+            ? parsed.verified_donation_count 
+            : (donorIdNum === 'LB-0004278' ? 5 : 0);
+          const lastDate = verifiedCount > 0 
+            ? (parsed.last_donation_date || (donorIdNum === 'LB-0004278' ? '2026-08-10' : null)) 
+            : null;
+
           setDonor(prev => ({
             ...prev,
             ...parsed,
             full_name: parsed.full_name || parsed.name,
             fullNameBn: parsed.fullNameBn || parsed.nameBn || parsed.full_name || parsed.name,
-            donor_id_number: parsed.donor_id_number || parsed.cardId || prev.donor_id_number,
+            donor_id_number: donorIdNum,
             blood_group: parsed.blood_group || parsed.bloodGroup || prev.blood_group,
             district_name_en: parsed.district_name_en || parsed.district || prev.district_name_en,
             division_name_en: parsed.division_name_en || parsed.division || prev.division_name_en,
             avatar_url: parsed.avatar_url || parsed.avatarUrl || prev.avatar_url,
-            verified_donation_count: typeof parsed.verified_donation_count === 'number' ? parsed.verified_donation_count : prev.verified_donation_count,
-            last_donation_date: parsed.last_donation_date || (prev as any).last_donation_date || '2026-08-10'
+            verified_donation_count: verifiedCount,
+            last_donation_date: lastDate
           }));
           if (parsed.availability_status) {
             setAvailabilityStatus(parsed.availability_status);
@@ -167,14 +234,23 @@ export default function DonorDashboardPage() {
 
       const session = getCurrentSession();
       if (session && session.role === 'donor' && session.name) {
+        const donorIdNum = session.donorId || (session as any).cardId || 'LB-0004278';
+        const verifiedCount = typeof (session as any).verified_donation_count === 'number' 
+          ? (session as any).verified_donation_count 
+          : (donorIdNum === 'LB-0004278' ? 5 : 0);
+        const lastDate = verifiedCount > 0 
+          ? ((session as any).last_donation_date || (donorIdNum === 'LB-0004278' ? '2026-08-10' : null)) 
+          : null;
+
         setDonor(prev => ({
           ...prev,
           full_name: session.name,
           fullNameBn: session.name,
-          donor_id_number: session.donorId || prev.donor_id_number,
+          donor_id_number: donorIdNum,
           blood_group: (session.bloodGroup as any) || prev.blood_group,
           avatar_url: session.avatarUrl || prev.avatar_url,
-          last_donation_date: (session as any).last_donation_date || (prev as any).last_donation_date || '2026-08-10'
+          verified_donation_count: verifiedCount,
+          last_donation_date: lastDate
         }));
       }
     } catch (e) {
@@ -184,8 +260,18 @@ export default function DonorDashboardPage() {
 
   const refreshHistoryAndProfile = () => {
     loadDonorProfile();
-    const updatedHistory = getDonorHistory(donor.donor_id_number || 'LB-0004278', donor.full_name);
-    setHistoryRecords(updatedHistory);
+    try {
+      const activeRaw = localStorage.getItem('lalbindu_active_donor_profile');
+      if (activeRaw) {
+        const parsed = JSON.parse(activeRaw);
+        const dId = parsed.donor_id_number || parsed.cardId || donor.donor_id_number;
+        setHistoryRecords(getDonorHistory(dId, parsed.full_name || parsed.name || donor.full_name));
+      } else {
+        setHistoryRecords(getDonorHistory(donor.donor_id_number, donor.full_name));
+      }
+    } catch {
+      setHistoryRecords(getDonorHistory(donor.donor_id_number, donor.full_name));
+    }
   };
 
   useEffect(() => {
@@ -193,8 +279,6 @@ export default function DonorDashboardPage() {
       setOriginUrl(window.location.origin);
     }
     loadDonorProfile();
-    const updatedHistory = getDonorHistory(donor.donor_id_number || 'LB-0004278', donor.full_name);
-    setHistoryRecords(updatedHistory);
 
     window.addEventListener('lalbindu_session_changed', refreshHistoryAndProfile);
     window.addEventListener('lalbindu_verification_updated', refreshHistoryAndProfile);
@@ -209,20 +293,52 @@ export default function DonorDashboardPage() {
     };
   }, []);
 
+  // Update history whenever donor identity changes
+  useEffect(() => {
+    if (donor.donor_id_number) {
+      const updatedHistory = getDonorHistory(donor.donor_id_number, donor.full_name);
+      setHistoryRecords(updatedHistory);
+    }
+  }, [donor.donor_id_number, donor.full_name]);
+
   // Load incoming contact requests from localStorage and sync across tabs
   const loadRequests = () => {
     try {
+      let currentDonorId = donor.donor_id_number;
+      try {
+        const activeRaw = localStorage.getItem('lalbindu_active_donor_profile');
+        if (activeRaw) {
+          const parsed = JSON.parse(activeRaw);
+          if (parsed.donor_id_number || parsed.cardId) {
+            currentDonorId = parsed.donor_id_number || parsed.cardId;
+          }
+        }
+      } catch {}
+
       const saved = localStorage.getItem('lalbindu_donor_contact_requests');
+      let allReqs: IncomingContactRequest[] = [];
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
           const customIds = new Set(parsed.map((p: any) => p.id));
           const base = INITIAL_DONOR_CONTACT_REQUESTS.filter(r => !customIds.has(r.id));
-          setIncomingRequests([...parsed, ...base]);
-          return;
+          allReqs = [...parsed, ...base];
+        } else {
+          allReqs = INITIAL_DONOR_CONTACT_REQUESTS;
         }
+      } else {
+        allReqs = INITIAL_DONOR_CONTACT_REQUESTS;
       }
-      setIncomingRequests(INITIAL_DONOR_CONTACT_REQUESTS);
+
+      // Filter: only show requests designated for this donor ID
+      const filtered = allReqs.filter(r => {
+        if (!r.donorIdNumber) return true;
+        if (currentDonorId && r.donorIdNumber.toLowerCase() === currentDonorId.toLowerCase()) return true;
+        if ((!currentDonorId || currentDonorId === 'LB-0004278') && r.donorIdNumber === 'LB-0004278') return true;
+        return false;
+      });
+
+      setIncomingRequests(filtered);
     } catch (e) {
       console.error(e);
     }
@@ -236,7 +352,7 @@ export default function DonorDashboardPage() {
       window.removeEventListener('lalbindu:contact-request-updated', loadRequests);
       window.removeEventListener('storage', loadRequests);
     };
-  }, []);
+  }, [donor.donor_id_number]);
 
   const handleAcceptRequest = (id: string) => {
     const updated = incomingRequests.map(r => r.id === id ? { ...r, status: 'accepted' as const } : r);
@@ -294,14 +410,17 @@ export default function DonorDashboardPage() {
       : 'Donation proof submitted successfully! It has been routed to the pending verification queue for Super Admin review.');
     setTimeout(() => setToastMessage(null), 5000);
 
-    const updated = getDonorHistory(donor.donor_id_number || 'LB-0004278', donor.full_name);
+    const updated = getDonorHistory(donor.donor_id_number || '', donor.full_name);
     setHistoryRecords(updated);
   };
 
-  // 3-calendar-month calculation
-  const lastDonationDate = (donor as any).last_donation_date || '2026-08-10';
-  const nextEligibleDate = calculateNextEligibleDate(lastDonationDate, 3); // e.g. 2026-11-10
-  const isResting = typeof window !== 'undefined' ? (new Date().toISOString().split('T')[0] < nextEligibleDate) : true;
+  // 3-calendar-month calculation & dynamic donor metrics
+  const hasDonated = (donor.verified_donation_count || 0) > 0 && !!(donor as any).last_donation_date;
+  const lastDonationDate = hasDonated ? (donor as any).last_donation_date : null;
+  const nextEligibleDate = lastDonationDate ? calculateNextEligibleDate(lastDonationDate, 3) : null;
+  const isResting = typeof window !== 'undefined' && nextEligibleDate ? (new Date().toISOString().split('T')[0] < nextEligibleDate) : false;
+  const verifiedCount = donor.verified_donation_count || 0;
+  const tierInfo = getDonorTierInfo(verifiedCount);
 
   const tokenCleanId = (donor.donor_id_number || 'LB-0004278').replace(/[^a-zA-Z0-9]/g, '');
   const verificationToken = `LB-TOKEN-DNR-${tokenCleanId}`;
@@ -434,16 +553,18 @@ export default function DonorDashboardPage() {
 
             <div className="text-center px-4 py-2 bg-gray-50 rounded-2xl border border-gray-100">
               <span className="block text-xl font-black text-gray-900">
-                {lang === 'bn' ? '৫' : donor.verified_donation_count}
+                {lang === 'bn' ? toBengaliNumber(verifiedCount) : verifiedCount}
               </span>
               <span className="text-[10px] font-bold text-gray-500 uppercase">{t.donorDashboard.verifiedDonations}</span>
             </div>
 
-            <div className="text-center px-4 py-2 bg-emerald-50 rounded-2xl border border-emerald-100">
-              <span className="block text-xl font-black text-brand-green">
-                {lang === 'bn' ? 'র‌্যাঙ্ক ২' : 'Rank 2'}
+            <div className={`text-center px-4 py-2 ${tierInfo.bgColor} rounded-2xl border ${tierInfo.borderColor}`}>
+              <span className={`block text-xl font-black ${tierInfo.color}`}>
+                {lang === 'bn' ? tierInfo.rankBn : tierInfo.rankEn}
               </span>
-              <span className="text-[10px] font-bold text-gray-500 uppercase">{t.donorDashboard.tier}</span>
+              <span className="text-[10px] font-bold text-gray-500 uppercase">
+                {lang === 'bn' ? tierInfo.titleBn : t.donorDashboard.tier}
+              </span>
             </div>
           </div>
         </div>
@@ -609,20 +730,34 @@ export default function DonorDashboardPage() {
             
             <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 space-y-1">
               <span className="text-[11px] font-bold text-gray-500 uppercase">{t.donorDashboard.lastVerifiedDonation}</span>
-              <p className="text-base font-black text-gray-900">{lastDonationDate}</p>
-              <p className="text-[11px] text-gray-500">{t.donorDashboard.hospitalDhaka}</p>
+              <p className="text-base font-black text-gray-900">
+                {hasDonated ? lastDonationDate : (lang === 'bn' ? 'পূর্ববর্তী রক্তদান নেই' : 'No previous donations')}
+              </p>
+              <p className="text-[11px] text-gray-500">
+                {hasDonated ? (historyRecords[0]?.hospitalName || t.donorDashboard.hospitalDhaka) : (lang === 'bn' ? 'নতুন নিবন্ধিত রক্তদাতা' : 'Registered new donor')}
+              </p>
             </div>
 
-            <div className="p-4 bg-red-50 rounded-2xl border border-red-100 space-y-1">
-              <span className="text-[11px] font-bold text-brand-red uppercase">{t.donorDashboard.platformWaitingRule}</span>
-              <p className="text-base font-black text-gray-900">{t.donorDashboard.ruleDetail}</p>
-              <p className="text-[11px] text-gray-600">{t.donorDashboard.ruleSub}</p>
+            <div className={`p-4 rounded-2xl border space-y-1 ${hasDonated && isResting ? 'bg-red-50 border-red-100' : 'bg-green-50 border-green-100'}`}>
+              <span className={`text-[11px] font-bold uppercase ${hasDonated && isResting ? 'text-brand-red' : 'text-brand-green'}`}>
+                {t.donorDashboard.platformWaitingRule}
+              </span>
+              <p className="text-base font-black text-gray-900">
+                {hasDonated ? t.donorDashboard.ruleDetail : (lang === 'bn' ? 'অবিলম্বে রক্তদানে সক্ষম' : 'Immediately Available')}
+              </p>
+              <p className="text-[11px] text-gray-600">
+                {hasDonated ? t.donorDashboard.ruleSub : (lang === 'bn' ? 'কোনো ৩ মাসের বিরতি নিয়ম প্রযোজ্য নয়' : 'No cooldown restriction active')}
+              </p>
             </div>
 
             <div className="p-4 bg-green-50 rounded-2xl border border-green-100 space-y-1">
               <span className="text-[11px] font-bold text-brand-green uppercase">{t.donorDashboard.nextReview}</span>
-              <p className="text-base font-black text-gray-900">{nextEligibleDate}</p>
-              <p className="text-[11px] text-gray-600">{t.donorDashboard.reviewSub}</p>
+              <p className="text-base font-black text-gray-900">
+                {hasDonated ? nextEligibleDate : (lang === 'bn' ? 'সরাসরি সক্রিয়' : 'Active & Ready')}
+              </p>
+              <p className="text-[11px] text-gray-600">
+                {hasDonated ? t.donorDashboard.reviewSub : (lang === 'bn' ? 'জরুরি প্রয়োজনে প্রস্তুত' : 'Eligible for emergency requests')}
+              </p>
             </div>
 
           </div>
