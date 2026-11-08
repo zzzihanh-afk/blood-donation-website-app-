@@ -45,6 +45,7 @@ import {
   submitDonationVerification, 
   DonationHistoryRecord 
 } from '@/lib/verifications';
+import { compressImageFile } from '@/lib/imageUtils';
 
 interface IncomingContactRequest {
   id: string;
@@ -86,16 +87,15 @@ export default function DonorDashboardPage() {
   const [incomingRequests, setIncomingRequests] = useState<IncomingContactRequest[]>(INITIAL_DONOR_CONTACT_REQUESTS);
   const donorPhotoInputRef = useRef<HTMLInputElement>(null);
 
-  const handleUploadDonorPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUploadDonorPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith('image/')) {
       alert(lang === 'bn' ? 'অনুগ্রহ করে একটি ছবি ফাইল (.jpg, .png, .webp) নির্বাচন করুন।' : 'Please select a valid image file (.jpg, .png, .webp).');
       return;
     }
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
+    try {
+      const dataUrl = await compressImageFile(file, 400, 500, 0.8);
       setDonor(prev => ({ ...prev, avatar_url: dataUrl }));
 
       try {
@@ -117,10 +117,11 @@ export default function DonorDashboardPage() {
         window.dispatchEvent(new Event('lalbindu_session_changed'));
         alert(lang === 'bn' ? 'আইডি কার্ডের ছবি সফলভাবে যুক্ত হয়েছে!' : 'ID Card Photograph updated successfully!');
       } catch (err) {
-        console.error(err);
+        console.warn('Storage warning during photo upload:', err);
       }
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.warn('Photo processing warning:', err);
+    }
   };
 
   // Donation proof submission & history state

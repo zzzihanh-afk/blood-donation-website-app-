@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { useLanguage } from '@/components/LanguageContext';
 import { CR80IDCard } from '@/components/id-card/CR80IDCard';
 import { REFERENCE_SAMPLE_PROFILES } from '@lalbindu/api-client';
+import { compressImageFile } from '@/lib/imageUtils';
 import { 
   LandmarkWatermark, 
   CardBadgeIcon, 
@@ -378,22 +379,31 @@ export default function IdCardTemplateDesignerPage() {
   const [customAvatarUrl, setCustomAvatarUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith('image/')) {
       alert(lang === 'bn' ? 'অনুগ্রহ করে একটি ছবি ফাইল (.jpg, .png, .webp) নির্বাচন করুন।' : 'Please select a valid image file (.jpg, .png, .webp).');
       return;
     }
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
+    try {
+      const dataUrl = await compressImageFile(file, 400, 500, 0.8);
       setCustomAvatarUrl(dataUrl);
       updateFrontConfig('showPhoto', true);
       setSaveToast(lang === 'bn' ? 'কাস্টম ছবি সফলভাবে আইডি কার্ডে যুক্ত হয়েছে!' : 'Custom photo successfully inserted into ID Card!');
       setTimeout(() => setSaveToast(null), 3000);
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.warn('Fallback photo reading:', err);
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const dataUrl = event.target?.result as string;
+        setCustomAvatarUrl(dataUrl);
+        updateFrontConfig('showPhoto', true);
+        setSaveToast(lang === 'bn' ? 'কাস্টম ছবি সফলভাবে আইডি কার্ডে যুক্ত হয়েছে!' : 'Custom photo successfully inserted into ID Card!');
+        setTimeout(() => setSaveToast(null), 3000);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const currentTemplate = templates[selectedRoleId] || templates['super_admin'];

@@ -217,7 +217,20 @@ export function saveStoredAccounts(accounts: AccountUser[]) {
     localStorage.setItem(ACCOUNTS_STORAGE_KEY, JSON.stringify(accounts));
     window.dispatchEvent(new Event('lalbindu_accounts_updated'));
   } catch (e) {
-    console.error('Error saving accounts to localStorage:', e);
+    console.warn('Warning: Storage limit reached when saving accounts, optimizing payloads:', e);
+    try {
+      // If quota exceeded, keep full profile for the latest account but prune huge avatar strings on older accounts
+      const sanitized = accounts.map((acc, idx) => {
+        if (acc.avatarUrl && acc.avatarUrl.length > 40000 && idx < accounts.length - 1) {
+          return { ...acc, avatarUrl: '' };
+        }
+        return acc;
+      });
+      localStorage.setItem(ACCOUNTS_STORAGE_KEY, JSON.stringify(sanitized));
+      window.dispatchEvent(new Event('lalbindu_accounts_updated'));
+    } catch (e2) {
+      console.warn('Critical storage limit in localStorage:', e2);
+    }
   }
 }
 

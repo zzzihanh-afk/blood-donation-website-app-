@@ -177,7 +177,7 @@ export function setCurrentSession(roleKey: 'donor' | 'super_admin' | 'superadmin
       localStorage.setItem('lalbindu_simulated_role', mappedRole);
       window.dispatchEvent(new Event('lalbindu_session_changed'));
     } catch (e) {
-      console.error('Error saving session to localStorage:', e);
+      console.warn('Notice saving session to localStorage:', e);
     }
   }
   return getCurrentSession();

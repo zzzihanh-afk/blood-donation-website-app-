@@ -13,6 +13,7 @@ import {
   getDistrictsByDivision,
   getUpazilasByDistrict 
 } from '@/lib/bangladeshLocations';
+import { compressImageFile } from '@/lib/imageUtils';
 import { roleCardThemes } from '@lalbindu/design-tokens';
 import { 
   ShieldCheck, 
@@ -262,19 +263,25 @@ export default function AdminDashboardPage() {
     }));
   };
 
-  const handleAccountPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAccountPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith('image/')) {
       alert('Please select a valid image file (.jpg, .png, .webp).');
       return;
     }
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
+    try {
+      const dataUrl = await compressImageFile(file, 400, 500, 0.8);
       setNewAccountForm(prev => ({ ...prev, avatarUrl: dataUrl }));
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.warn('Fallback photo reading:', err);
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const dataUrl = event.target?.result as string;
+        setNewAccountForm(prev => ({ ...prev, avatarUrl: dataUrl }));
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const isSuperAdmin = isHighestAuthority(session);

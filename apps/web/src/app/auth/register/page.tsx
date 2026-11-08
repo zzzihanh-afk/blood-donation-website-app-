@@ -13,6 +13,7 @@ import {
 import { Droplet, ArrowRight, ShieldCheck, CheckCircle2, Crown, AlertCircle, Lock, UserPlus, Sparkles, Camera, Upload, Trash2 } from 'lucide-react';
 import { getCurrentSession, setCurrentSession, UserSession } from '@/lib/session';
 import { getStoredAccounts, saveStoredAccounts, createAccountByAuthority, AccountUser } from '@/lib/accounts';
+import { compressImageFile, compressImageDataUrl } from '@/lib/imageUtils';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -39,19 +40,25 @@ export default function RegisterPage() {
     termsAccepted: false
   });
 
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith('image/')) {
       alert('Please select a valid image file (.jpg, .png, .webp).');
       return;
     }
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
+    try {
+      const dataUrl = await compressImageFile(file, 400, 500, 0.8);
       setFormData(prev => ({ ...prev, avatarUrl: dataUrl }));
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.warn('Fallback photo reading:', err);
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const dataUrl = event.target?.result as string;
+        setFormData(prev => ({ ...prev, avatarUrl: dataUrl }));
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const [loading, setLoading] = useState(false);
@@ -101,132 +108,172 @@ export default function RegisterPage() {
 
     setLoading(true);
 
-    setTimeout(() => {
-      setLoading(false);
+    setTimeout(async () => {
+      try {
+        setLoading(false);
 
-      // Path A: Super Admin Provisioning Executive Official (Co-Admin)
-      if (isSuperAdminMode && adminMode === 'executive' && session) {
-        const username = formData.username.trim() || formData.email.split('@')[0] || `adm-${Date.now().toString(36)}`;
-        const result = createAccountByAuthority(
-          {
-            name: formData.fullName.trim(),
-            nameBn: formData.fullNameBn.trim(),
-            username: username,
-            password: formData.password || (roleToCreate === 'co_super_admin' ? 'coadmin' : 'admin123'),
-            phone: formData.phone.trim(),
-            email: formData.email.trim() || `${username}@lalbindu.bd`,
-            role: roleToCreate,
-            bloodGroup: formData.bloodGroup,
-            division: formData.divisionId,
-            district: formData.districtId,
-            upazila: formData.upazilaId,
-            avatarUrl: formData.avatarUrl || ''
-          },
-          session.role,
-          session.id
-        );
+        // Path A: Super Admin Provisioning Executive Official (Co-Admin)
+        if (isSuperAdminMode && adminMode === 'executive' && session) {
+          const username = formData.username.trim() || formData.email.split('@')[0] || `adm-${Date.now().toString(36)}`;
+          let adminAvatar = formData.avatarUrl || '';
+          if (adminAvatar && adminAvatar.length > 50000) {
+            try {
+              adminAvatar = await compressImageDataUrl(adminAvatar, 400, 500, 0.75);
+            } catch {}
+          }
 
-        if (!result.success || !result.account) {
-          setStatusMessage({ type: 'error', text: result.error || 'Failed to provision administrative account.' });
+          const result = createAccountByAuthority(
+            {
+              name: formData.fullName.trim(),
+              nameBn: formData.fullNameBn.trim(),
+              username: username,
+              password: formData.password || (roleToCreate === 'co_super_admin' ? 'coadmin' : 'admin123'),
+              phone: formData.phone.trim(),
+              email: formData.email.trim() || `${username}@lalbindu.bd`,
+              role: roleToCreate,
+              bloodGroup: formData.bloodGroup,
+              division: formData.divisionId,
+              district: formData.districtId,
+              upazila: formData.upazilaId,
+              avatarUrl: adminAvatar
+            },
+            session.role,
+            session.id
+          );
+
+          if (!result.success || !result.account) {
+            setStatusMessage({ type: 'error', text: result.error || 'Failed to provision administrative account.' });
+            return;
+          }
+
+          setStatusMessage({
+            type: 'success',
+            text: `Administrative Account "${result.account.name}" (${result.account.role.toUpperCase()}) provisioned successfully! ID: ${result.account.cardId}, Password: ${result.account.password}`
+          });
+
+          setTimeout(() => {
+            router.push('/dashboard/admin');
+          }, 1200);
           return;
         }
 
+        // Path B: Voluntary Blood Donor Registration -> Immediate Provisioning & Open Dashboard
+        const rand4Digits = Math.floor(1000 + Math.random() * 9000);
+        const donorCardId = `LB-000${rand4Digits}`;
+        const newAccountId = `usr-donor-${Date.now().toString(36)}-${rand4Digits}`;
+        const cleanPhone = formData.phone.replace(/[^0-9]/g, '');
+        const rawUsername = formData.email 
+          ? formData.email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '') 
+          : `donor_${cleanPhone.slice(-6) || rand4Digits}`;
+        const username = rawUsername || `donor_${rand4Digits}`;
+
+        // Ensure avatar payload is small and won't exceed browser quota
+        let finalAvatarUrl = formData.avatarUrl || '';
+        if (finalAvatarUrl && finalAvatarUrl.length > 50000) {
+          try {
+            finalAvatarUrl = await compressImageDataUrl(finalAvatarUrl, 400, 500, 0.75);
+          } catch {}
+        }
+
+        const newAccount: AccountUser = {
+          id: newAccountId,
+          username: username,
+          password: formData.password || 'donor123',
+          name: formData.fullName.trim(),
+          nameBn: formData.fullNameBn.trim() || formData.fullName.trim(),
+          email: formData.email.trim() || `${username}@lalbindu.bd`,
+          phone: formData.phone.trim(),
+          role: 'donor',
+          authorityLevel: 'standard',
+          status: 'Active',
+          bloodGroup: formData.bloodGroup,
+          division: formData.divisionId,
+          district: formData.districtId,
+          upazila: formData.upazilaId,
+          cardId: donorCardId,
+          isSuperAdmin: false,
+          canCreateAccounts: false,
+          canDelegateAuthority: false,
+          delegatedPermissions: {
+            canCreateDonors: false,
+            canCreateCoAdmins: false,
+            canManageVerifications: false,
+            canBroadcastAlerts: false,
+            canApproveCampaigns: false,
+            canManageIDCards: false
+          },
+          createdAt: new Date().toISOString(),
+          avatarUrl: finalAvatarUrl
+        };
+
+        // 1. Save to registered accounts list (allowing login in future)
+        try {
+          const accounts = getStoredAccounts();
+          const existingIdx = accounts.findIndex(a => a.username.toLowerCase() === username.toLowerCase());
+          if (existingIdx >= 0) {
+            newAccount.username = `${username}_${rand4Digits}`;
+          }
+          accounts.push(newAccount);
+          saveStoredAccounts(accounts);
+        } catch (eAcc) {
+          console.warn('Account list save notice:', eAcc);
+        }
+
+        // 2. Save active donor profile for instant dashboard & ID card hydration
+        const activeDonorProfile = {
+          id: newAccountId,
+          full_name: formData.fullName.trim(),
+          fullNameBn: formData.fullNameBn.trim() || formData.fullName.trim(),
+          phone: formData.phone.trim(),
+          email: formData.email.trim() || `${username}@lalbindu.bd`,
+          avatar_url: finalAvatarUrl,
+          donor_id_number: donorCardId,
+          blood_group: formData.bloodGroup,
+          division_name_en: formData.divisionId,
+          district_name_en: formData.districtId,
+          upazila_name_en: formData.upazilaId,
+          verified_donation_count: 0,
+          availability_status: 'available',
+          is_ready_to_donate: true,
+          is_profile_verified: true,
+          is_phone_verified: true,
+          blood_group_verified: true,
+          created_at: new Date().toISOString()
+        };
+        try {
+          localStorage.setItem('lalbindu_active_donor_profile', JSON.stringify(activeDonorProfile));
+        } catch (eProf) {
+          console.warn('Active profile storage fallback:', eProf);
+          try {
+            const stripped = { ...activeDonorProfile, avatar_url: '' };
+            localStorage.setItem('lalbindu_active_donor_profile', JSON.stringify(stripped));
+          } catch {}
+        }
+
+        // 3. Immediately switch active session to new donor account
+        try {
+          setCurrentSession(newAccountId);
+        } catch (eSess) {
+          console.warn('Session switch fallback:', eSess);
+        }
+
+        // 4. Provide instant feedback & open donor dashboard
         setStatusMessage({
           type: 'success',
-          text: `Administrative Account "${result.account.name}" (${result.account.role.toUpperCase()}) provisioned successfully! ID: ${result.account.cardId}, Password: ${result.account.password}`
+          text: `Registration successful! Welcome, ${formData.fullName.trim()}. Opening your Official LalBindu Donor Portal & CR80 Digital ID Card (${donorCardId})...`
         });
 
         setTimeout(() => {
-          router.push('/dashboard/admin');
-        }, 1200);
-        return;
+          router.push('/dashboard/donor');
+        }, 500);
+      } catch (err: any) {
+        setLoading(false);
+        console.warn('Registration exception handled:', err);
+        setStatusMessage({
+          type: 'error',
+          text: err?.message || 'An unexpected error occurred during registration. Please verify your details and try again.'
+        });
       }
-
-      // Path B: Voluntary Blood Donor Registration -> Immediate Provisioning & Open Dashboard
-      const rand4Digits = Math.floor(1000 + Math.random() * 9000);
-      const donorCardId = `LB-000${rand4Digits}`;
-      const newAccountId = `usr-donor-${Date.now().toString(36)}-${rand4Digits}`;
-      const cleanPhone = formData.phone.replace(/[^0-9]/g, '');
-      const rawUsername = formData.email 
-        ? formData.email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '') 
-        : `donor_${cleanPhone.slice(-6) || rand4Digits}`;
-      const username = rawUsername || `donor_${rand4Digits}`;
-
-      const newAccount: AccountUser = {
-        id: newAccountId,
-        username: username,
-        password: formData.password || 'donor123',
-        name: formData.fullName.trim(),
-        nameBn: formData.fullNameBn.trim() || formData.fullName.trim(),
-        email: formData.email.trim() || `${username}@lalbindu.bd`,
-        phone: formData.phone.trim(),
-        role: 'donor',
-        authorityLevel: 'standard',
-        status: 'Active',
-        bloodGroup: formData.bloodGroup,
-        division: formData.divisionId,
-        district: formData.districtId,
-        upazila: formData.upazilaId,
-        cardId: donorCardId,
-        isSuperAdmin: false,
-        canCreateAccounts: false,
-        canDelegateAuthority: false,
-        delegatedPermissions: {
-          canCreateDonors: false,
-          canCreateCoAdmins: false,
-          canManageVerifications: false,
-          canBroadcastAlerts: false,
-          canApproveCampaigns: false,
-          canManageIDCards: false
-        },
-        createdAt: new Date().toISOString(),
-        avatarUrl: formData.avatarUrl || ''
-      };
-
-      // 1. Save to registered accounts list (allowing login in future)
-      const accounts = getStoredAccounts();
-      const existingIdx = accounts.findIndex(a => a.username.toLowerCase() === username.toLowerCase());
-      if (existingIdx >= 0) {
-        newAccount.username = `${username}_${rand4Digits}`;
-      }
-      accounts.push(newAccount);
-      saveStoredAccounts(accounts);
-
-      // 2. Save active donor profile for instant dashboard & ID card hydration
-      const activeDonorProfile = {
-        id: newAccountId,
-        full_name: formData.fullName.trim(),
-        fullNameBn: formData.fullNameBn.trim() || formData.fullName.trim(),
-        phone: formData.phone.trim(),
-        email: formData.email.trim() || `${username}@lalbindu.bd`,
-        avatar_url: formData.avatarUrl || '',
-        donor_id_number: donorCardId,
-        blood_group: formData.bloodGroup,
-        division_name_en: formData.divisionId,
-        district_name_en: formData.districtId,
-        upazila_name_en: formData.upazilaId,
-        verified_donation_count: 0,
-        availability_status: 'available',
-        is_ready_to_donate: true,
-        is_profile_verified: true,
-        is_phone_verified: true,
-        blood_group_verified: true,
-        created_at: new Date().toISOString()
-      };
-      localStorage.setItem('lalbindu_active_donor_profile', JSON.stringify(activeDonorProfile));
-
-      // 3. Immediately switch active session to new donor account
-      setCurrentSession(newAccountId);
-
-      // 4. Provide instant feedback & open donor dashboard
-      setStatusMessage({
-        type: 'success',
-        text: `Registration successful! Welcome, ${formData.fullName.trim()}. Opening your Official LalBindu Donor Portal & CR80 Digital ID Card (${donorCardId})...`
-      });
-
-      setTimeout(() => {
-        router.push('/dashboard/donor');
-      }, 400);
     }, 450);
   };
 
