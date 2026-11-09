@@ -906,51 +906,37 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 self-start md:self-auto">
-            {/* Create Account Button (ONLY Super Admin or Delegated Co-Admin) */}
-            {canCreateAccounts ? (
-              <button
-                onClick={() => setIsCreateAccountModalOpen(true)}
-                className="px-4 py-2 rounded-xl bg-white text-brand-burgundy hover:bg-gray-100 text-xs font-black shadow-sm transition-all flex items-center space-x-1.5"
-              >
-                <UserPlus className="w-4 h-4 text-brand-burgundy" />
-                <span>{lang === 'bn' ? '+ নতুন অ্যাকাউন্ট তৈরি' : '+ Create Account'}</span>
-              </button>
-            ) : (
-              <span
-                className="px-3 py-2 rounded-xl bg-gray-100/90 text-gray-400 text-xs font-bold flex items-center space-x-1 cursor-not-allowed border border-gray-200/60"
-                title={lang === 'bn' ? 'শুধুমাত্র সুপার অ্যাডমিন এবং কো-অ্যাডমিন নতুন অ্যাকাউন্ট তৈরি করতে পারেন।' : 'Only Super Admin and Co-Admins hold clearance to create accounts.'}
-              >
-                <Lock className="w-3.5 h-3.5" />
-                <span>{lang === 'bn' ? 'অ্যাকাউন্ট তৈরি (লক)' : 'Create Account (Locked)'}</span>
-              </span>
-            )}
+          {(canCreateAccounts || isSuperAdmin) && (
+            <div className="flex flex-wrap items-center gap-2 self-start md:self-auto">
+              {/* Create Account Button (ONLY Super Admin or Delegated Co-Admin) */}
+              {canCreateAccounts && (
+                <button
+                  onClick={() => setIsCreateAccountModalOpen(true)}
+                  className="px-4 py-2 rounded-xl bg-white text-brand-burgundy hover:bg-gray-100 text-xs font-black shadow-sm transition-all flex items-center space-x-1.5"
+                >
+                  <UserPlus className="w-4 h-4 text-brand-burgundy" />
+                  <span>{lang === 'bn' ? '+ নতুন অ্যাকাউন্ট তৈরি' : '+ Create Account'}</span>
+                </button>
+              )}
 
-            {/* Delegate Co-Admin Button (SUPER ADMIN EXCLUSIVE) */}
-            {isSuperAdmin ? (
-              <button
-                onClick={() => {
-                  setNewAppointForm({
-                    ...newAppointForm,
-                    roleId: 'co_super_admin'
-                  });
-                  setIsAppointModalOpen(true);
-                }}
-                className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-gray-950 text-xs font-black shadow-sm transition-all flex items-center space-x-1.5"
-              >
-                <Crown className="w-4 h-4 text-gray-950" />
-                <span>{lang === 'bn' ? '👑 কো-অ্যাডমিন ক্ষমতা অর্পণ' : '👑 Delegate Co-Admin'}</span>
-              </button>
-            ) : (
-              <span
-                className="px-3 py-2 rounded-xl bg-gray-200/80 text-gray-400 text-xs font-bold flex items-center space-x-1 cursor-not-allowed"
-                title="Only the supreme Super Admin (superadmin) can delegate Co-Admin authority."
-              >
-                <Lock className="w-3.5 h-3.5" />
-                <span>Delegate Co-Admin (Locked)</span>
-              </span>
-            )}
-          </div>
+              {/* Delegate Co-Admin Button (SUPER ADMIN EXCLUSIVE) */}
+              {isSuperAdmin && (
+                <button
+                  onClick={() => {
+                    setNewAppointForm({
+                      ...newAppointForm,
+                      roleId: 'co_super_admin'
+                    });
+                    setIsAppointModalOpen(true);
+                  }}
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-gray-950 text-xs font-black shadow-sm transition-all flex items-center space-x-1.5"
+                >
+                  <Crown className="w-4 h-4 text-gray-950" />
+                  <span>{lang === 'bn' ? '👑 কো-অ্যাডমিন ক্ষমতা অর্পণ' : '👑 Delegate Co-Admin'}</span>
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Header with Jurisdiction Selector */}
@@ -1466,36 +1452,21 @@ export default function AdminDashboardPage() {
                   </button>
                 )}
 
-                {isSuperAdmin ? (
-                  selectedJurisdiction === 'national' ? (
-                    <button
-                      onClick={() => {
-                        setNewAppointForm({
-                          ...newAppointForm,
-                          roleId: 'co_super_admin'
-                        });
-                        setIsAppointModalOpen(true);
-                      }}
-                      className="px-4 py-2 bg-gradient-to-r from-brand-burgundy to-brand-red hover:from-[#400B13] hover:to-[#6a0b17] text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center space-x-1.5"
-                    >
-                      <Crown className="w-4 h-4 text-amber-300" />
-                      <span>{lang === 'bn' ? '👑 কো-অ্যাডমিন অর্পণ' : '👑 Delegate Co-Admin'}</span>
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => {
-                        alert(lang === 'bn' 
-                          ? 'প্রবেশাধিকার সীমাবদ্ধ: শুধুমাত্র ন্যাশনাল সুপার অ্যাডমিনিস্ট্রেটর পোর্টাল থেকে নতুন সমন্বয়ক বা প্রশাসনিক অ্যাকাউন্ট তৈরি করা সম্ভব।' 
-                          : 'Access Restricted: Only National Super Administrators possess the executive authority to appoint coordinators or create administrative accounts.');
-                      }}
-                      className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-500 font-bold text-xs rounded-xl border border-gray-300 transition-all flex items-center space-x-1.5 cursor-not-allowed"
-                      title="Super Admin Only"
-                    >
-                      <Lock className="w-3.5 h-3.5 text-gray-400" />
-                      <span>{lang === 'bn' ? 'ক্ষমতা অর্পণ (লকড)' : 'Delegate (Locked)'}</span>
-                    </button>
-                  )
-                ) : null}
+                {isSuperAdmin && selectedJurisdiction === 'national' && (
+                  <button
+                    onClick={() => {
+                      setNewAppointForm({
+                        ...newAppointForm,
+                        roleId: 'co_super_admin'
+                      });
+                      setIsAppointModalOpen(true);
+                    }}
+                    className="px-4 py-2 bg-gradient-to-r from-brand-burgundy to-brand-red hover:from-[#400B13] hover:to-[#6a0b17] text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center space-x-1.5"
+                  >
+                    <Crown className="w-4 h-4 text-amber-300" />
+                    <span>{lang === 'bn' ? '👑 কো-অ্যাডমিন অর্পণ' : '👑 Delegate Co-Admin'}</span>
+                  </button>
+                )}
               </div>
             </div>
 
