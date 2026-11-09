@@ -223,6 +223,14 @@ export function getStoredAccounts(): AccountUser[] {
         acc.canCreateAccounts = shouldHaveCreatePermission;
         modified = true;
       }
+      if (acc.delegatedPermissions && !shouldHaveCreatePermission) {
+        if (acc.delegatedPermissions.canCreateDonors || acc.delegatedPermissions.canBroadcastAlerts || acc.delegatedPermissions.canApproveCampaigns) {
+          acc.delegatedPermissions.canCreateDonors = false;
+          acc.delegatedPermissions.canBroadcastAlerts = false;
+          acc.delegatedPermissions.canApproveCampaigns = false;
+          modified = true;
+        }
+      }
     });
 
     if (modified) {
@@ -393,11 +401,11 @@ export function createAccountByAuthority(
     canCreateAccounts: isCreatingCoAdmin || role === 'super_admin',
     canDelegateAuthority: role === 'super_admin',
     delegatedPermissions: accountData.delegatedPermissions || {
-      canCreateDonors: isAdministrative,
+      canCreateDonors: isCreatingCoAdmin || role === 'super_admin',
       canCreateCoAdmins: false, // only superadmin can delegate
       canManageVerifications: isAdministrative,
-      canBroadcastAlerts: isAdministrative,
-      canApproveCampaigns: isAdministrative,
+      canBroadcastAlerts: isCreatingCoAdmin || role === 'super_admin',
+      canApproveCampaigns: isCreatingCoAdmin || role === 'super_admin',
       canManageIDCards: isAdministrative
     },
     delegatedBy: isAdministrative ? operatorId : undefined,

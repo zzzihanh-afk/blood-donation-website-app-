@@ -14,6 +14,7 @@ import {
   getSimulatedRole,
   setSimulatedRole
 } from '@/lib/campaigns';
+import { getCurrentSession, isSuperOrCoAdmin, UserSession } from '@/lib/session';
 import { CreateCampaignModal } from '@/components/campaigns/CreateCampaignModal';
 import { AccessRestrictedModal } from '@/components/campaigns/AccessRestrictedModal';
 import { BANGLADESH_DIVISIONS } from '@lalbindu/api-client';
@@ -44,18 +45,29 @@ export default function CampaignsPage() {
   const [selectedDivision, setSelectedDivision] = useState<string>('all');
   const [registeredCampaignIds, setRegisteredCampaignIds] = useState<string[]>([]);
 
-  // Role Access Control Simulation State
-  const [currentRole, setCurrentRole] = useState<string>('super_admin');
+  // Role Access Control State
+  const [currentRole, setCurrentRole] = useState<string>('donor');
+  const [session, setSession] = useState<UserSession | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
   const [isRestrictedModalOpen, setIsRestrictedModalOpen] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Load initial data on mount
+  // Load initial data on mount and sync with active session
   useEffect(() => {
     setCampaigns(getStoredCampaigns());
     setRegisteredCampaignIds(getRegisteredCampaignIds());
-    const savedRole = getSimulatedRole();
-    setCurrentRole(savedRole);
+    const userSession = getCurrentSession();
+    setSession(userSession);
+    const activeRole = userSession?.role || getSimulatedRole() || 'donor';
+    setCurrentRole(activeRole);
+
+    const handleSessionChange = () => {
+      const updated = getCurrentSession();
+      setSession(updated);
+      setCurrentRole(updated?.role || 'donor');
+    };
+    window.addEventListener('lalbindu_session_changed', handleSessionChange);
+    return () => window.removeEventListener('lalbindu_session_changed', handleSessionChange);
   }, []);
 
   const handleRoleChange = (newRole: string) => {
@@ -154,7 +166,7 @@ export default function CampaignsPage() {
             </div>
           </div>
 
-          {/* Quick Role Switcher for Testing Access Controls */}
+          {/* Quick Role Switcher for Demonstrating & Testing Access Controls */}
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs text-gray-500 font-semibold">{t.campaignsPage.viewAsRole}</span>
             <div className="inline-flex rounded-xl bg-gray-100 p-1 border border-gray-200">
@@ -169,6 +181,16 @@ export default function CampaignsPage() {
                 <span>👑 Super Admin</span>
               </button>
               <button
+                onClick={() => handleRoleChange('co_super_admin')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center space-x-1.5 ${
+                  currentRole === 'co_super_admin' || currentRole === 'co_admin'
+                    ? 'bg-purple-700 text-white shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <span>🛡️ Co-Admin</span>
+              </button>
+              <button
                 onClick={() => handleRoleChange('division_admin')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center space-x-1.5 ${
                   currentRole === 'division_admin'
@@ -176,7 +198,7 @@ export default function CampaignsPage() {
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
-                <span>🛡️ Division Admin</span>
+                <span>🏛️ Regional Admin</span>
               </button>
               <button
                 onClick={() => handleRoleChange('donor')}
@@ -211,28 +233,16 @@ export default function CampaignsPage() {
 
           {/* Action Buttons: Add Campaign & Super Admin Portal Link */}
           <div className="flex flex-wrap items-center gap-3">
-            {/* Primary Action Button to Add Campaign */}
-            <button
-              onClick={handleOpenCreateModal}
-              className={`px-5 py-3 rounded-2xl text-xs font-black shadow-md flex items-center space-x-2 transition-all ${
-                accessStatus.allowed
-                  ? 'bg-gradient-to-r from-brand-burgundy to-brand-red hover:from-brand-burgundy/90 hover:to-brand-red/90 text-white shadow-red-900/10'
-                  : 'bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300'
-              }`}
-            >
-              {accessStatus.allowed ? (
-                <>
-                  <Plus className="w-4 h-4 stroke-[3]" />
-                  <span>{t.campaignsPage.createCampaignBtn}</span>
-                </>
-              ) : (
-                <>
-                  <Lock className="w-4 h-4 text-gray-500" />
-                  <span>{t.campaignsPage.createCampaignBtn}</span>
-                  <span className="text-[10px] text-brand-red ml-1 font-bold">({lang === 'bn' ? 'অ্যাডমিন লক' : 'Admin Locked'})</span>
-                </>
-              )}
-            </button>
+            {/* Primary Action Button to Add Campaign (Super Admin & Co-Admin Only) */}
+            {accessStatus.allowed && (
+              <button
+                onClick={handleOpenCreateModal}
+                className="px-5 py-3 rounded-2xl text-xs font-black shadow-md flex items-center space-x-2 transition-all bg-gradient-to-r from-brand-burgundy to-brand-red hover:from-brand-burgundy/90 hover:to-brand-red/90 text-white shadow-red-900/10"
+              >
+                <Plus className="w-4 h-4 stroke-[3]" />
+                <span>{t.campaignsPage.createCampaignBtn}</span>
+              </button>
+            )}
 
             {/* Quick Link to Main Admin Portal (Strictly visible only for authorized administrators) */}
             {accessStatus.allowed && (
@@ -434,13 +444,15 @@ export default function CampaignsPage() {
         {/* -------------------------------------------------------------------
             MODALS
            ------------------------------------------------------------------- */}
-        <CreateCampaignModal
-          isOpen={isCreateModalOpen}
-          onClose={() => setIsCreateModalOpen(false)}
-          onCreated={handleCampaignCreated}
-          approverName={currentRole === 'super_admin' ? 'Md. Rahman Hossain (LA0010001)' : 'Authorized Regional Admin'}
-          approverRole={currentRole === 'super_admin' ? 'Super Administrator' : 'Division Administrator'}
-        />
+        {accessStatus.allowed && (
+          <CreateCampaignModal
+            isOpen={isCreateModalOpen}
+            onClose={() => setIsCreateModalOpen(false)}
+            onCreated={handleCampaignCreated}
+            approverName={currentRole === 'super_admin' ? 'Md. Rahman Hossain (LA0010001)' : 'Co-Administrator'}
+            approverRole={currentRole === 'super_admin' ? 'Super Administrator' : 'Co-Administrator (Delegated)'}
+          />
+        )}
 
         <AccessRestrictedModal
           isOpen={isRestrictedModalOpen}

@@ -99,14 +99,24 @@ export const INITIAL_CAMPAIGNS: CampaignItem[] = [
 
 export const INITIAL_DELEGATIONS: CampaignDelegation[] = [
   {
+    userId: 'adm-00',
+    name: 'Dr. Nusrat Jahan',
+    role: 'Co-Super Administrator',
+    roleId: 'co_super_admin',
+    jurisdiction: 'National (All Bangladesh)',
+    canCreateCampaigns: true,
+    authorizedBy: 'Super Admin (Md. Rahman Hossain)',
+    authorizedDate: '01 Nov 2026'
+  },
+  {
     userId: 'adm-01',
     name: 'Kazi Mahbubur Rahman',
     role: 'District Administrator',
     roleId: 'district_admin',
     jurisdiction: 'Dhaka District',
-    canCreateCampaigns: true,
-    authorizedBy: 'Super Admin (Md. Rahman Hossain)',
-    authorizedDate: '01 Nov 2026'
+    canCreateCampaigns: false,
+    authorizedBy: 'Pending Super Admin Review',
+    authorizedDate: '-'
   },
   {
     userId: 'adm-02',
@@ -114,9 +124,9 @@ export const INITIAL_DELEGATIONS: CampaignDelegation[] = [
     role: 'Division Administrator',
     roleId: 'division_admin',
     jurisdiction: 'Chattogram Division',
-    canCreateCampaigns: true,
-    authorizedBy: 'Super Admin (Md. Rahman Hossain)',
-    authorizedDate: '01 Nov 2026'
+    canCreateCampaigns: false,
+    authorizedBy: 'Pending Super Admin Review',
+    authorizedDate: '-'
   },
   {
     userId: 'adm-03',
@@ -127,16 +137,6 @@ export const INITIAL_DELEGATIONS: CampaignDelegation[] = [
     canCreateCampaigns: false,
     authorizedBy: 'Pending Super Admin Review',
     authorizedDate: '-'
-  },
-  {
-    userId: 'mgr-01',
-    name: 'Rafiqul Islam',
-    role: 'Campaign Manager',
-    roleId: 'campaign_manager',
-    jurisdiction: 'National Campaigns Cell',
-    canCreateCampaigns: true,
-    authorizedBy: 'Super Admin (Md. Rahman Hossain)',
-    authorizedDate: '02 Nov 2026'
   }
 ];
 
@@ -319,6 +319,19 @@ export function getCampaignDelegations(): CampaignDelegation[] {
     if (data) {
       const parsed = JSON.parse(data);
       if (Array.isArray(parsed) && parsed.length > 0) {
+        // Enforce strict governance: Only super_admin and co_super_admin can hold canCreateCampaigns
+        let modified = false;
+        parsed.forEach((d: any) => {
+          const isExec = d.roleId === 'co_super_admin' || d.roleId === 'super_admin' || d.userId === 'adm-00';
+          if (!isExec && d.canCreateCampaigns === true) {
+            d.canCreateCampaigns = false;
+            d.authorizedBy = 'Restricted: Executive Admin Only';
+            modified = true;
+          }
+        });
+        if (modified) {
+          localStorage.setItem(DELEGATIONS_STORAGE_KEY, JSON.stringify(parsed));
+        }
         return parsed;
       }
     }
@@ -366,17 +379,19 @@ export function setSimulatedRole(role: string): void {
 
 /**
  * Check if the given role or user is allowed to create campaigns.
- * Super Admin always has full access.
- * Allowed admins (delegated by Super Admin) have access.
- * Donors, volunteers and public have no access.
+ * Strictly reserved for Super Admin and Co-Admin.
+ * Regional and subordinate accounts have read-only access.
  */
 export function checkCanCreateCampaign(role: string, userId?: string): {
   allowed: boolean;
   reason: string;
   reasonBn: string;
 } {
+  const isSuper = role === 'super_admin' || role === 'national_admin' || userId === 'superadmin';
+  const isCoSuper = role === 'co_super_admin' || role === 'co_admin' || userId === 'coadmin' || userId === 'adm-00';
+
   // Super Admin: Full Root Authority
-  if (role === 'super_admin' || role === 'national_admin') {
+  if (isSuper) {
     return {
       allowed: true,
       reason: 'Super Administrator — Full Nationwide Authority',
@@ -384,17 +399,21 @@ export function checkCanCreateCampaign(role: string, userId?: string): {
     };
   }
 
-  // Check Delegated Permissions for Subordinate Administrators
-  const delegations = getCampaignDelegations();
-  const userDelegation = userId 
-    ? delegations.find(d => d.userId === userId)
-    : delegations.find(d => d.roleId === role);
-
-  if (userDelegation && userDelegation.canCreateCampaigns) {
+  // Co-Admin: Delegated Executive Authority
+  if (isCoSuper) {
     return {
       allowed: true,
-      reason: `Authorized by Super Admin (${userDelegation.role} - ${userDelegation.jurisdiction})`,
-      reasonBn: `সুপার অ্যাডমিন কর্তৃক অনুমোদিত (${userDelegation.role} - ${userDelegation.jurisdiction})`
+      reason: 'Co-Administrator — Delegated Executive Authority',
+      reasonBn: 'কো-অ্যাডমিনিস্ট্রেটর — অর্পিত পূর্ণ নির্বাহী ক্ষমতা'
+    };
+  }
+
+  // Explicit regional denial
+  if (role === 'division_admin' || role === 'district_admin' || role === 'upazila_admin' || role === 'hospital_admin' || role === 'thana_admin') {
+    return {
+      allowed: false,
+      reason: 'Regional and hospital administrators do not hold clearance to launch campaigns. Reserved strictly for Super Admin and Co-Admin.',
+      reasonBn: 'আঞ্চলিক ও হাসপাতাল প্রশাসকদের ক্যাম্পেইন তৈরির অনুমতি নেই। এটি শুধুমাত্র সুপার অ্যাডমিন ও কো-অ্যাডমিনের জন্য সংরক্ষিত।'
     };
   }
 
@@ -409,7 +428,7 @@ export function checkCanCreateCampaign(role: string, userId?: string): {
 
   return {
     allowed: false,
-    reason: 'Campaign creation is strictly reserved for Super Admin and coordinators authorized by Super Admin.',
-    reasonBn: 'রক্তদান কর্মসূচি তৈরি শুধুমাত্র সুপার অ্যাডমিন ও সুপার অ্যাডমিন কর্তৃক অনুমোদিত প্রশাসকদের জন্য সংরক্ষিত।'
+    reason: 'Campaign creation is strictly reserved for Super Admin and Co-Admin.',
+    reasonBn: 'রক্তদান কর্মসূচি তৈরি শুধুমাত্র সুপার অ্যাডমিন এবং কো-অ্যাডমিনের জন্য সংরক্ষিত।'
   };
 }

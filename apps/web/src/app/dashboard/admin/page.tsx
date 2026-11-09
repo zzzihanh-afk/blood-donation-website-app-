@@ -754,6 +754,10 @@ export default function AdminDashboardPage() {
 
   // Admin Campaign Handlers
   const handleAdminCreateCampaign = (newCamp: CampaignItem) => {
+    if (!canCreateAccounts) {
+      alert(lang === 'bn' ? 'অনুমতি নেই: শুধুমাত্র সুপার অ্যাডমিন এবং কো-অ্যাডমিন কর্মসূচি তৈরি করতে পারবেন।' : 'Access Restricted: Only Super Admin and Co-Admins can create campaigns.');
+      return;
+    }
     const updated = addCampaign(newCamp);
     setCampaigns(updated);
     setToastMessage(lang === 'bn' 
@@ -763,6 +767,10 @@ export default function AdminDashboardPage() {
   };
 
   const handleAdminDeleteCampaign = (id: string, title: string) => {
+    if (!canCreateAccounts) {
+      alert(lang === 'bn' ? 'অনুমতি নেই: শুধুমাত্র সুপার অ্যাডমিন এবং কো-অ্যাডমিন কর্মসূচি অপসারণ করতে পারবেন।' : 'Access Restricted: Only Super Admin and Co-Admins can remove campaigns.');
+      return;
+    }
     if (!confirm(lang === 'bn' ? `আপনি কি নিশ্চিত যে "${title}" কর্মসূচিটি প্রত্যাহার করতে চান?` : `Are you sure you want to cancel and remove "${title}"?`)) return;
     const updated = deleteCampaign(id);
     setCampaigns(updated);
@@ -771,6 +779,10 @@ export default function AdminDashboardPage() {
   };
 
   const handleToggleCampaignPermission = (userId: string, currentAllowed: boolean) => {
+    if (!isSuperAdmin) {
+      alert(lang === 'bn' ? 'অনুমতি নেই: শুধুমাত্র প্রধান সুপার অ্যাডমিন ক্ষমতা অর্পণ বা প্রত্যাহার করতে পারবেন।' : 'Access Restricted: Only the National Super Admin can delegate campaign creation rights.');
+      return;
+    }
     const nextState = !currentAllowed;
     const updated = toggleDelegationPermission(userId, nextState);
     setDelegations(updated);
@@ -1562,7 +1574,7 @@ export default function AdminDashboardPage() {
                       <ChevronRight className="w-3 h-3" />
                     </button>
 
-                    {selectedJurisdiction === 'national' ? (
+                    {isSuperAdmin && selectedJurisdiction === 'national' ? (
                       <button
                         onClick={() => setManageAccessModalData(adm)}
                         className="text-xs font-semibold text-gray-600 hover:text-gray-900 px-2.5 py-1 rounded-lg hover:bg-gray-200 transition-all"
@@ -1793,13 +1805,15 @@ export default function AdminDashboardPage() {
                               {new Date(app.appliedAt).toLocaleDateString()}
                             </td>
                             <td className="p-3 text-right">
-                              <button
-                                onClick={() => handleApproveApplication(app.id)}
-                                className="px-3.5 py-1.5 rounded-xl bg-brand-burgundy hover:bg-[#400B13] text-white font-bold text-xs shadow-xs transition-all flex items-center space-x-1 ml-auto"
-                              >
-                                <CheckCircle2 className="w-3.5 h-3.5" />
-                                <span>{lang === 'bn' ? 'অনুমোদন ও অ্যাকাউন্ট তৈরি' : 'Approve & Create Account'}</span>
-                              </button>
+                              {canCreateAccounts && (
+                                <button
+                                  onClick={() => handleApproveApplication(app.id)}
+                                  className="px-3.5 py-1.5 rounded-xl bg-brand-burgundy hover:bg-[#400B13] text-white font-bold text-xs shadow-xs transition-all flex items-center space-x-1 ml-auto"
+                                >
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                  <span>{lang === 'bn' ? 'অনুমোদন ও অ্যাকাউন্ট তৈরি' : 'Approve & Create Account'}</span>
+                                </button>
+                              )}
                             </td>
                           </tr>
                         ))}
@@ -1946,13 +1960,15 @@ export default function AdminDashboardPage() {
                     : 'Authorize and deploy public blood donation campaigns across Bangladesh, and delegate campaign creation permissions to subordinate coordinators.'}
                 </p>
                 <div className="pt-2 flex flex-wrap gap-3">
-                  <button
-                    onClick={() => setIsCreateCampaignModalOpen(true)}
-                    className="px-5 py-2.5 rounded-xl bg-white text-brand-burgundy font-black text-xs shadow-lg hover:bg-gray-100 transition-all flex items-center space-x-2"
-                  >
-                    <Plus className="w-4 h-4 stroke-[3]" />
-                    <span>{lang === 'bn' ? 'নতুন কর্মসূচি তৈরি করুন' : 'Create Blood Donation Campaign'}</span>
-                  </button>
+                  {canCreateAccounts && (
+                    <button
+                      onClick={() => setIsCreateCampaignModalOpen(true)}
+                      className="px-5 py-2.5 rounded-xl bg-white text-brand-burgundy font-black text-xs shadow-lg hover:bg-gray-100 transition-all flex items-center space-x-2"
+                    >
+                      <Plus className="w-4 h-4 stroke-[3]" />
+                      <span>{lang === 'bn' ? 'নতুন কর্মসূচি তৈরি করুন' : 'Create Blood Donation Campaign'}</span>
+                    </button>
+                  )}
                   <Link
                     href="/campaigns"
                     className="px-4 py-2.5 rounded-xl bg-white/15 hover:bg-white/25 text-white font-bold text-xs border border-white/30 backdrop-blur-sm transition-all flex items-center space-x-2"
@@ -1988,80 +2004,82 @@ export default function AdminDashboardPage() {
             </div>
 
             {/* Super Admin Delegation Console ("and those that he allow") */}
-            <div className="bg-white rounded-3xl p-6 sm:p-8 card-shadow border border-amber-200/80 space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-4">
-                <div>
-                  <div className="inline-flex items-center space-x-1.5 px-3 py-0.5 rounded-full bg-amber-50 text-amber-700 text-[10px] font-mono font-bold uppercase mb-1 border border-amber-200">
-                    <ShieldCheck className="w-3.5 h-3.5" />
-                    <span>Super Admin Access Delegation Engine</span>
+            {isSuperAdmin && (
+              <div className="bg-white rounded-3xl p-6 sm:p-8 card-shadow border border-amber-200/80 space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-4">
+                  <div>
+                    <div className="inline-flex items-center space-x-1.5 px-3 py-0.5 rounded-full bg-amber-50 text-amber-700 text-[10px] font-mono font-bold uppercase mb-1 border border-amber-200">
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                      <span>Super Admin Access Delegation Engine</span>
+                    </div>
+                    <h3 className="text-lg font-black text-gray-900">
+                      {lang === 'bn' ? 'সমন্বয়ক পর্যায়ে কর্মসূচি তৈরির অনুমতি অর্পণ' : 'Coordinator Campaign Creation Delegation Console'}
+                    </h3>
+                    <p className="text-xs text-gray-500">
+                      {lang === 'bn' 
+                        ? 'সুপার অ্যাডমিন হিসেবে আপনি নির্দিষ্ট বিভাগীয় বা জেলা সমন্বয়ককে কর্মসূচি তৈরির অনুমতি প্রদান বা প্রত্যাহার করতে পারবেন।' 
+                        : 'As Super Administrator, grant or revoke campaign publishing clearance to regional coordinators and staff.'}
+                    </p>
                   </div>
-                  <h3 className="text-lg font-black text-gray-900">
-                    {lang === 'bn' ? 'সমন্বয়ক পর্যায়ে কর্মসূচি তৈরির অনুমতি অর্পণ' : 'Coordinator Campaign Creation Delegation Console'}
-                  </h3>
-                  <p className="text-xs text-gray-500">
-                    {lang === 'bn' 
-                      ? 'সুপার অ্যাডমিন হিসেবে আপনি নির্দিষ্ট বিভাগীয় বা জেলা সমন্বয়ককে কর্মসূচি তৈরির অনুমতি প্রদান বা প্রত্যাহার করতে পারবেন।' 
-                      : 'As Super Administrator, grant or revoke campaign publishing clearance to regional coordinators and staff.'}
-                  </p>
+                </div>
+
+                {/* Delegations Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {delegations.map((d) => (
+                    <div 
+                      key={d.userId}
+                      className="p-4 rounded-2xl border border-gray-100 bg-gray-50/70 flex flex-col justify-between gap-3"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <h4 className="text-sm font-bold text-gray-900">{d.name}</h4>
+                          <p className="text-xs text-brand-burgundy font-semibold">{d.role}</p>
+                          <p className="text-[11px] text-gray-500 flex items-center mt-0.5">
+                            <MapPin className="w-3 h-3 mr-1 text-gray-400" />
+                            {d.jurisdiction}
+                          </p>
+                        </div>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                          d.canCreateCampaigns 
+                            ? 'bg-emerald-100 text-brand-green border border-emerald-200' 
+                            : 'bg-gray-200 text-gray-600'
+                        }`}>
+                          {d.canCreateCampaigns 
+                            ? (lang === 'bn' ? 'অনুমোদিত' : 'Authorized') 
+                            : (lang === 'bn' ? 'অনুমতিহীন' : 'Restricted')}
+                        </span>
+                      </div>
+
+                      <div className="pt-2 border-t border-gray-200 flex items-center justify-between">
+                        <span className="text-[10px] text-gray-400">
+                          {d.authorizedBy}
+                        </span>
+                        <button
+                          onClick={() => handleToggleCampaignPermission(d.userId, d.canCreateCampaigns)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center space-x-1 ${
+                            d.canCreateCampaigns
+                              ? 'bg-red-50 hover:bg-red-100 text-brand-red border border-red-200'
+                              : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                          }`}
+                        >
+                          {d.canCreateCampaigns ? (
+                            <>
+                              <Lock className="w-3 h-3" />
+                              <span>{lang === 'bn' ? 'অনুমতি প্রত্যাহার' : 'Revoke Rights'}</span>
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle2 className="w-3 h-3" />
+                              <span>{lang === 'bn' ? 'অনুমতি প্রদান করুন' : 'Grant Rights'}</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-
-              {/* Delegations Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {delegations.map((d) => (
-                  <div 
-                    key={d.userId}
-                    className="p-4 rounded-2xl border border-gray-100 bg-gray-50/70 flex flex-col justify-between gap-3"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h4 className="text-sm font-bold text-gray-900">{d.name}</h4>
-                        <p className="text-xs text-brand-burgundy font-semibold">{d.role}</p>
-                        <p className="text-[11px] text-gray-500 flex items-center mt-0.5">
-                          <MapPin className="w-3 h-3 mr-1 text-gray-400" />
-                          {d.jurisdiction}
-                        </p>
-                      </div>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
-                        d.canCreateCampaigns 
-                          ? 'bg-emerald-100 text-brand-green border border-emerald-200' 
-                          : 'bg-gray-200 text-gray-600'
-                      }`}>
-                        {d.canCreateCampaigns 
-                          ? (lang === 'bn' ? 'অনুমোদিত' : 'Authorized') 
-                          : (lang === 'bn' ? 'অনুমতিহীন' : 'Restricted')}
-                      </span>
-                    </div>
-
-                    <div className="pt-2 border-t border-gray-200 flex items-center justify-between">
-                      <span className="text-[10px] text-gray-400">
-                        {d.authorizedBy}
-                      </span>
-                      <button
-                        onClick={() => handleToggleCampaignPermission(d.userId, d.canCreateCampaigns)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center space-x-1 ${
-                          d.canCreateCampaigns
-                            ? 'bg-red-50 hover:bg-red-100 text-brand-red border border-red-200'
-                            : 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                        }`}
-                      >
-                        {d.canCreateCampaigns ? (
-                          <>
-                            <Lock className="w-3 h-3" />
-                            <span>{lang === 'bn' ? 'অনুমতি প্রত্যাহার' : 'Revoke Rights'}</span>
-                          </>
-                        ) : (
-                          <>
-                            <CheckCircle2 className="w-3 h-3" />
-                            <span>{lang === 'bn' ? 'অনুমতি প্রদান করুন' : 'Grant Rights'}</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            )}
 
             {/* Nationwide Campaigns List */}
             <div className="bg-white rounded-3xl p-6 sm:p-8 card-shadow border border-gray-100 space-y-6">
@@ -2074,13 +2092,15 @@ export default function AdminDashboardPage() {
                     {lang === 'bn' ? 'সমগ্র বাংলাদেশে চলমান ও আসন্ন অনুমোদিত কর্মসূচি তালিকা' : 'Nationwide ongoing and upcoming approved donation drives'}
                   </p>
                 </div>
-                <button
-                  onClick={() => setIsCreateCampaignModalOpen(true)}
-                  className="px-4 py-2 rounded-xl bg-brand-burgundy text-white text-xs font-bold shadow-md hover:bg-[#400B13] flex items-center space-x-1.5 self-start sm:self-auto"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>{lang === 'bn' ? 'নতুন কর্মসূচি যোগ করুন' : 'Add Campaign'}</span>
-                </button>
+                {canCreateAccounts && (
+                  <button
+                    onClick={() => setIsCreateCampaignModalOpen(true)}
+                    className="px-4 py-2 rounded-xl bg-brand-burgundy text-white text-xs font-bold shadow-md hover:bg-[#400B13] flex items-center space-x-1.5 self-start sm:self-auto"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>{lang === 'bn' ? 'নতুন কর্মসূচি যোগ করুন' : 'Add Campaign'}</span>
+                  </button>
+                )}
               </div>
 
               <div className="divide-y divide-gray-100">
@@ -2135,13 +2155,15 @@ export default function AdminDashboardPage() {
                       </div>
 
                       {/* Remove Button */}
-                      <button
-                        onClick={() => handleAdminDeleteCampaign(camp.id, camp.title_en)}
-                        className="p-2 rounded-xl text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                        title="Delete Campaign"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {canCreateAccounts && (
+                        <button
+                          onClick={() => handleAdminDeleteCampaign(camp.id, camp.title_en)}
+                          className="p-2 rounded-xl text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                          title="Delete Campaign"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -2174,13 +2196,15 @@ export default function AdminDashboardPage() {
                   </p>
                 </div>
 
-                <button
-                  onClick={() => setIsCreateNotifModalOpen(true)}
-                  className="px-5 py-3 rounded-2xl bg-white text-brand-burgundy hover:bg-gray-100 font-black text-xs sm:text-sm shadow-xl flex items-center justify-center space-x-2 transition-all transform hover:scale-[1.02] shrink-0"
-                >
-                  <Plus className="w-4 h-4 stroke-[3]" />
-                  <span>{lang === 'bn' ? '+ নতুন বিজ্ঞপ্তি সম্প্রচার করুন' : '+ Dispatch New Alert / Notification'}</span>
-                </button>
+                {canCreateAccounts && (
+                  <button
+                    onClick={() => setIsCreateNotifModalOpen(true)}
+                    className="px-5 py-3 rounded-2xl bg-white text-brand-burgundy hover:bg-gray-100 font-black text-xs sm:text-sm shadow-xl flex items-center justify-center space-x-2 transition-all transform hover:scale-[1.02] shrink-0"
+                  >
+                    <Plus className="w-4 h-4 stroke-[3]" />
+                    <span>{lang === 'bn' ? '+ নতুন বিজ্ঞপ্তি সম্প্রচার করুন' : '+ Dispatch New Alert / Notification'}</span>
+                  </button>
+                )}
               </div>
 
               {/* Background ambient pattern */}
@@ -2366,20 +2390,22 @@ export default function AdminDashboardPage() {
                       </div>
 
                       {/* Action buttons */}
-                      <div className="flex items-center space-x-2 shrink-0 self-end md:self-center">
-                        <button
-                          onClick={() => {
-                            const updated = deleteNotification(item.id);
-                            setNotificationsList(updated);
-                            setToastMessage(lang === 'bn' ? 'বিজ্ঞপ্তি অপসারণ করা হয়েছে।' : 'Notification deleted.');
-                            setTimeout(() => setToastMessage(null), 3000);
-                          }}
-                          className="p-2 rounded-xl text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                          title={lang === 'bn' ? 'বিজ্ঞপ্তি মুছুন' : 'Delete Notification'}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+                      {canCreateAccounts && (
+                        <div className="flex items-center space-x-2 shrink-0 self-end md:self-center">
+                          <button
+                            onClick={() => {
+                              const updated = deleteNotification(item.id);
+                              setNotificationsList(updated);
+                              setToastMessage(lang === 'bn' ? 'বিজ্ঞপ্তি অপসারণ করা হয়েছে।' : 'Notification deleted.');
+                              setTimeout(() => setToastMessage(null), 3000);
+                            }}
+                            className="p-2 rounded-xl text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                            title={lang === 'bn' ? 'বিজ্ঞপ্তি মুছুন' : 'Delete Notification'}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -3115,32 +3141,36 @@ export default function AdminDashboardPage() {
       )}
 
       {/* =========================================================================
-          MODAL 4: SUPER ADMIN CREATE CAMPAIGN MODAL
+          MODAL 4: SUPER ADMIN / CO-ADMIN CREATE CAMPAIGN MODAL
          ========================================================================= */}
-      <CreateCampaignModal
-        isOpen={isCreateCampaignModalOpen}
-        onClose={() => setIsCreateCampaignModalOpen(false)}
-        onCreated={handleAdminCreateCampaign}
-        approverName="Md. Rahman Hossain (LA0010001)"
-        approverRole="Super Administrator"
-      />
+      {canCreateAccounts && (
+        <CreateCampaignModal
+          isOpen={isCreateCampaignModalOpen}
+          onClose={() => setIsCreateCampaignModalOpen(false)}
+          onCreated={handleAdminCreateCampaign}
+          approverName={session?.name || (isSuperAdmin ? 'Md. Rahman Hossain (LA0010001)' : 'Co-Administrator')}
+          approverRole={isSuperAdmin ? 'Super Administrator' : 'Co-Administrator (Delegated)'}
+        />
+      )}
 
       {/* =========================================================================
-          MODAL 5: DISPATCH NOTIFICATION & ALERT MODAL (ADMIN ONLY)
+          MODAL 5: DISPATCH NOTIFICATION & ALERT MODAL (SUPER ADMIN & CO-ADMIN ONLY)
          ========================================================================= */}
-      <CreateNotificationModal
-        isOpen={isCreateNotifModalOpen}
-        onClose={() => setIsCreateNotifModalOpen(false)}
-        onDispatched={() => {
-          setNotificationsList(getStoredNotifications());
-          setToastMessage(lang === 'bn' 
-            ? 'বিজ্ঞপ্তি সফলভাবে সমগ্র নেটওয়ার্কে সম্প্রচারিত হয়েছে!' 
-            : 'Alert successfully broadcasted across the nationwide network!');
-          setTimeout(() => setToastMessage(null), 3000);
-        }}
-        adminName="Md. Rahman Hossain (LA0010001)"
-        adminRole="Super Administrator"
-      />
+      {canCreateAccounts && (
+        <CreateNotificationModal
+          isOpen={isCreateNotifModalOpen}
+          onClose={() => setIsCreateNotifModalOpen(false)}
+          onDispatched={() => {
+            setNotificationsList(getStoredNotifications());
+            setToastMessage(lang === 'bn' 
+              ? 'বিজ্ঞপ্তি সফলভাবে সমগ্র নেটওয়ার্কে সম্প্রচারিত হয়েছে!' 
+              : 'Alert successfully broadcasted across the nationwide network!');
+            setTimeout(() => setToastMessage(null), 3000);
+          }}
+          adminName={session?.name || (isSuperAdmin ? 'Md. Rahman Hossain (LA0010001)' : 'Co-Administrator')}
+          adminRole={isSuperAdmin ? 'Super Administrator' : 'Co-Administrator (Delegated)'}
+        />
+      )}
 
       </div>
     </AdminAccessGate>
