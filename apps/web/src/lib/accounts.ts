@@ -214,20 +214,59 @@ export function getStoredAccounts(): AccountUser[] {
       }
     });
 
-    // Enforce governance: ONLY super_admin and co_super_admin hold canCreateAccounts clearance
+    // Enforce strict account role exclusivity and governance boundaries:
+    // 1. Root Super Admin: holds highest authority and exclusive right to delegate Co-Admins.
+    // 2. Co-Admin: delegated clearance to create standard accounts, but cannot delegate co-admins.
+    // 3. Regional Admins (Hospital, District, Division, Upazila): strictly regional authority, NO account creation, NO co-admin delegation.
+    // 4. Donors: standard donor privileges only.
     parsed.forEach((acc: any) => {
       const isSuper = acc.role === 'super_admin' || acc.id === 'superadmin';
-      const isCo = acc.role === 'co_super_admin' || acc.id === 'coadmin' || acc.authorityLevel === 'co_admin';
-      const shouldHaveCreatePermission = isSuper || isCo;
-      if (acc.canCreateAccounts !== shouldHaveCreatePermission) {
-        acc.canCreateAccounts = shouldHaveCreatePermission;
-        modified = true;
-      }
-      if (acc.delegatedPermissions && !shouldHaveCreatePermission) {
-        if (acc.delegatedPermissions.canCreateDonors || acc.delegatedPermissions.canBroadcastAlerts || acc.delegatedPermissions.canApproveCampaigns) {
-          acc.delegatedPermissions.canCreateDonors = false;
-          acc.delegatedPermissions.canBroadcastAlerts = false;
-          acc.delegatedPermissions.canApproveCampaigns = false;
+      const isCo = !isSuper && (acc.role === 'co_super_admin' || acc.id === 'coadmin');
+      const isRegional = !isSuper && !isCo && (
+        acc.role === 'hospital_admin' || 
+        acc.role === 'district_admin' || 
+        acc.role === 'division_admin' || 
+        acc.role === 'upazila_admin'
+      );
+
+      if (isSuper) {
+        if (acc.authorityLevel !== 'highest' || !acc.isSuperAdmin || !acc.canCreateAccounts || !acc.canDelegateAuthority) {
+          acc.authorityLevel = 'highest';
+          acc.isSuperAdmin = true;
+          acc.canCreateAccounts = true;
+          acc.canDelegateAuthority = true;
+          modified = true;
+        }
+      } else if (isCo) {
+        if (acc.authorityLevel !== 'co_admin' || acc.isSuperAdmin || !acc.canCreateAccounts || acc.canDelegateAuthority) {
+          acc.authorityLevel = 'co_admin';
+          acc.isSuperAdmin = false;
+          acc.canCreateAccounts = true;
+          acc.canDelegateAuthority = false;
+          modified = true;
+        }
+      } else if (isRegional) {
+        if (acc.authorityLevel !== 'regional' || acc.isSuperAdmin || acc.canCreateAccounts || acc.canDelegateAuthority) {
+          acc.authorityLevel = 'regional';
+          acc.isSuperAdmin = false;
+          acc.canCreateAccounts = false;
+          acc.canDelegateAuthority = false;
+          if (acc.delegatedPermissions) {
+            acc.delegatedPermissions.canCreateDonors = false;
+            acc.delegatedPermissions.canCreateCoAdmins = false;
+            acc.delegatedPermissions.canBroadcastAlerts = false;
+            acc.delegatedPermissions.canApproveCampaigns = false;
+          }
+          modified = true;
+        }
+      } else {
+        // Standard Donor Profile
+        if (acc.role !== 'donor' || acc.authorityLevel !== 'standard' || acc.isSuperAdmin || acc.canCreateAccounts || acc.canDelegateAuthority) {
+          acc.role = 'donor';
+          acc.authorityLevel = 'standard';
+          acc.isSuperAdmin = false;
+          acc.canCreateAccounts = false;
+          acc.canDelegateAuthority = false;
           modified = true;
         }
       }

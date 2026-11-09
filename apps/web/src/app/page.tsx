@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/components/LanguageContext';
+import { getCurrentSession, isAuthenticatedSession, isAuthorizedAdmin, UserSession } from '@/lib/session';
 import { 
   BANGLADESH_DIVISIONS, 
   SAMPLE_BLOOD_REQUESTS 
@@ -32,6 +33,21 @@ import {
 export default function HomePage() {
   const { t, lang } = useLanguage();
   const router = useRouter();
+
+  const [session, setSession] = useState<UserSession | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    setSession(getCurrentSession());
+
+    const handleSessionChange = () => setSession(getCurrentSession());
+    window.addEventListener('lalbindu_session_changed', handleSessionChange);
+    return () => window.removeEventListener('lalbindu_session_changed', handleSessionChange);
+  }, []);
+
+  const isLoggedIn = mounted ? isAuthenticatedSession(session) : false;
+  const isAdmin = mounted ? isAuthorizedAdmin(session) : false;
 
   const [selectedBloodGroup, setSelectedBloodGroup] = useState('O+');
   const [selectedDivision, setSelectedDivision] = useState('div-dha');
@@ -344,28 +360,105 @@ export default function HomePage() {
                 </div>
                 <h3 className="text-lg font-bold text-gray-900">{t.quickCards.idCardTitle}</h3>
               </div>
-              <p className="text-xs text-gray-500 mb-3">{t.quickCards.idCardDesc}</p>
+              <p className="text-xs text-gray-500 mb-3">
+                {isLoggedIn 
+                  ? t.quickCards.idCardDesc 
+                  : (lang === 'bn' 
+                      ? 'ক্রিপ্টোগ্রাফিক কিউআর ভেরিফিকেশন সহ অফিসিয়াল পরিচয়পত্র।' 
+                      : 'Cryptographic QR-verified digital credentials for registered blood donors.')}
+              </p>
 
-              {/* Mini ID Card Preview */}
-              <div className="bg-gradient-to-r from-red-50 to-rose-50 p-3 rounded-2xl border border-brand-red/20 shadow-sm flex items-center justify-between">
-                <div>
-                  <div className="text-[10px] font-extrabold text-brand-red uppercase tracking-wider">{t.quickCards.donorIdMini}</div>
-                  <div className="text-xs font-bold text-gray-900 mt-0.5">Ahmed Rahman</div>
-                  <div className="text-[11px] font-bold text-brand-green">O+ • LB-0004278</div>
+              {/* Dynamic Mini ID Card Preview: Exclusive to Authenticated Session */}
+              {isLoggedIn ? (
+                isAdmin ? (
+                  <div className="bg-gradient-to-r from-amber-50 to-orange-50 p-3 rounded-2xl border border-amber-300 shadow-sm flex items-center justify-between">
+                    <div>
+                      <div className="text-[10px] font-extrabold text-amber-800 uppercase tracking-wider">
+                        {lang === 'bn' ? 'অফিসিয়াল প্রশাসনিক আইডি' : 'OFFICIAL ADMINISTRATIVE ID'}
+                      </div>
+                      <div className="text-xs font-black text-gray-900 mt-0.5">{session?.name}</div>
+                      <div className="text-[11px] font-bold text-brand-burgundy font-mono">
+                        {session?.adminId || session?.id} • {session?.roleLabelEn || 'Official'}
+                      </div>
+                    </div>
+                    <div className="w-11 h-11 bg-white p-1 rounded-lg border border-amber-200 flex items-center justify-center shadow-sm">
+                      <ShieldCheck className="w-7 h-7 text-brand-burgundy" />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-gradient-to-r from-red-50 to-rose-50 p-3 rounded-2xl border border-brand-red/20 shadow-sm flex items-center justify-between">
+                    <div>
+                      <div className="text-[10px] font-extrabold text-brand-red uppercase tracking-wider">
+                        {t.quickCards.donorIdMini}
+                      </div>
+                      <div className="text-xs font-black text-gray-900 mt-0.5">{session?.name}</div>
+                      <div className="text-[11px] font-bold text-brand-green font-mono">
+                        {session?.bloodGroup || 'O+'} • {session?.donorId || 'LB-Verified'}
+                      </div>
+                    </div>
+                    <div className="w-11 h-11 bg-white p-1 rounded-lg border border-gray-200 flex items-center justify-center shadow-sm">
+                      <QrCode className="w-7 h-7 text-gray-800" />
+                    </div>
+                  </div>
+                )
+              ) : (
+                <div className="bg-gradient-to-r from-gray-50 to-slate-50 p-3 rounded-2xl border border-dashed border-gray-300 shadow-xs flex items-center justify-between">
+                  <div>
+                    <div className="text-[10px] font-extrabold text-gray-500 uppercase tracking-wider">
+                      {lang === 'bn' ? 'নমুনা ডিজিটাল পরিচয়পত্র' : 'DIGITAL ID PREVIEW'}
+                    </div>
+                    <div className="text-xs font-bold text-gray-700 mt-0.5">
+                      {lang === 'bn' ? '[আইডি দেখতে সাইন ইন করুন]' : '[Sign in to view identity]'}
+                    </div>
+                    <div className="text-[11px] font-mono font-medium text-gray-500">
+                      ID: LB-•••••••• • QR Active
+                    </div>
+                  </div>
+                  <div className="w-11 h-11 bg-white p-1 rounded-lg border border-gray-200 flex items-center justify-center shadow-xs text-gray-400">
+                    <QrCode className="w-7 h-7 opacity-30" />
+                  </div>
                 </div>
-                <div className="w-11 h-11 bg-white p-1 rounded-lg border border-gray-200 flex items-center justify-center shadow-sm">
-                  <QrCode className="w-8 h-8 text-gray-800" />
-                </div>
-              </div>
+              )}
             </div>
 
-            <Link
-              href="/dashboard/donor#id-card"
-              className="w-full mt-4 py-2.5 px-4 rounded-xl bg-brand-red hover:bg-brand-crimson text-white font-bold text-xs shadow-md transition-all flex items-center justify-center space-x-1.5"
-            >
-              <span>{t.quickCards.viewIdCardBtn}</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
+            {isLoggedIn ? (
+              isAdmin ? (
+                <Link
+                  href="/dashboard/admin"
+                  className="w-full mt-4 py-2.5 px-4 rounded-xl bg-brand-burgundy hover:bg-[#400B13] text-white font-bold text-xs shadow-md transition-all flex items-center justify-center space-x-1.5"
+                >
+                  <span>{lang === 'bn' ? 'প্রশাসনিক পোর্টাল প্রবেশ' : 'Access Admin Portal'}</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              ) : (
+                <Link
+                  href="/dashboard/id-card"
+                  className="w-full mt-4 py-2.5 px-4 rounded-xl bg-brand-red hover:bg-brand-crimson text-white font-bold text-xs shadow-md transition-all flex items-center justify-center space-x-1.5"
+                >
+                  <span>{t.quickCards.viewIdCardBtn}</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              )
+            ) : (
+              <div className="mt-4 space-y-2">
+                <Link
+                  href="/auth/login"
+                  className="w-full py-2.5 px-4 rounded-xl bg-brand-burgundy hover:bg-[#400B13] text-white font-bold text-xs shadow-md transition-all flex items-center justify-center space-x-1.5"
+                >
+                  <span>{lang === 'bn' ? 'আইডি কার্ড দেখতে সাইন ইন করুন' : 'Sign In to View ID Card'}</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+                <div className="text-center">
+                  <Link
+                    href="/auth/register"
+                    className="text-[11px] font-bold text-brand-red hover:underline inline-flex items-center space-x-1"
+                  >
+                    <span>{lang === 'bn' ? 'নতুন রক্তদাতা অ্যাকাউন্ট তৈরি করুন' : 'Create a Donor Account'}</span>
+                    <ArrowRight className="w-3 h-3 ml-0.5" />
+                  </Link>
+                </div>
+              </div>
+            )}
           </div>
 
         </div>

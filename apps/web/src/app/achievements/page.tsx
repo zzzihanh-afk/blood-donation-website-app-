@@ -109,7 +109,7 @@ export default function AchievementsPage() {
       if (activeRaw) {
         const parsed = JSON.parse(activeRaw);
         if (parsed && (parsed.full_name || parsed.name)) {
-          const uId = parsed.donor_id_number || parsed.cardId || 'LB-0004278';
+          const uId = parsed.donor_id_number || parsed.cardId || '';
           const count = typeof parsed.verified_donation_count === 'number' 
             ? parsed.verified_donation_count 
             : (uId === 'LB-0004278' ? 5 : 0);
@@ -117,7 +117,7 @@ export default function AchievementsPage() {
           setDonorInfo({
             fullName: parsed.full_name || parsed.name || 'Voluntary Donor',
             fullNameBn: parsed.fullNameBn || parsed.nameBn || parsed.full_name || parsed.name || 'স্বেচ্ছাসেবী রক্তদাতা',
-            donorId: uId,
+            donorId: uId || 'LB-Verified',
             bloodGroup: parsed.blood_group || parsed.bloodGroup || 'O+',
             district: parsed.district_name_en || parsed.district || 'Dhaka',
             districtBn: parsed.district_name_en || parsed.district || 'ঢাকা',
@@ -129,7 +129,7 @@ export default function AchievementsPage() {
 
       const session = getCurrentSession();
       if (session && session.role === 'donor') {
-        const uId = session.donorId || (session as any).cardId || 'LB-0004278';
+        const uId = session.donorId || (session as any).cardId || '';
         const count = typeof (session as any).verified_donation_count === 'number'
           ? (session as any).verified_donation_count
           : (uId === 'LB-0004278' ? 5 : 0);
@@ -137,27 +137,37 @@ export default function AchievementsPage() {
         setDonorInfo({
           fullName: session.name || 'Voluntary Donor',
           fullNameBn: session.name || 'স্বেচ্ছাসেবী রক্তদাতা',
-          donorId: uId,
+          donorId: uId || 'LB-Verified',
           bloodGroup: session.bloodGroup || 'O+',
-          district: 'Dhaka',
-          districtBn: 'ঢাকা',
+          district: session.district || 'Dhaka',
+          districtBn: session.district || 'ঢাকা',
           verifiedDonations: count
         });
         return;
       }
 
-      if (session && session.role === 'public') {
+      if (session && session.role !== 'public' && session.id !== 'usr-guest') {
         setDonorInfo({
-          fullName: 'Guest Donor',
-          fullNameBn: 'অতিথি রক্তদাতা',
-          donorId: 'GUEST',
-          bloodGroup: 'O+',
-          district: 'Dhaka',
-          districtBn: 'ঢাকা',
+          fullName: session.name,
+          fullNameBn: session.name,
+          donorId: session.adminId || session.id,
+          bloodGroup: session.bloodGroup || 'O+',
+          district: session.district || 'Dhaka',
+          districtBn: session.district || 'ঢাকা',
           verifiedDonations: 0
         });
         return;
       }
+
+      setDonorInfo({
+        fullName: 'Public Visitor',
+        fullNameBn: 'সাধারণ পরিদর্শক',
+        donorId: 'GUEST',
+        bloodGroup: 'O+',
+        district: 'Dhaka',
+        districtBn: 'ঢাকা',
+        verifiedDonations: 0
+      });
     } catch (e) {
       console.error(e);
     }

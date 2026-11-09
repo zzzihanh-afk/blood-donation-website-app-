@@ -16,8 +16,11 @@ import {
   evaluateAvailabilityStatus 
 } from '@lalbindu/business-rules';
 import { AvailabilityStatus } from '@lalbindu/shared-types';
-import { getCurrentSession } from '@/lib/session';
+import { getCurrentSession, isAuthenticatedSession, isAuthorizedAdmin, UserSession } from '@/lib/session';
 import { 
+  Lock,
+  KeyRound,
+  UserPlus,
   Droplet, 
   Calendar, 
   ShieldCheck, 
@@ -148,10 +151,15 @@ function getDonorTierInfo(count: number) {
 
 export default function DonorDashboardPage() {
   const { t, lang } = useLanguage();
+  const [session, setSession] = useState<UserSession | null>(null);
+  const [mounted, setMounted] = useState(false);
   const [donor, setDonor] = useState({
     ...SAMPLE_DONORS[0],
-    fullNameBn: 'আহমেদ রহমান',
-    avatar_url: ''
+    full_name: '',
+    fullNameBn: '',
+    donor_id_number: '',
+    avatar_url: '',
+    verified_donation_count: 0
   });
   const [originUrl, setOriginUrl] = useState('');
   const [availabilityStatus, setAvailabilityStatus] = useState<AvailabilityStatus>('available');
@@ -289,12 +297,15 @@ export default function DonorDashboardPage() {
 
   // Hydrate custom donor profile from registration / login session
   const loadDonorProfile = () => {
+    const curSession = getCurrentSession();
+    setSession(curSession);
+
     try {
       const activeRaw = localStorage.getItem('lalbindu_active_donor_profile');
       if (activeRaw) {
         const parsed = JSON.parse(activeRaw);
         if (parsed && (parsed.full_name || parsed.name)) {
-          const donorIdNum = parsed.donor_id_number || parsed.cardId || 'LB-0004278';
+          const donorIdNum = parsed.donor_id_number || parsed.cardId || curSession.donorId || '';
           const verifiedCount = typeof parsed.verified_donation_count === 'number' 
             ? parsed.verified_donation_count 
             : (donorIdNum === 'LB-0004278' ? 5 : 0);
@@ -328,29 +339,28 @@ export default function DonorDashboardPage() {
         }
       }
 
-      const session = getCurrentSession();
-      if (session && session.role === 'donor' && session.name) {
-        const donorIdNum = session.donorId || (session as any).cardId || 'LB-0004278';
-        const verifiedCount = typeof (session as any).verified_donation_count === 'number' 
-          ? (session as any).verified_donation_count 
+      if (curSession && curSession.role === 'donor' && curSession.name) {
+        const donorIdNum = curSession.donorId || (curSession as any).cardId || '';
+        const verifiedCount = typeof (curSession as any).verified_donation_count === 'number' 
+          ? (curSession as any).verified_donation_count 
           : (donorIdNum === 'LB-0004278' ? 5 : 0);
         const lastDate = verifiedCount > 0 
-          ? ((session as any).last_donation_date || (donorIdNum === 'LB-0004278' ? '2026-08-10' : null)) 
+          ? ((curSession as any).last_donation_date || (donorIdNum === 'LB-0004278' ? '2026-08-10' : null)) 
           : null;
 
         setDonor(prev => ({
           ...prev,
-          full_name: session.name,
-          fullNameBn: session.name,
+          full_name: curSession.name,
+          fullNameBn: curSession.name,
           donor_id_number: donorIdNum,
-          blood_group: (session.bloodGroup as any) || prev.blood_group,
+          blood_group: (curSession.bloodGroup as any) || prev.blood_group,
           avatar_url: (() => {
-          let sAvatar = session.avatarUrl || '';
-          if (donorIdNum !== 'LB-0004278' && sAvatar && (sAvatar.includes('photo-1507003211169') || sAvatar.includes('photo-1535713875002'))) {
-            return '';
-          }
-          return sAvatar;
-        })(),
+            let sAvatar = curSession.avatarUrl || '';
+            if (donorIdNum !== 'LB-0004278' && sAvatar && (sAvatar.includes('photo-1507003211169') || sAvatar.includes('photo-1535713875002'))) {
+              return '';
+            }
+            return sAvatar;
+          })(),
           verified_donation_count: verifiedCount,
           last_donation_date: lastDate
         }));
@@ -379,6 +389,8 @@ export default function DonorDashboardPage() {
   };
 
   useEffect(() => {
+    setMounted(true);
+    setSession(getCurrentSession());
     if (typeof window !== 'undefined') {
       setOriginUrl(window.location.origin);
     }
@@ -440,12 +452,10 @@ export default function DonorDashboardPage() {
         allReqs = INITIAL_DONOR_CONTACT_REQUESTS;
       }
 
-      // Filter: only show requests designated for this donor ID
+      // Filter: strictly show requests designated for this donor ID (never leak across accounts)
       const filtered = allReqs.filter(r => {
-        if (!r.donorIdNumber) return false;
-        if (currentDonorId && r.donorIdNumber.toLowerCase() === currentDonorId.toLowerCase()) return true;
-        if ((!currentDonorId || currentDonorId === 'LB-0004278') && r.donorIdNumber === 'LB-0004278') return true;
-        return false;
+        if (!r.donorIdNumber || !currentDonorId) return false;
+        return r.donorIdNumber.toLowerCase() === currentDonorId.toLowerCase();
       });
 
       setIncomingRequests(filtered);
@@ -569,10 +579,73 @@ export default function DonorDashboardPage() {
     return t.donorDashboard.pausedStatus;
   };
 
+  if (mounted && (!session || !isAuthenticatedSession(session))) {
+    return (
+      <div className="min-h-[80vh] bg-[#FFF8F8] py-16 px-4 flex items-center justify-center">
+        <div className="max-w-md w-full bg-white rounded-3xl p-8 card-shadow border border-red-100 text-center space-y-6">
+          <div className="w-16 h-16 rounded-2xl bg-red-50 text-brand-red border border-red-200 flex items-center justify-center mx-auto shadow-inner">
+            <Lock className="w-8 h-8 text-brand-red" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-black text-gray-900">
+              {lang === 'bn' ? 'রক্তদাতার ড্যাশবোর্ডে প্রবেশ সংরক্ষিত' : 'Donor Authentication Required'}
+            </h2>
+            <p className="text-xs text-gray-500 mt-2 leading-relaxed">
+              {lang === 'bn'
+                ? 'আপনার রক্তদানের ইতিহাস, স্বাস্থ্যগত প্রস্তুতি ও জরুরি যোগাযোগের আবেদন দেখতে অনুগ্রহ করে রক্তদাতা অ্যাকাউন্টে সাইন-ইন করুন।'
+                : 'Please sign in to your voluntary blood donor account to view your personal donation history, eligibility, and incoming patient contact requests.'}
+            </p>
+          </div>
+          <div className="space-y-3 pt-2">
+            <Link
+              href="/auth/login"
+              className="w-full py-3 px-4 rounded-xl bg-brand-burgundy hover:bg-[#400B13] text-white font-bold text-xs shadow-md transition-all flex items-center justify-center space-x-2"
+            >
+              <KeyRound className="w-4 h-4" />
+              <span>{lang === 'bn' ? 'রক্তদাতা অ্যাকাউন্টে সাইন-ইন করুন' : 'Sign In to Donor Account'}</span>
+            </Link>
+            <Link
+              href="/auth/register"
+              className="w-full py-3 px-4 rounded-xl bg-red-50 hover:bg-red-100 text-brand-red font-bold text-xs transition-colors flex items-center justify-center space-x-2"
+            >
+              <UserPlus className="w-4 h-4" />
+              <span>{lang === 'bn' ? 'নতুন রক্তদাতা নিবন্ধন করুন' : 'Register as Blood Donor'}</span>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-[#FFF8F8] min-h-screen py-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
         
+        {/* Administrative Session Notice Banner (When admin visits donor dashboard) */}
+        {session && isAuthorizedAdmin(session) && (
+          <div className="p-4 rounded-3xl bg-amber-50 border border-amber-300 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-amber-950 shadow-sm animate-in fade-in duration-200">
+            <div className="flex items-center space-x-3">
+              <div className="w-9 h-9 rounded-2xl bg-amber-100 text-brand-burgundy flex items-center justify-center shrink-0 border border-amber-200">
+                <ShieldCheck className="w-5 h-5 text-brand-burgundy" />
+              </div>
+              <div>
+                <p className="font-black text-gray-900">
+                  {lang === 'bn' ? `প্রশাসনিক ক্লিয়ারেন্স: ${session.name}` : `Signed in with Administrative Clearance: ${session.name}`}
+                </p>
+                <p className="text-[11px] text-amber-900 font-medium">
+                  {session.roleLabelEn} • ID: {session.adminId || session.id}
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/dashboard/admin"
+              className="px-4 py-2 bg-brand-burgundy hover:bg-[#400B13] text-white rounded-xl text-xs font-bold transition-all shadow-xs shrink-0 text-center"
+            >
+              {lang === 'bn' ? 'অ্যাডমিন পোর্টালে ফিরে যান' : 'Return to Admin Portal'}
+            </Link>
+          </div>
+        )}
+
         {/* Toast Alert Banner */}
         {toastMessage && (
           <div className="p-4 bg-emerald-50 text-emerald-800 rounded-2xl border border-emerald-200 text-xs font-bold flex items-center space-x-2 animate-fade-in shadow-sm">

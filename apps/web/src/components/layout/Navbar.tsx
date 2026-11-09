@@ -451,14 +451,18 @@ export const Navbar: React.FC = () => {
                         {isAdmin 
                           ? (session.role === 'super_admin' || session.id === 'superadmin' || session.authorityLevel === 'highest'
                               ? (lang === 'bn' ? `জাতীয় সুপার অ্যাডমিন আইডি: ${session.adminId || 'superadmin'}` : `National Super Admin ID: ${session.adminId || 'superadmin'}`)
+                              : session.role === 'co_super_admin' || session.id === 'coadmin' || session.authorityLevel === 'co_admin'
+                              ? (lang === 'bn' ? `কো-অ্যাডমিন আইডি: ${session.adminId || 'coadmin'}` : `Co-Admin ID: ${session.adminId || 'coadmin'}`)
                               : session.role === 'district_admin'
                               ? (lang === 'bn' ? `জেলা প্রশাসক আইডি: ${session.adminId || session.id}` : `District Admin ID: ${session.adminId || session.id}`)
                               : session.role === 'division_admin'
                               ? (lang === 'bn' ? `বিভাগীয় প্রশাসক আইডি: ${session.adminId || session.id}` : `Division Admin ID: ${session.adminId || session.id}`)
+                              : session.role === 'hospital_admin'
+                              ? (lang === 'bn' ? `হাসপাতাল প্রশাসক আইডি: ${session.adminId || session.id}` : `Hospital Admin ID: ${session.adminId || session.id}`)
                               : session.role === 'upazila_admin'
                               ? (lang === 'bn' ? `উপজেলা প্রশাসক আইডি: ${session.adminId || session.id}` : `Upazila Admin ID: ${session.adminId || session.id}`)
-                              : (lang === 'bn' ? `কো-অ্যাডমিন আইডি: ${session.adminId || 'coadmin'}` : `Co-Admin ID: ${session.adminId || 'coadmin'}`))
-                          : (lang === 'bn' ? `যাচাইকৃত দাতা আইডি: ${session.donorId}` : `Verified Donor ID: ${session.donorId}`)}
+                              : (lang === 'bn' ? `প্রশাসনিক আইডি: ${session.adminId || session.id}` : `Official Admin ID: ${session.adminId || session.id}`))
+                          : (lang === 'bn' ? `যাচাইকৃত দাতা আইডি: ${session.donorId || session.id}` : `Verified Donor ID: ${session.donorId || session.id}`)}
                       </p>
                     </div>
 
@@ -473,25 +477,25 @@ export const Navbar: React.FC = () => {
                           {t.nav.adminDashboard}
                         </Link>
 
+                        <Link
+                          href="/dashboard/id-card"
+                          onClick={() => setUserDropdownOpen(false)}
+                          className="flex items-center px-4 py-2 text-xs text-gray-700 hover:bg-brand-light hover:text-brand-burgundy transition-colors"
+                        >
+                          <CreditCard className="w-4 h-4 mr-2.5 text-amber-600" />
+                          {lang === 'bn' ? 'আমার অফিসিয়াল আইডি কার্ড' : 'My Official ID Card'}
+                        </Link>
+
                         {isSuperOrCo && (
                           <Link
                             href="/dashboard/admin/id-cards"
                             onClick={() => setUserDropdownOpen(false)}
                             className="flex items-center px-4 py-2 text-xs text-gray-700 hover:bg-brand-light hover:text-brand-burgundy transition-colors"
                           >
-                            <CreditCard className="w-4 h-4 mr-2.5 text-amber-600" />
+                            <CreditCard className="w-4 h-4 mr-2.5 text-brand-burgundy" />
                             {lang === 'bn' ? 'আইডি কার্ড স্টুডিও' : 'ID Card Template Studio'}
                           </Link>
                         )}
-
-                        <Link
-                          href="/dashboard/donor"
-                          onClick={() => setUserDropdownOpen(false)}
-                          className="flex items-center px-4 py-2 text-xs text-gray-700 hover:bg-brand-light hover:text-brand-red transition-colors"
-                        >
-                          <User className="w-4 h-4 mr-2.5 text-brand-red" />
-                          {t.nav.donorDashboard}
-                        </Link>
 
                         {/* Hierarchy Rule: Super Admin can enter Co-Admin account. Co-Admin CANNOT enter Super Admin. */}
                         {isSuper ? (
@@ -531,20 +535,6 @@ export const Navbar: React.FC = () => {
                             </button>
                           </>
                         ) : null}
-
-                        {/* Switch to Public Donor View Option */}
-                        <div className="border-t border-gray-100 my-1"></div>
-                        <button
-                          onClick={() => {
-                            setCurrentSession('donor');
-                            setUserDropdownOpen(false);
-                            router.push('/');
-                          }}
-                          className="w-full text-left flex items-center px-4 py-2 text-xs text-gray-600 hover:bg-gray-50 transition-colors"
-                        >
-                          <User className="w-4 h-4 mr-2.5 text-gray-400" />
-                          <span>{lang === 'bn' ? 'সাধারণ দাতা মোডে পরিবর্তন' : 'Switch to Public Donor View'}</span>
-                        </button>
                       </>
                     ) : (
                       <>

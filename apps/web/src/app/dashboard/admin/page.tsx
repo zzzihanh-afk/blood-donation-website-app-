@@ -72,6 +72,7 @@ import { CreateNotificationModal } from '@/components/notifications/CreateNotifi
 import { 
   getCurrentSession, 
   isHighestAuthority, 
+  isSuperOrCoAdmin,
   UserSession 
 } from '@/lib/session';
 import { 
@@ -286,18 +287,33 @@ export default function AdminDashboardPage() {
   };
 
   const isSuperAdmin = isHighestAuthority(session);
-  const isDistrictAdmin = session?.role === 'district_admin';
-  const isDivisionAdmin = session?.role === 'division_admin';
-  const isUpazilaAdmin = session?.role === 'upazila_admin';
-  const isHospitalAdmin = session?.role === 'hospital_admin';
-  const isCoSuperAdmin = session?.role === 'co_super_admin' || session?.authorityLevel === 'co_admin' || session?.id === 'coadmin';
+  const isCoSuperAdmin = !isSuperAdmin && isSuperOrCoAdmin(session);
+  const isDistrictAdmin = !isSuperAdmin && !isCoSuperAdmin && session?.role === 'district_admin';
+  const isDivisionAdmin = !isSuperAdmin && !isCoSuperAdmin && session?.role === 'division_admin';
+  const isUpazilaAdmin = !isSuperAdmin && !isCoSuperAdmin && session?.role === 'upazila_admin';
+  const isHospitalAdmin = !isSuperAdmin && !isCoSuperAdmin && session?.role === 'hospital_admin';
   const canCreateAccounts = isSuperAdmin || isCoSuperAdmin;
 
   useEffect(() => {
     setCampaigns(getStoredCampaigns());
     setDelegations(getCampaignDelegations());
     setNotificationsList(getStoredNotifications());
-    setSession(getCurrentSession());
+    
+    const curSession = getCurrentSession();
+    setSession(curSession);
+    if (curSession.role === 'division_admin') {
+      setSelectedJurisdiction('division');
+      if (curSession.division) setSelectedDivision(curSession.division.toLowerCase());
+    } else if (curSession.role === 'district_admin' || curSession.role === 'hospital_admin') {
+      setSelectedJurisdiction('district');
+      if (curSession.division) setSelectedDivision(curSession.division.toLowerCase());
+      if (curSession.district) setSelectedDistrict(curSession.district.toLowerCase());
+    } else if (curSession.role === 'upazila_admin') {
+      setSelectedJurisdiction('upazila');
+      if (curSession.division) setSelectedDivision(curSession.division.toLowerCase());
+      if (curSession.district) setSelectedDistrict(curSession.district.toLowerCase());
+    }
+
     setAccountsList(getStoredAccounts());
     setPendingApps(getPendingApplications());
     setVerificationsList(getStoredVerifications());
@@ -306,7 +322,22 @@ export default function AdminDashboardPage() {
     const handleNotifsUpdate = () => {
       setNotificationsList(getStoredNotifications());
     };
-    const handleSessionChange = () => setSession(getCurrentSession());
+    const handleSessionChange = () => {
+      const s = getCurrentSession();
+      setSession(s);
+      if (s.role === 'division_admin') {
+        setSelectedJurisdiction('division');
+        if (s.division) setSelectedDivision(s.division.toLowerCase());
+      } else if (s.role === 'district_admin' || s.role === 'hospital_admin') {
+        setSelectedJurisdiction('district');
+        if (s.division) setSelectedDivision(s.division.toLowerCase());
+        if (s.district) setSelectedDistrict(s.district.toLowerCase());
+      } else if (s.role === 'upazila_admin') {
+        setSelectedJurisdiction('upazila');
+        if (s.division) setSelectedDivision(s.division.toLowerCase());
+        if (s.district) setSelectedDistrict(s.district.toLowerCase());
+      }
+    };
     const handleAccountsUpdate = () => setAccountsList(getStoredAccounts());
     const handleAppsUpdate = () => setPendingApps(getPendingApplications());
     const handleVerifsUpdate = () => setVerificationsList(getStoredVerifications());
@@ -372,6 +403,27 @@ export default function AdminDashboardPage() {
   // Clinical donation verification state with localStorage persistence
   const [verificationsList, setVerificationsList] = useState<DonationVerification[]>(() => getStoredVerifications());
   const [verificationSubTab, setVerificationSubTab] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending');
+
+  const availableTabs = [
+    { id: 'overview', label: t.adminDashboard.tabOverview },
+    { id: 'verifications', label: `${t.adminDashboard.tabVerifications} (${verificationsList.filter(v => v.status === 'pending').length})` },
+    ...((isSuperAdmin || isCoSuperAdmin) ? [
+      { id: 'admins', label: t.adminDashboard.tabAdmins }
+    ] : []),
+    ...((isSuperAdmin || isCoSuperAdmin || isDivisionAdmin || isDistrictAdmin) ? [
+      { id: 'campaigns', label: lang === 'bn' ? `রক্তদান কর্মসূচি (${campaigns.length})` : `Campaigns (${campaigns.length})` }
+    ] : []),
+    ...((isSuperAdmin || isCoSuperAdmin) ? [
+      { id: 'notifications', label: lang === 'bn' ? `বিজ্ঞপ্তি ও অ্যালার্ট (${notificationsList.length})` : `Alerts & Broadcasts (${notificationsList.length})` },
+      { id: 'id-cards', label: lang === 'bn' ? 'প্রশাসনিক আইডি কার্ড টেমপ্লেট' : 'Administrative ID Card Templates' }
+    ] : [])
+  ];
+
+  useEffect(() => {
+    if (!availableTabs.some(tab => tab.id === activeTab)) {
+      setActiveTab('overview');
+    }
+  }, [availableTabs, activeTab]);
   const [isRecordDonationModalOpen, setIsRecordDonationModalOpen] = useState(false);
   const [newDirectDonation, setNewDirectDonation] = useState({
     donorName: '',
@@ -970,64 +1022,76 @@ export default function AdminDashboardPage() {
           <div className="flex flex-wrap items-center gap-3">
             <div>
               <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">{t.adminDashboard.governanceLevel}</label>
-              <select
-                value={selectedJurisdiction}
-                onChange={(e) => setSelectedJurisdiction(e.target.value as any)}
-                className="text-xs font-bold px-3 py-2 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-burgundy/20"
-              >
-                <option value="national">{t.adminDashboard.nationalAdmin}</option>
-                <option value="division">{t.adminDashboard.divisionAdmin}</option>
-                <option value="district">{t.adminDashboard.districtCoordinator}</option>
-                <option value="upazila">{t.adminDashboard.upazilaCoordinator}</option>
-              </select>
+              {(isSuperAdmin || isCoSuperAdmin) ? (
+                <select
+                  value={selectedJurisdiction}
+                  onChange={(e) => setSelectedJurisdiction(e.target.value as any)}
+                  className="text-xs font-bold px-3 py-2 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-burgundy/20"
+                >
+                  <option value="national">{t.adminDashboard.nationalAdmin}</option>
+                  <option value="division">{t.adminDashboard.divisionAdmin}</option>
+                  <option value="district">{t.adminDashboard.districtCoordinator}</option>
+                  <option value="upazila">{t.adminDashboard.upazilaCoordinator}</option>
+                </select>
+              ) : (
+                <div className="text-xs font-bold px-3 py-2 rounded-xl border border-gray-200 bg-gray-100 text-gray-800 flex items-center space-x-1.5 shadow-xs">
+                  <ShieldCheck className="w-3.5 h-3.5 text-brand-burgundy shrink-0" />
+                  <span>{session.roleLabelEn || 'Regional Administrator'}</span>
+                </div>
+              )}
             </div>
 
             {selectedJurisdiction !== 'national' && (
               <div>
                 <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">{t.adminDashboard.division}</label>
-                <select
-                  value={selectedDivision}
-                  onChange={(e) => setSelectedDivision(e.target.value)}
-                  className="text-xs font-bold px-3 py-2 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white"
-                >
-                  {BANGLADESH_DIVISIONS.map(d => (
-                    <option key={d.id} value={d.id}>
-                      {lang === 'bn' ? d.name_bn : d.name_en}
-                    </option>
-                  ))}
-                </select>
+                {(isSuperAdmin || isCoSuperAdmin) ? (
+                  <select
+                    value={selectedDivision}
+                    onChange={(e) => setSelectedDivision(e.target.value)}
+                    className="text-xs font-bold px-3 py-2 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white"
+                  >
+                    {BANGLADESH_DIVISIONS.map(d => (
+                      <option key={d.id} value={d.id}>
+                        {lang === 'bn' ? d.name_bn : d.name_en}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="text-xs font-bold px-3 py-2 rounded-xl border border-gray-200 bg-gray-100 text-gray-800">
+                    {session.division || 'Dhaka'}
+                  </div>
+                )}
               </div>
             )}
 
             {(selectedJurisdiction === 'district' || selectedJurisdiction === 'upazila') && (
               <div>
                 <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">{lang === 'bn' ? 'জেলা' : 'District'}</label>
-                <select
-                  value={selectedDistrict}
-                  onChange={(e) => setSelectedDistrict(e.target.value)}
-                  className="text-xs font-bold px-3 py-2 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white"
-                >
-                  {BANGLADESH_KEY_DISTRICTS.map(d => (
-                    <option key={d.id} value={d.id}>
-                      {lang === 'bn' ? d.name_bn : d.name_en}
-                    </option>
-                  ))}
-                </select>
+                {(isSuperAdmin || isCoSuperAdmin || isDivisionAdmin) ? (
+                  <select
+                    value={selectedDistrict}
+                    onChange={(e) => setSelectedDistrict(e.target.value)}
+                    className="text-xs font-bold px-3 py-2 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white"
+                  >
+                    {BANGLADESH_KEY_DISTRICTS.map(d => (
+                      <option key={d.id} value={d.id}>
+                        {lang === 'bn' ? d.name_bn : d.name_en}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="text-xs font-bold px-3 py-2 rounded-xl border border-gray-200 bg-gray-100 text-gray-800">
+                    {session.district || 'Dhaka'}
+                  </div>
+                )}
               </div>
             )}
           </div>
         </div>
 
-        {/* Navigation Tabs */}
+        {/* Navigation Tabs (Strictly Scoped by Role Clearance) */}
         <div className="flex border-b border-gray-200 space-x-8 overflow-x-auto">
-          {[
-            { id: 'overview', label: t.adminDashboard.tabOverview },
-            { id: 'verifications', label: `${t.adminDashboard.tabVerifications} (${verificationsList.filter(v => v.status === 'pending').length})` },
-            { id: 'admins', label: t.adminDashboard.tabAdmins },
-            { id: 'campaigns', label: lang === 'bn' ? `রক্তদান কর্মসূচি (${campaigns.length})` : `Campaigns (${campaigns.length})` },
-            { id: 'notifications', label: lang === 'bn' ? `বিজ্ঞপ্তি ও অ্যালার্ট (${notificationsList.length})` : `Alerts & Broadcasts (${notificationsList.length})` },
-            { id: 'id-cards', label: lang === 'bn' ? 'প্রশাসনিক আইডি কার্ড টেমপ্লেট' : 'Administrative ID Card Templates' }
-          ].map(tab => (
+          {availableTabs.map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
@@ -1420,9 +1484,9 @@ export default function AdminDashboardPage() {
         )}
 
         {/* =========================================================================
-            TAB 3: SUBORDINATE ADMINISTRATOR APPOINTMENTS
+            TAB 3: SUBORDINATE ADMINISTRATOR APPOINTMENTS (SUPER ADMIN & CO-ADMIN EXCLUSIVE)
            ========================================================================= */}
-        {activeTab === 'admins' && (
+        {activeTab === 'admins' && (isSuperAdmin || isCoSuperAdmin) && (
           <div className="bg-white rounded-3xl p-6 sm:p-8 card-shadow border border-gray-100 space-y-6">
             
             {/* If NOT National Super Admin, display Executive Restriction Warning */}
@@ -1827,9 +1891,9 @@ export default function AdminDashboardPage() {
         )}
 
         {/* =========================================================================
-            TAB 4: ADMINISTRATIVE ID CARD TEMPLATES & TEMPLATE DESIGNER STUDIO
+            TAB 4: ADMINISTRATIVE ID CARD TEMPLATES & TEMPLATE DESIGNER STUDIO (SUPER & CO ADMIN ONLY)
            ========================================================================= */}
-        {activeTab === 'id-cards' && (
+        {activeTab === 'id-cards' && (isSuperAdmin || isCoSuperAdmin) && (
           <div className="space-y-6">
             
             {/* Template Studio Launcher Banner */}
@@ -1942,7 +2006,7 @@ export default function AdminDashboardPage() {
         {/* =========================================================================
             TAB 5: NATIONWIDE COMMUNITY BLOOD DONATION CAMPAIGNS
            ========================================================================= */}
-        {activeTab === 'campaigns' && (
+        {activeTab === 'campaigns' && (isSuperAdmin || isCoSuperAdmin || isDivisionAdmin || isDistrictAdmin) && (
           <div className="space-y-8">
             
             {/* Header & Quick Action Banner */}
@@ -2174,9 +2238,9 @@ export default function AdminDashboardPage() {
         )}
 
         {/* =========================================================================
-            TAB 5: NATIONWIDE ALERTS & BROADCAST CONSOLE (ADMIN ONLY)
+            TAB 6: NATIONWIDE ALERTS & BROADCAST CONSOLE (SUPER & CO ADMIN ONLY)
            ========================================================================= */}
-        {activeTab === 'notifications' && (
+        {activeTab === 'notifications' && (isSuperAdmin || isCoSuperAdmin) && (
           <div className="space-y-8 animate-in fade-in duration-200">
             {/* Top Control Bar */}
             <div className="bg-gradient-to-r from-red-900 via-brand-burgundy to-[#400B13] rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden shadow-xl">

@@ -132,12 +132,13 @@ export function getCurrentSession(): UserSession {
         const accounts = JSON.parse(rawAccounts);
         const match = accounts.find((a: any) => a.id === savedRole || a.username === savedRole);
         if (match) {
-          const isSuper = match.role === 'super_admin' || match.id === 'superadmin' || match.isSuperAdmin === true;
-          const isCoSuper = match.role === 'co_super_admin' || match.authorityLevel === 'co_admin' || match.id === 'coadmin';
-          const isDistrict = match.role === 'district_admin';
-          const isDivision = match.role === 'division_admin';
-          const isUpazila = match.role === 'upazila_admin';
-          const isHospital = match.role === 'hospital_admin';
+          const isSuper = match.role === 'super_admin' || match.id === 'superadmin';
+          const isCoSuper = !isSuper && (match.role === 'co_super_admin' || match.id === 'coadmin');
+          const isDistrict = !isSuper && !isCoSuper && match.role === 'district_admin';
+          const isDivision = !isSuper && !isCoSuper && match.role === 'division_admin';
+          const isHospital = !isSuper && !isCoSuper && match.role === 'hospital_admin';
+          const isUpazila = !isSuper && !isCoSuper && match.role === 'upazila_admin';
+          const isDonor = match.role === 'donor' || (!isSuper && !isCoSuper && !isDistrict && !isDivision && !isHospital && !isUpazila);
 
           let roleLabelEn = 'Verified Donor';
           let roleLabelBn = 'যাচাইকৃত রক্তদাতা';
@@ -153,25 +154,23 @@ export function getCurrentSession(): UserSession {
           } else if (isDivision) {
             roleLabelEn = match.division ? `Division Administrator (${match.division})` : 'Division Administrator';
             roleLabelBn = match.division ? `বিভাগীয় প্রশাসক (${match.division})` : 'বিভাগীয় প্রশাসক';
+          } else if (isHospital) {
+            roleLabelEn = match.district ? `Hospital Administrator (${match.district} Hub)` : 'Hospital Administrator';
+            roleLabelBn = match.district ? `হাসপাতাল প্রশাসক (${match.district})` : 'হাসপাতাল প্রশাসক';
           } else if (isUpazila) {
             roleLabelEn = match.upazila ? `Upazila Administrator (${match.upazila})` : 'Upazila Administrator';
             roleLabelBn = match.upazila ? `উপজেলা প্রশাসক (${match.upazila})` : 'উপজেলা প্রশাসক';
-          } else if (isHospital) {
-            roleLabelEn = 'Hospital Administrator';
-            roleLabelBn = 'হাসপাতাল অ্যাডমিনিস্ট্রেটর';
           }
-
-          const isDonor = match.role === 'donor';
 
           return {
             id: match.id,
             name: match.name,
             email: match.email,
-            role: match.role,
+            role: isDonor ? 'donor' : match.role,
             roleLabelEn,
             roleLabelBn,
             adminId: !isDonor ? (match.cardId || match.id) : undefined,
-            donorId: isDonor ? match.cardId : undefined,
+            donorId: isDonor ? (match.cardId || match.donorIdNumber || match.id) : undefined,
             division: match.division,
             district: match.district,
             upazila: match.upazila,
@@ -220,7 +219,8 @@ export function setCurrentSession(roleKey: 'donor' | 'super_admin' | 'superadmin
 /**
  * Check if the active role has administrator privileges.
  */
-export function isAuthorizedAdmin(session: UserSession): boolean {
+export function isAuthorizedAdmin(session?: UserSession | null): boolean {
+  if (!session) return false;
   return session.role === 'super_admin' || 
          session.role === 'co_super_admin' || 
          session.role === 'division_admin' || 
@@ -234,18 +234,20 @@ export function isAuthorizedAdmin(session: UserSession): boolean {
 
 /**
  * Check if the active session holds the HIGHEST authority (Supreme Super Admin).
+ * Strictly requires the session to be super_admin or root superadmin id with isSuperAdmin=true.
  */
 export function isHighestAuthority(session?: UserSession | null): boolean {
   if (!session) return false;
-  return session.role === 'super_admin' || session.id === 'superadmin' || session.authorityLevel === 'highest' || session.isSuperAdmin === true;
+  return (session.role === 'super_admin' || session.id === 'superadmin') && session.isSuperAdmin === true;
 }
 
 /**
  * Check if the active session is Super Admin or Co-Super Admin (Highest Authority or Delegated Co-Admin).
+ * Regional admins (Hospital, District, Division, Upazila) and Donors return false.
  */
 export function isSuperOrCoAdmin(session?: UserSession | null): boolean {
   if (!session) return false;
-  return isHighestAuthority(session) || session.role === 'co_super_admin' || session.authorityLevel === 'co_admin' || session.id === 'coadmin';
+  return isHighestAuthority(session) || session.role === 'co_super_admin' || session.id === 'coadmin';
 }
 
 /**

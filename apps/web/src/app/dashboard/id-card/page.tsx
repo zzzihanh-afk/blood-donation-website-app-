@@ -20,13 +20,18 @@ import {
   Copy,
   Check,
   FileText,
-  AlertCircle
+  AlertCircle,
+  Lock,
+  KeyRound,
+  UserPlus
 } from 'lucide-react';
 
-import { getCurrentSession } from '@/lib/session';
+import { getCurrentSession, isAuthenticatedSession, isAuthorizedAdmin, UserSession } from '@/lib/session';
 
 export default function MyIdCardPage() {
   const { lang } = useLanguage();
+  const [session, setSession] = useState<UserSession | null>(null);
+  const [mounted, setMounted] = useState(false);
   const [viewMode, setViewMode] = useState<'side-by-side' | 'front' | 'back' | 'flip'>('side-by-side');
   const [copiedLink, setCopiedLink] = useState(false);
   const [reissueModalOpen, setReissueModalOpen] = useState(false);
@@ -34,68 +39,116 @@ export default function MyIdCardPage() {
 
   // Authenticated User Digital Identity Credentials
   const [userCardData, setUserCardData] = useState({
-    fullName: 'Ahmed Rahman',
-    fullNameBn: 'আহমেদ রহমান',
+    fullName: '',
+    fullNameBn: '',
     designation: 'Voluntary Blood Donor',
     designationBn: 'স্বেচ্ছাসেবী রক্তদাতা সদস্য',
-    uniqueId: 'LB-0004278',
+    uniqueId: '',
     avatarUrl: '',
-    jurisdictionName: 'Dhaka District, Dhaka Division',
-    jurisdictionNameBn: 'ঢাকা জেলা, ঢাকা বিভাগ',
+    jurisdictionName: 'Bangladesh Nationwide Jurisdiction',
+    jurisdictionNameBn: 'বাংলাদেশ জাতীয় আওতাভুক্ত',
     bloodGroup: 'O+',
-    donationCount: 5,
-    issueDate: '10 Jan 2025',
-    validUntil: '31 Dec 2026',
-    verificationToken: 'LB-TOKEN-DNR-0004278',
+    donationCount: 0,
+    issueDate: '01 Jan 2026',
+    validUntil: '31 Dec 2027',
+    verificationToken: 'LB-TOKEN-UNSPECIFIED',
     status: 'Active',
     roleId: 'donor'
   });
 
   const loadProfile = () => {
+    const curSession = getCurrentSession();
+    setSession(curSession);
+
+    if (!isAuthenticatedSession(curSession)) {
+      return;
+    }
+
     try {
+      // 1. If active user is an Administrator or Official Coordinator
+      if (isAuthorizedAdmin(curSession)) {
+        setUserCardData({
+          fullName: curSession.name,
+          fullNameBn: (curSession as any).nameBn || curSession.name,
+          designation: curSession.roleLabelEn,
+          designationBn: curSession.roleLabelBn,
+          uniqueId: curSession.adminId || curSession.id,
+          avatarUrl: curSession.avatarUrl || '',
+          jurisdictionName: `${curSession.division || curSession.district || 'National'} Jurisdiction`,
+          jurisdictionNameBn: `${curSession.division || curSession.district || 'জাতীয়'} আওতাভুক্ত`,
+          bloodGroup: curSession.bloodGroup || 'O+',
+          donationCount: 0,
+          issueDate: '01 Jan 2026',
+          validUntil: '31 Dec 2027',
+          verificationToken: `LB-TOKEN-ADM-${(curSession.adminId || curSession.id).replace(/[^a-zA-Z0-9]/g, '')}`,
+          status: 'Active',
+          roleId: curSession.role
+        });
+        return;
+      }
+
+      // 2. Active user is a Voluntary Donor
       const activeRaw = localStorage.getItem('lalbindu_active_donor_profile');
       if (activeRaw) {
         const parsed = JSON.parse(activeRaw);
         if (parsed && (parsed.full_name || parsed.name)) {
-          const uId = parsed.donor_id_number || parsed.cardId || 'LB-0004278';
-          setUserCardData(prev => ({
-            ...prev,
+          const uId = parsed.donor_id_number || parsed.cardId || curSession.donorId || 'LB-Verified';
+          const count = typeof parsed.verified_donation_count === 'number' 
+            ? parsed.verified_donation_count 
+            : (typeof parsed.donationCount === 'number' ? parsed.donationCount : (uId === 'LB-0004278' ? 5 : 0));
+
+          setUserCardData({
             fullName: parsed.full_name || parsed.name,
             fullNameBn: parsed.fullNameBn || parsed.nameBn || parsed.full_name || parsed.name,
+            designation: 'Voluntary Blood Donor',
+            designationBn: 'স্বেচ্ছাসেবী রক্তদাতা সদস্য',
             uniqueId: uId,
-            avatarUrl: parsed.avatar_url || parsed.avatarUrl || '',
-            bloodGroup: parsed.blood_group || parsed.bloodGroup || 'O+',
-            donationCount: typeof parsed.verified_donation_count === 'number' 
-              ? parsed.verified_donation_count 
-              : (typeof parsed.donationCount === 'number' ? parsed.donationCount : (uId === 'LB-0004278' ? 5 : 0)),
-            jurisdictionName: `${parsed.district_name_en || parsed.district || 'Dhaka'} District`,
-            jurisdictionNameBn: `${parsed.district_name_en || parsed.district || 'ঢাকা'} জেলা`,
-            verificationToken: `LB-TOKEN-DNR-${uId.replace(/[^a-zA-Z0-9]/g, '')}`
-          }));
+            avatarUrl: parsed.avatar_url || parsed.avatarUrl || curSession.avatarUrl || '',
+            bloodGroup: parsed.blood_group || parsed.bloodGroup || curSession.bloodGroup || 'O+',
+            donationCount: count,
+            jurisdictionName: `${parsed.district_name_en || parsed.district || curSession.district || 'Dhaka'} District`,
+            jurisdictionNameBn: `${parsed.district_name_en || parsed.district || curSession.district || 'ঢাকা'} জেলা`,
+            issueDate: '10 Jan 2026',
+            validUntil: '31 Dec 2027',
+            verificationToken: `LB-TOKEN-DNR-${uId.replace(/[^a-zA-Z0-9]/g, '')}`,
+            status: 'Active',
+            roleId: 'donor'
+          });
           return;
         }
       }
 
-      const session = getCurrentSession();
-      if (session && session.role === 'donor') {
-        const uId = session.donorId || 'LB-0004278';
-        setUserCardData(prev => ({
-          ...prev,
-          fullName: session.name,
-          fullNameBn: session.name,
+      if (curSession.role === 'donor') {
+        const uId = curSession.donorId || 'LB-Verified';
+        const count = typeof (curSession as any).verified_donation_count === 'number' 
+          ? (curSession as any).verified_donation_count 
+          : (uId === 'LB-0004278' ? 5 : 0);
+
+        setUserCardData({
+          fullName: curSession.name,
+          fullNameBn: curSession.name,
+          designation: 'Voluntary Blood Donor',
+          designationBn: 'স্বেচ্ছাসেবী রক্তদাতা সদস্য',
           uniqueId: uId,
-          avatarUrl: session.avatarUrl || '',
-          bloodGroup: session.bloodGroup || 'O+',
-          donationCount: typeof (session as any).verified_donation_count === 'number' 
-            ? (session as any).verified_donation_count 
-            : (uId === 'LB-0004278' ? 5 : 0),
-          verificationToken: `LB-TOKEN-DNR-${uId.replace(/[^a-zA-Z0-9]/g, '')}`
-        }));
+          avatarUrl: curSession.avatarUrl || '',
+          bloodGroup: curSession.bloodGroup || 'O+',
+          donationCount: count,
+          jurisdictionName: `${curSession.district || 'Dhaka'} District`,
+          jurisdictionNameBn: `${curSession.district || 'ঢাকা'} জেলা`,
+          issueDate: '10 Jan 2026',
+          validUntil: '31 Dec 2027',
+          verificationToken: `LB-TOKEN-DNR-${uId.replace(/[^a-zA-Z0-9]/g, '')}`,
+          status: 'Active',
+          roleId: 'donor'
+        });
       }
-    } catch (e) {}
+    } catch (e) {
+      console.warn('Error loading ID card profile:', e);
+    }
   };
 
   useEffect(() => {
+    setMounted(true);
     loadProfile();
     window.addEventListener('lalbindu_session_changed', loadProfile);
     window.addEventListener('lalbindu_verification_updated', loadProfile);
@@ -126,6 +179,44 @@ export default function MyIdCardPage() {
       : 'Card reissuance request successfully submitted to the District Verification Officer.');
     setTimeout(() => setReissueToast(null), 4000);
   };
+
+  if (mounted && (!session || !isAuthenticatedSession(session))) {
+    return (
+      <div className="min-h-[80vh] bg-[#FFF8F8] py-16 px-4 flex items-center justify-center">
+        <div className="max-w-md w-full bg-white rounded-3xl p-8 card-shadow border border-red-100 text-center space-y-6">
+          <div className="w-16 h-16 rounded-2xl bg-red-50 text-brand-red border border-red-200 flex items-center justify-center mx-auto shadow-inner">
+            <Lock className="w-8 h-8 text-brand-red" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-black text-gray-900">
+              {lang === 'bn' ? 'ডিজিটাল আইডি কার্ড দেখতে সাইন-ইন করুন' : 'Sign In to View Digital ID Card'}
+            </h2>
+            <p className="text-xs text-gray-500 mt-2 leading-relaxed">
+              {lang === 'bn' 
+                ? 'আপনার ব্যক্তিগত কিউআর এনক্রিপ্টেড ডিজিটাল পরিচয়পত্র দেখতে অনুগ্রহ করে রক্তদাতা বা প্রশাসনিক অ্যাকাউন্টে সাইন-ইন করুন।' 
+                : 'Please sign in to your blood donor or administrative account to view your cryptographic digital ID card.'}
+            </p>
+          </div>
+          <div className="space-y-3 pt-2">
+            <Link
+              href="/auth/login"
+              className="w-full py-3 px-4 rounded-xl bg-brand-burgundy hover:bg-[#400B13] text-white font-bold text-xs shadow-md transition-all flex items-center justify-center space-x-2"
+            >
+              <KeyRound className="w-4 h-4" />
+              <span>{lang === 'bn' ? 'অ্যাকাউন্টে লগইন করুন' : 'Sign In to Account'}</span>
+            </Link>
+            <Link
+              href="/auth/register"
+              className="w-full py-3 px-4 rounded-xl bg-red-50 hover:bg-red-100 text-brand-red font-bold text-xs transition-colors flex items-center justify-center space-x-2"
+            >
+              <UserPlus className="w-4 h-4" />
+              <span>{lang === 'bn' ? 'রক্তদাতা হিসেবে নিবন্ধন করুন' : 'Register as Blood Donor'}</span>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-[#FFF8F8] min-h-screen py-8 sm:py-12">

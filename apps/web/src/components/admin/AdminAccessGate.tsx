@@ -121,13 +121,23 @@ export const AdminAccessGate: React.FC<AdminAccessGateProps> = ({ children }) =>
             <span>{lang === 'bn' ? 'পাবলিক ওয়েবসাইটে ফিরে যান' : 'Return to Public Website'}</span>
           </Link>
 
-          <Link
-            href="/dashboard/donor"
-            className="flex-1 py-3 px-4 rounded-xl bg-brand-red hover:bg-brand-crimson text-white font-bold text-xs shadow-md transition-all flex items-center justify-center space-x-1.5"
-          >
-            <User className="w-4 h-4" />
-            <span>{lang === 'bn' ? 'রক্তদাতা ড্যাশবোর্ডে যান' : 'Go to Donor Dashboard'}</span>
-          </Link>
+          {session.role === 'public' || session.id === 'usr-guest' ? (
+            <Link
+              href="/auth/login"
+              className="flex-1 py-3 px-4 rounded-xl bg-brand-burgundy hover:bg-[#400B13] text-white font-bold text-xs shadow-md transition-all flex items-center justify-center space-x-1.5"
+            >
+              <KeyRound className="w-4 h-4" />
+              <span>{lang === 'bn' ? 'অ্যাডমিন সাইন-ইন করুন' : 'Sign In to Admin Portal'}</span>
+            </Link>
+          ) : (
+            <Link
+              href="/dashboard/donor"
+              className="flex-1 py-3 px-4 rounded-xl bg-brand-red hover:bg-brand-crimson text-white font-bold text-xs shadow-md transition-all flex items-center justify-center space-x-1.5"
+            >
+              <User className="w-4 h-4" />
+              <span>{lang === 'bn' ? 'রক্তদাতা ড্যাশবোর্ডে যান' : 'Go to Donor Dashboard'}</span>
+            </Link>
+          )}
         </div>
 
         {/* Executive / Staff Switcher (For testing or official staff login) */}
