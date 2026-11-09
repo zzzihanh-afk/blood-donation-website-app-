@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Phone, Mail, Lock, ArrowRight, ShieldCheck, Droplet, CheckCircle2, Crown, AlertCircle, KeyRound, UserCheck, Eye, EyeOff } from 'lucide-react';
 import { normalizeBangladeshPhone } from '@lalbindu/validation';
 import { authenticateAccount } from '@/lib/accounts';
-import { setCurrentSession } from '@/lib/session';
+import { setCurrentSession, getCurrentSession, logoutSession, isAuthenticatedSession, UserSession } from '@/lib/session';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -21,6 +21,14 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [activeSession, setActiveSession] = useState<UserSession | null>(null);
+
+  useEffect(() => {
+    setActiveSession(getCurrentSession());
+    const handleSessionChange = () => setActiveSession(getCurrentSession());
+    window.addEventListener('lalbindu_session_changed', handleSessionChange);
+    return () => window.removeEventListener('lalbindu_session_changed', handleSessionChange);
+  }, []);
 
   // Auto-fill Super Admin credentials
   const handleQuickSuperAdminFill = () => {
@@ -218,6 +226,34 @@ export default function LoginPage() {
             Authoritative Healthcare & Emergency Blood Network of Bangladesh
           </p>
         </div>
+
+        {/* Active Session Notice & Immediate Logout Action */}
+        {activeSession && isAuthenticatedSession(activeSession) && (
+          <div className="p-4 rounded-3xl bg-amber-50/90 border border-amber-200 text-xs flex items-center justify-between gap-3 text-amber-950 shadow-sm animate-in fade-in duration-200">
+            <div className="flex items-center space-x-2.5">
+              <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center text-amber-800 font-bold shrink-0">
+                <UserCheck className="w-4 h-4 text-amber-700" />
+              </div>
+              <div>
+                <p className="font-bold text-gray-900">Signed in as {activeSession.name}</p>
+                <p className="text-[10px] text-amber-800 font-medium">
+                  {activeSession.email || activeSession.roleLabelEn || 'Active User Session'}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                logoutSession();
+                setSuccessMessage('Successfully logged out.');
+                setTimeout(() => setSuccessMessage(''), 2500);
+              }}
+              className="px-3 py-1.5 bg-white hover:bg-red-50 text-red-600 border border-red-200 hover:border-red-300 rounded-xl text-xs font-bold transition-all shadow-xs shrink-0 cursor-pointer"
+            >
+              Log Out
+            </button>
+          </div>
+        )}
 
         {/* Super Admin Credentials Showcase Card */}
         <div className="bg-gradient-to-r from-brand-burgundy to-[#30080E] rounded-3xl p-4 sm:p-5 text-white shadow-xl border border-amber-500/30 relative overflow-hidden">

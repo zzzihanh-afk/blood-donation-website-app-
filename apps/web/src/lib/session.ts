@@ -116,10 +116,13 @@ const SESSION_STORAGE_KEY = 'lalbindu_active_session_role';
  * unless previously switched or authorized.
  */
 export function getCurrentSession(): UserSession {
-  if (typeof window === 'undefined') return KNOWN_SESSIONS.donor;
+  if (typeof window === 'undefined') return KNOWN_SESSIONS.public;
   try {
     const savedRole = localStorage.getItem(SESSION_STORAGE_KEY);
     if (savedRole) {
+      if (savedRole === 'public') {
+        return KNOWN_SESSIONS.public;
+      }
       if (KNOWN_SESSIONS[savedRole]) {
         return KNOWN_SESSIONS[savedRole];
       }
@@ -188,7 +191,7 @@ export function getCurrentSession(): UserSession {
   } catch (e) {
     console.error('Error reading session from localStorage:', e);
   }
-  return KNOWN_SESSIONS.donor;
+  return KNOWN_SESSIONS.public;
 }
 
 /**
@@ -243,4 +246,35 @@ export function isHighestAuthority(session?: UserSession | null): boolean {
 export function isSuperOrCoAdmin(session?: UserSession | null): boolean {
   if (!session) return false;
   return isHighestAuthority(session) || session.role === 'co_super_admin' || session.authorityLevel === 'co_admin' || session.id === 'coadmin';
+}
+
+/**
+ * Check if the active session is authenticated (not a public/guest visitor).
+ */
+export function isAuthenticatedSession(session?: UserSession | null): boolean {
+  if (!session) return false;
+  return session.role !== 'public' && session.id !== 'usr-guest';
+}
+
+/**
+ * Log out of current session.
+ * Clears active session credentials, active donor profiles, simulated roles,
+ * and resets active session state to public visitor.
+ * Dispatches 'lalbindu_session_changed' so the entire application updates synchronously.
+ */
+export function logoutSession(): UserSession {
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.removeItem(SESSION_STORAGE_KEY);
+      localStorage.removeItem('lalbindu_active_donor_profile');
+      localStorage.removeItem('lalbindu_simulated_role');
+      sessionStorage.removeItem('lalbindu_superadmin_masquerading');
+      localStorage.setItem(SESSION_STORAGE_KEY, 'public');
+      localStorage.setItem('lalbindu_simulated_role', 'public');
+      window.dispatchEvent(new Event('lalbindu_session_changed'));
+    } catch (e) {
+      console.warn('Notice during logoutSession:', e);
+    }
+  }
+  return KNOWN_SESSIONS.public;
 }

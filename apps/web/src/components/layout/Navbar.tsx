@@ -33,6 +33,8 @@ import {
 import { 
   getCurrentSession, 
   setCurrentSession, 
+  logoutSession,
+  isAuthenticatedSession,
   isAuthorizedAdmin, 
   isHighestAuthority, 
   isSuperOrCoAdmin, 
@@ -87,9 +89,21 @@ export const Navbar: React.FC = () => {
     };
   }, []);
 
+  const isLoggedIn = mounted ? isAuthenticatedSession(session) : false;
   const isAdmin = mounted ? isAuthorizedAdmin(session) : false;
   const isSuperOrCo = mounted ? isSuperOrCoAdmin(session) : false;
   const isSuper = mounted ? isHighestAuthority(session) : false;
+
+  const handleLogout = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    logoutSession();
+    setUserDropdownOpen(false);
+    setMobileMenuOpen(false);
+    router.push('/auth/login');
+  };
 
   // Strictly enforce hierarchy: Super Admin can enter Co-Admin account, but Co-Admin CANNOT enter Super Admin
   const [canReturnToSuperAdmin, setCanReturnToSuperAdmin] = useState(false);
@@ -137,7 +151,7 @@ export const Navbar: React.FC = () => {
     { href: '/campaigns', label: t.nav.campaigns },
     { href: '/achievements', label: t.nav.achievements },
     ...(isSuperOrCo ? [{ href: '/id-cards', label: lang === 'bn' ? 'ডিজিটাল আইডি কার্ড' : 'Digital ID Cards' }] : []),
-    { href: '/dashboard/donor', label: t.nav.donorDashboard },
+    ...(isLoggedIn ? [{ href: '/dashboard/donor', label: t.nav.donorDashboard }] : []),
     ...(isAdmin ? [{ href: '/dashboard/admin', label: t.nav.adminDashboard, isAdminPill: true }] : [])
   ];
 
@@ -366,222 +380,227 @@ export const Navbar: React.FC = () => {
               )}
             </div>
 
-            {/* User Profile Pill / Dropdown */}
-            <div className="relative" ref={userRef}>
-              <button
-                suppressHydrationWarning
-                onClick={() => {
-                  setUserDropdownOpen(!userDropdownOpen);
-                  setNotifDropdownOpen(false);
-                }}
-                className={`flex items-center space-x-2 pl-1 pr-3 py-1 rounded-full border transition-all ${
-                  userDropdownOpen 
-                    ? isAdmin 
-                      ? 'border-brand-burgundy bg-amber-50/50 ring-2 ring-brand-burgundy/20' 
-                      : 'border-brand-red bg-brand-light/30 ring-2 ring-brand-red/20' 
-                    : isAdmin 
-                    ? 'border-amber-300 bg-amber-50/30 hover:border-brand-burgundy' 
-                    : 'border-gray-200 hover:border-brand-red bg-white hover:bg-gray-50'
-                }`}
-              >
-                <div className={`relative w-8 h-8 rounded-full overflow-hidden border flex items-center justify-center ${
-                  isAdmin ? 'border-amber-400 bg-amber-100 text-amber-900' : 'border-brand-red/30 bg-brand-light text-brand-red'
-                }`}>
-                  {session.avatarUrl ? (
-                    session.avatarUrl.startsWith('data:') ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={session.avatarUrl}
-                        alt={session.name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <Image
-                        src={session.avatarUrl}
-                        alt={session.name}
-                        width={32}
-                        height={32}
-                        className="object-cover"
-                      />
-                    )
-                  ) : (
-                    <User className="w-4 h-4 opacity-70" />
-                  )}
-                </div>
-                <div className="text-left text-xs leading-tight">
-                  <div className="font-bold text-gray-900">{session.name}</div>
-                  <div className={`text-[10px] font-medium flex items-center ${
-                    isAdmin ? 'text-brand-burgundy font-bold' : 'text-brand-red'
+            {/* User Profile Pill / Dropdown (When Logged In) OR Sign In Button (When Guest) */}
+            {isLoggedIn ? (
+              <div className="relative" ref={userRef}>
+                <button
+                  suppressHydrationWarning
+                  onClick={() => {
+                    setUserDropdownOpen(!userDropdownOpen);
+                    setNotifDropdownOpen(false);
+                  }}
+                  className={`flex items-center space-x-2 pl-1 pr-3 py-1 rounded-full border transition-all ${
+                    userDropdownOpen 
+                      ? isAdmin 
+                        ? 'border-brand-burgundy bg-amber-50/50 ring-2 ring-brand-burgundy/20' 
+                        : 'border-brand-red bg-brand-light/30 ring-2 ring-brand-red/20' 
+                      : isAdmin 
+                      ? 'border-amber-300 bg-amber-50/30 hover:border-brand-burgundy' 
+                      : 'border-gray-200 hover:border-brand-red bg-white hover:bg-gray-50'
+                  }`}
+                >
+                  <div className={`relative w-8 h-8 rounded-full overflow-hidden border flex items-center justify-center ${
+                    isAdmin ? 'border-amber-400 bg-amber-100 text-amber-900' : 'border-brand-red/30 bg-brand-light text-brand-red'
                   }`}>
-                    {isAdmin ? (
-                      <>
-                        <ShieldCheck className="w-2.5 h-2.5 mr-0.5 text-brand-burgundy" /> {lang === 'bn' ? (session.roleLabelBn || session.roleLabelEn) : session.roleLabelEn}
-                      </>
+                    {session.avatarUrl ? (
+                      session.avatarUrl.startsWith('data:') ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={session.avatarUrl}
+                          alt={session.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <Image
+                          src={session.avatarUrl}
+                          alt={session.name}
+                          width={32}
+                          height={32}
+                          className="object-cover"
+                        />
+                      )
                     ) : (
-                      <>
-                        <Droplet className="w-2.5 h-2.5 mr-0.5 fill-brand-red" /> {lang === 'bn' ? (session.roleLabelBn || session.roleLabelEn) : session.roleLabelEn}
-                      </>
+                      <User className="w-4 h-4 opacity-70" />
                     )}
                   </div>
-                </div>
-                <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
-              </button>
-
-              {userDropdownOpen && (
-                <div className="absolute right-0 mt-3 w-64 bg-white rounded-3xl shadow-xl border border-gray-100 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-                  <div className="px-4 py-2 border-b border-gray-100">
-                    <p className="text-xs text-gray-500">{lang === 'bn' ? 'লগইন আছেন' : 'Signed in as'}</p>
-                    <p className="text-xs font-bold text-gray-900">{session.email}</p>
-                    <p className={`text-[10px] font-semibold ${isAdmin ? 'text-brand-burgundy' : 'text-brand-green'}`}>
-                      {isAdmin 
-                        ? (session.role === 'super_admin' || session.id === 'superadmin' || session.authorityLevel === 'highest'
-                            ? (lang === 'bn' ? `জাতীয় সুপার অ্যাডমিন আইডি: ${session.adminId || 'superadmin'}` : `National Super Admin ID: ${session.adminId || 'superadmin'}`)
-                            : session.role === 'district_admin'
-                            ? (lang === 'bn' ? `জেলা প্রশাসক আইডি: ${session.adminId || session.id}` : `District Admin ID: ${session.adminId || session.id}`)
-                            : session.role === 'division_admin'
-                            ? (lang === 'bn' ? `বিভাগীয় প্রশাসক আইডি: ${session.adminId || session.id}` : `Division Admin ID: ${session.adminId || session.id}`)
-                            : session.role === 'upazila_admin'
-                            ? (lang === 'bn' ? `উপজেলা প্রশাসক আইডি: ${session.adminId || session.id}` : `Upazila Admin ID: ${session.adminId || session.id}`)
-                            : (lang === 'bn' ? `কো-অ্যাডমিন আইডি: ${session.adminId || 'coadmin'}` : `Co-Admin ID: ${session.adminId || 'coadmin'}`))
-                        : (lang === 'bn' ? `যাচাইকৃত দাতা আইডি: ${session.donorId}` : `Verified Donor ID: ${session.donorId}`)}
-                    </p>
-                  </div>
-
-                  {isAdmin ? (
-                    <>
-                      <Link
-                        href="/dashboard/admin"
-                        onClick={() => setUserDropdownOpen(false)}
-                        className="flex items-center px-4 py-2 text-xs font-bold text-brand-burgundy hover:bg-brand-light transition-colors"
-                      >
-                        <ShieldCheck className="w-4 h-4 mr-2.5 text-brand-burgundy" />
-                        {t.nav.adminDashboard}
-                      </Link>
-
-                      {isSuperOrCo && (
-                        <Link
-                          href="/dashboard/admin/id-cards"
-                          onClick={() => setUserDropdownOpen(false)}
-                          className="flex items-center px-4 py-2 text-xs text-gray-700 hover:bg-brand-light hover:text-brand-burgundy transition-colors"
-                        >
-                          <CreditCard className="w-4 h-4 mr-2.5 text-amber-600" />
-                          {lang === 'bn' ? 'আইডি কার্ড স্টুডিও' : 'ID Card Template Studio'}
-                        </Link>
+                  <div className="text-left text-xs leading-tight">
+                    <div className="font-bold text-gray-900">{session.name}</div>
+                    <div className={`text-[10px] font-medium flex items-center ${
+                      isAdmin ? 'text-brand-burgundy font-bold' : 'text-brand-red'
+                    }`}>
+                      {isAdmin ? (
+                        <>
+                          <ShieldCheck className="w-2.5 h-2.5 mr-0.5 text-brand-burgundy" /> {lang === 'bn' ? (session.roleLabelBn || session.roleLabelEn) : session.roleLabelEn}
+                        </>
+                      ) : (
+                        <>
+                          <Droplet className="w-2.5 h-2.5 mr-0.5 fill-brand-red" /> {lang === 'bn' ? (session.roleLabelBn || session.roleLabelEn) : session.roleLabelEn}
+                        </>
                       )}
+                    </div>
+                  </div>
+                  <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+                </button>
 
-                      <Link
-                        href="/dashboard/donor"
-                        onClick={() => setUserDropdownOpen(false)}
-                        className="flex items-center px-4 py-2 text-xs text-gray-700 hover:bg-brand-light hover:text-brand-red transition-colors"
-                      >
-                        <User className="w-4 h-4 mr-2.5 text-brand-red" />
-                        {t.nav.donorDashboard}
-                      </Link>
+                {userDropdownOpen && (
+                  <div className="absolute right-0 mt-3 w-64 bg-white rounded-3xl shadow-xl border border-gray-100 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                    <div className="px-4 py-2 border-b border-gray-100">
+                      <p className="text-xs text-gray-500">{lang === 'bn' ? 'লগইন আছেন' : 'Signed in as'}</p>
+                      <p className="text-xs font-bold text-gray-900">{session.email}</p>
+                      <p className={`text-[10px] font-semibold ${isAdmin ? 'text-brand-burgundy' : 'text-brand-green'}`}>
+                        {isAdmin 
+                          ? (session.role === 'super_admin' || session.id === 'superadmin' || session.authorityLevel === 'highest'
+                              ? (lang === 'bn' ? `জাতীয় সুপার অ্যাডমিন আইডি: ${session.adminId || 'superadmin'}` : `National Super Admin ID: ${session.adminId || 'superadmin'}`)
+                              : session.role === 'district_admin'
+                              ? (lang === 'bn' ? `জেলা প্রশাসক আইডি: ${session.adminId || session.id}` : `District Admin ID: ${session.adminId || session.id}`)
+                              : session.role === 'division_admin'
+                              ? (lang === 'bn' ? `বিভাগীয় প্রশাসক আইডি: ${session.adminId || session.id}` : `Division Admin ID: ${session.adminId || session.id}`)
+                              : session.role === 'upazila_admin'
+                              ? (lang === 'bn' ? `উপজেলা প্রশাসক আইডি: ${session.adminId || session.id}` : `Upazila Admin ID: ${session.adminId || session.id}`)
+                              : (lang === 'bn' ? `কো-অ্যাডমিন আইডি: ${session.adminId || 'coadmin'}` : `Co-Admin ID: ${session.adminId || 'coadmin'}`))
+                          : (lang === 'bn' ? `যাচাইকৃত দাতা আইডি: ${session.donorId}` : `Verified Donor ID: ${session.donorId}`)}
+                      </p>
+                    </div>
 
-                      {/* Hierarchy Rule: Super Admin can enter Co-Admin account. Co-Admin CANNOT enter Super Admin. */}
-                      {isSuper ? (
-                        <>
-                          <div className="border-t border-gray-100 my-1"></div>
-                          <button
-                            onClick={() => {
-                              if (typeof window !== 'undefined') {
-                                sessionStorage.setItem('lalbindu_superadmin_masquerading', 'true');
-                              }
-                              setCurrentSession('co_admin');
-                              setUserDropdownOpen(false);
-                              router.push('/dashboard/admin');
-                            }}
-                            className="w-full text-left flex items-center px-4 py-2 text-xs font-semibold text-emerald-900 bg-emerald-50/60 hover:bg-emerald-100/70 transition-colors"
+                    {isAdmin ? (
+                      <>
+                        <Link
+                          href="/dashboard/admin"
+                          onClick={() => setUserDropdownOpen(false)}
+                          className="flex items-center px-4 py-2 text-xs font-bold text-brand-burgundy hover:bg-brand-light transition-colors"
+                        >
+                          <ShieldCheck className="w-4 h-4 mr-2.5 text-brand-burgundy" />
+                          {t.nav.adminDashboard}
+                        </Link>
+
+                        {isSuperOrCo && (
+                          <Link
+                            href="/dashboard/admin/id-cards"
+                            onClick={() => setUserDropdownOpen(false)}
+                            className="flex items-center px-4 py-2 text-xs text-gray-700 hover:bg-brand-light hover:text-brand-burgundy transition-colors"
                           >
-                            <ShieldCheck className="w-4 h-4 mr-2.5 text-emerald-600" />
-                            <span>{lang === 'bn' ? 'কো-অ্যাডমিন অ্যাকাউন্টে প্রবেশ' : 'Enter Co-Admin Account (coadmin)'}</span>
-                          </button>
-                        </>
-                      ) : canReturnToSuperAdmin ? (
-                        <>
-                          <div className="border-t border-gray-100 my-1"></div>
-                          <button
-                            onClick={() => {
-                              if (typeof window !== 'undefined') {
-                                sessionStorage.removeItem('lalbindu_superadmin_masquerading');
-                              }
-                              setCurrentSession('superadmin');
-                              setUserDropdownOpen(false);
-                              router.push('/dashboard/admin');
-                            }}
-                            className="w-full text-left flex items-center px-4 py-2 text-xs font-semibold text-brand-burgundy bg-amber-50/60 hover:bg-amber-100/70 transition-colors"
-                          >
-                            <Crown className="w-4 h-4 mr-2.5 text-amber-600" />
-                            <span>{lang === 'bn' ? 'সুপার অ্যাডমিনে ফিরে যান' : 'Return to Super Admin'}</span>
-                          </button>
-                        </>
-                      ) : null}
+                            <CreditCard className="w-4 h-4 mr-2.5 text-amber-600" />
+                            {lang === 'bn' ? 'আইডি কার্ড স্টুডিও' : 'ID Card Template Studio'}
+                          </Link>
+                        )}
 
-                      {/* Switch to Public Donor View Option */}
-                      <div className="border-t border-gray-100 my-1"></div>
-                      <button
-                        onClick={() => {
-                          setCurrentSession('donor');
-                          setUserDropdownOpen(false);
-                          router.push('/');
-                        }}
-                        className="w-full text-left flex items-center px-4 py-2 text-xs text-gray-600 hover:bg-gray-50 transition-colors"
-                      >
-                        <User className="w-4 h-4 mr-2.5 text-gray-400" />
-                        <span>{lang === 'bn' ? 'সাধারণ দাতা মোডে পরিবর্তন' : 'Switch to Public Donor View'}</span>
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      {/* DONOR / WEBSITE VIEWER LINKS ONLY (Super Admin & Co-Admin options strictly restricted) */}
-                      <Link
-                        href="/dashboard/donor"
-                        onClick={() => setUserDropdownOpen(false)}
-                        className="flex items-center px-4 py-2 text-xs text-gray-700 hover:bg-brand-light hover:text-brand-red transition-colors"
-                      >
-                        <User className="w-4 h-4 mr-2.5 text-brand-red" />
-                        {t.nav.donorDashboard}
-                      </Link>
+                        <Link
+                          href="/dashboard/donor"
+                          onClick={() => setUserDropdownOpen(false)}
+                          className="flex items-center px-4 py-2 text-xs text-gray-700 hover:bg-brand-light hover:text-brand-red transition-colors"
+                        >
+                          <User className="w-4 h-4 mr-2.5 text-brand-red" />
+                          {t.nav.donorDashboard}
+                        </Link>
 
-                      <Link
-                        href="/dashboard/id-card"
-                        onClick={() => setUserDropdownOpen(false)}
-                        className="flex items-center px-4 py-2 text-xs text-gray-700 hover:bg-brand-light hover:text-brand-red transition-colors"
-                      >
-                        <CreditCard className="w-4 h-4 mr-2.5 text-brand-green" />
-                        {t.nav.myIdCard}
-                      </Link>
+                        {/* Hierarchy Rule: Super Admin can enter Co-Admin account. Co-Admin CANNOT enter Super Admin. */}
+                        {isSuper ? (
+                          <>
+                            <div className="border-t border-gray-100 my-1"></div>
+                            <button
+                              onClick={() => {
+                                if (typeof window !== 'undefined') {
+                                  sessionStorage.setItem('lalbindu_superadmin_masquerading', 'true');
+                                }
+                                setCurrentSession('co_admin');
+                                setUserDropdownOpen(false);
+                                router.push('/dashboard/admin');
+                              }}
+                              className="w-full text-left flex items-center px-4 py-2 text-xs font-semibold text-emerald-900 bg-emerald-50/60 hover:bg-emerald-100/70 transition-colors"
+                            >
+                              <ShieldCheck className="w-4 h-4 mr-2.5 text-emerald-600" />
+                              <span>{lang === 'bn' ? 'কো-অ্যাডমিন অ্যাকাউন্টে প্রবেশ' : 'Enter Co-Admin Account (coadmin)'}</span>
+                            </button>
+                          </>
+                        ) : canReturnToSuperAdmin ? (
+                          <>
+                            <div className="border-t border-gray-100 my-1"></div>
+                            <button
+                              onClick={() => {
+                                if (typeof window !== 'undefined') {
+                                  sessionStorage.removeItem('lalbindu_superadmin_masquerading');
+                                }
+                                setCurrentSession('superadmin');
+                                setUserDropdownOpen(false);
+                                router.push('/dashboard/admin');
+                              }}
+                              className="w-full text-left flex items-center px-4 py-2 text-xs font-semibold text-brand-burgundy bg-amber-50/60 hover:bg-amber-100/70 transition-colors"
+                            >
+                              <Crown className="w-4 h-4 mr-2.5 text-amber-600" />
+                              <span>{lang === 'bn' ? 'সুপার অ্যাডমিনে ফিরে যান' : 'Return to Super Admin'}</span>
+                            </button>
+                          </>
+                        ) : null}
 
-                      {/* Public Option to Create Donor Account */}
-                      <Link
-                        href="/auth/register"
-                        onClick={() => setUserDropdownOpen(false)}
-                        className="flex items-center px-4 py-2 text-xs font-bold text-brand-red hover:bg-red-50 transition-colors"
-                      >
-                        <UserPlus className="w-4 h-4 mr-2.5 text-brand-red" />
-                        {lang === 'bn' ? 'রক্তদাতা অ্যাকাউন্ট তৈরি' : 'Create Donor Account'}
-                      </Link>
-                    </>
-                  )}
+                        {/* Switch to Public Donor View Option */}
+                        <div className="border-t border-gray-100 my-1"></div>
+                        <button
+                          onClick={() => {
+                            setCurrentSession('donor');
+                            setUserDropdownOpen(false);
+                            router.push('/');
+                          }}
+                          className="w-full text-left flex items-center px-4 py-2 text-xs text-gray-600 hover:bg-gray-50 transition-colors"
+                        >
+                          <User className="w-4 h-4 mr-2.5 text-gray-400" />
+                          <span>{lang === 'bn' ? 'সাধারণ দাতা মোডে পরিবর্তন' : 'Switch to Public Donor View'}</span>
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        {/* DONOR / WEBSITE VIEWER LINKS ONLY (Super Admin & Co-Admin options strictly restricted) */}
+                        <Link
+                          href="/dashboard/donor"
+                          onClick={() => setUserDropdownOpen(false)}
+                          className="flex items-center px-4 py-2 text-xs text-gray-700 hover:bg-brand-light hover:text-brand-red transition-colors"
+                        >
+                          <User className="w-4 h-4 mr-2.5 text-brand-red" />
+                          {t.nav.donorDashboard}
+                        </Link>
 
-                  <div className="border-t border-gray-100 my-1"></div>
+                        <Link
+                          href="/dashboard/id-card"
+                          onClick={() => setUserDropdownOpen(false)}
+                          className="flex items-center px-4 py-2 text-xs text-gray-700 hover:bg-brand-light hover:text-brand-red transition-colors"
+                        >
+                          <CreditCard className="w-4 h-4 mr-2.5 text-brand-green" />
+                          {t.nav.myIdCard}
+                        </Link>
 
-                  <Link
-                    href="/auth/login"
-                    onClick={() => {
-                      if (typeof window !== 'undefined') {
-                        sessionStorage.removeItem('lalbindu_superadmin_masquerading');
-                      }
-                      setUserDropdownOpen(false);
-                    }}
-                    className="flex items-center px-4 py-2 text-xs text-red-600 hover:bg-red-50 transition-colors"
-                  >
-                    <LogOut className="w-4 h-4 mr-2.5" />
-                    {t.nav.logout}
-                  </Link>
-                </div>
-              )}
-            </div>
+                        {/* Public Option to Create Donor Account */}
+                        <Link
+                          href="/auth/register"
+                          onClick={() => setUserDropdownOpen(false)}
+                          className="flex items-center px-4 py-2 text-xs font-bold text-brand-red hover:bg-red-50 transition-colors"
+                        >
+                          <UserPlus className="w-4 h-4 mr-2.5 text-brand-red" />
+                          {lang === 'bn' ? 'রক্তদাতা অ্যাকাউন্ট তৈরি' : 'Create Donor Account'}
+                        </Link>
+                      </>
+                    )}
+
+                    <div className="border-t border-gray-100 my-1"></div>
+
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="w-full text-left flex items-center px-4 py-2 text-xs font-bold text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                    >
+                      <LogOut className="w-4 h-4 mr-2.5 text-red-600" />
+                      <span>{t.nav.logout}</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <Link
+                href="/auth/login"
+                className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full border border-gray-200 hover:border-brand-burgundy text-gray-700 hover:text-brand-burgundy bg-white hover:bg-gray-50 text-xs font-bold shadow-xs hover:shadow transition-all shrink-0"
+              >
+                <KeyRound className="w-3.5 h-3.5 text-brand-burgundy" />
+                <span>{lang === 'bn' ? t.nav.login : 'Sign In'}</span>
+              </Link>
+            )}
 
           </div>
 
@@ -621,80 +640,82 @@ export const Navbar: React.FC = () => {
             ))}
           </div>
 
-          <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 rounded-full bg-brand-light flex items-center justify-center text-xs font-bold text-brand-red">
-                {session.name.substring(0, 2).toUpperCase()}
+          {isLoggedIn ? (
+            <div className="space-y-3">
+              <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <div className="w-8 h-8 rounded-full bg-brand-light flex items-center justify-center text-xs font-bold text-brand-red">
+                    {session.name ? session.name.substring(0, 2).toUpperCase() : 'LB'}
+                  </div>
+                  <div className="text-xs">
+                    <p className="font-bold text-gray-900">{session.name}</p>
+                    <p className="text-[10px] text-brand-red">
+                      {isAdmin ? `Admin ID: ${session.adminId || session.id}` : `Donor ID: ${session.donorId || session.id}`}
+                    </p>
+                  </div>
+                </div>
+                {isAdmin && (
+                  <div className="flex items-center space-x-1.5">
+                    {isSuper ? (
+                      <button
+                        onClick={() => {
+                          if (typeof window !== 'undefined') {
+                            sessionStorage.setItem('lalbindu_superadmin_masquerading', 'true');
+                          }
+                          setCurrentSession('co_admin');
+                          setMobileMenuOpen(false);
+                          router.push('/dashboard/admin');
+                        }}
+                        className="px-2.5 py-1 text-[11px] font-bold text-emerald-900 bg-emerald-100/70 border border-emerald-300 rounded-full"
+                      >
+                        {lang === 'bn' ? 'কো-অ্যাডমিন প্রবেশ' : 'Enter Co-Admin'}
+                      </button>
+                    ) : canReturnToSuperAdmin ? (
+                      <button
+                        onClick={() => {
+                          if (typeof window !== 'undefined') {
+                            sessionStorage.removeItem('lalbindu_superadmin_masquerading');
+                          }
+                          setCurrentSession('superadmin');
+                          setMobileMenuOpen(false);
+                          router.push('/dashboard/admin');
+                        }}
+                        className="px-2.5 py-1 text-[11px] font-bold text-amber-900 bg-amber-100/70 border border-amber-300 rounded-full"
+                      >
+                        {lang === 'bn' ? 'সুপার অ্যাডমিন' : 'Super Admin'}
+                      </button>
+                    ) : null}
+                  </div>
+                )}
               </div>
-              <div className="text-xs">
-                <p className="font-bold text-gray-900">{session.name}</p>
-                <p className="text-[10px] text-brand-red">
-                  {isAdmin ? `Admin ID: ${session.adminId}` : `Donor ID: ${session.donorId}`}
-                </p>
-              </div>
+
+              {/* Mobile Logout Button */}
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="w-full flex items-center justify-center space-x-2 py-2.5 px-3 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold transition-colors cursor-pointer"
+              >
+                <LogOut className="w-4 h-4 text-red-600" />
+                <span>{t.nav.logout}</span>
+              </button>
             </div>
-            {isAdmin ? (
-              <div className="flex items-center space-x-1.5">
-                {isSuper ? (
-                  <button
-                    onClick={() => {
-                      if (typeof window !== 'undefined') {
-                        sessionStorage.setItem('lalbindu_superadmin_masquerading', 'true');
-                      }
-                      setCurrentSession('co_admin');
-                      setMobileMenuOpen(false);
-                      router.push('/dashboard/admin');
-                    }}
-                    className="px-2.5 py-1 text-[11px] font-bold text-emerald-900 bg-emerald-100/70 border border-emerald-300 rounded-full"
-                  >
-                    {lang === 'bn' ? 'কো-অ্যাডমিন প্রবেশ' : 'Enter Co-Admin'}
-                  </button>
-                ) : canReturnToSuperAdmin ? (
-                  <button
-                    onClick={() => {
-                      if (typeof window !== 'undefined') {
-                        sessionStorage.removeItem('lalbindu_superadmin_masquerading');
-                      }
-                      setCurrentSession('superadmin');
-                      setMobileMenuOpen(false);
-                      router.push('/dashboard/admin');
-                    }}
-                    className="px-2.5 py-1 text-[11px] font-bold text-amber-900 bg-amber-100/70 border border-amber-300 rounded-full"
-                  >
-                    {lang === 'bn' ? 'সুপার অ্যাডমিন' : 'Super Admin'}
-                  </button>
-                ) : null}
-                <button
-                  onClick={() => {
-                    setCurrentSession('donor');
-                    setMobileMenuOpen(false);
-                    router.push('/');
-                  }}
-                  className="px-3 py-1.5 text-xs font-bold text-gray-600 border border-gray-300 rounded-full"
-                >
-                  {lang === 'bn' ? 'দাতা মোড' : 'Donor Mode'}
-                </button>
-              </div>
-            ) : (
+          ) : (
+            <div className="pt-3 border-t border-gray-100 space-y-2">
               <Link
                 href="/auth/login"
                 onClick={() => setMobileMenuOpen(false)}
-                className="px-3 py-1.5 text-xs font-bold text-brand-burgundy bg-amber-50 border border-amber-300 rounded-full inline-block"
+                className="w-full flex items-center justify-center space-x-2 py-2.5 px-3 rounded-xl bg-brand-burgundy hover:bg-[#400B13] text-white text-xs font-bold shadow-xs transition-colors"
               >
-                {lang === 'bn' ? 'অ্যাডমিন লগইন' : 'Admin Login'}
+                <KeyRound className="w-4 h-4" />
+                <span>{lang === 'bn' ? 'অ্যাকাউন্টে লগইন করুন' : 'Sign In to Account'}</span>
               </Link>
-            )}
-          </div>
-
-          {!isAdmin && (
-            <div className="pt-2">
               <Link
                 href="/auth/register"
                 onClick={() => setMobileMenuOpen(false)}
-                className="w-full flex items-center justify-center space-x-2 py-2.5 px-3 rounded-xl bg-gradient-to-r from-brand-burgundy to-brand-red text-white text-xs font-black shadow-sm"
+                className="w-full flex items-center justify-center space-x-2 py-2.5 px-3 rounded-xl bg-red-50 hover:bg-red-100 text-brand-red text-xs font-bold transition-colors"
               >
                 <UserPlus className="w-4 h-4" />
-                <span>{lang === 'bn' ? 'রক্তদাতা অ্যাকাউন্ট তৈরি করুন' : 'Create Donor Account (Public)'}</span>
+                <span>{lang === 'bn' ? 'রক্তদাতা অ্যাকাউন্ট তৈরি' : 'Create Donor Account'}</span>
               </Link>
             </div>
           )}
