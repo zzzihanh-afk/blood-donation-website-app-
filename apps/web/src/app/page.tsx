@@ -389,33 +389,61 @@ export default function HomePage() {
 
               {/* Milestone Badge Row */}
               <div className="grid grid-cols-4 gap-2 text-center">
-                <div className="p-2 rounded-2xl bg-red-50 border border-red-100">
-                  <div className="w-8 h-8 mx-auto rounded-full bg-brand-red text-white flex items-center justify-center text-xs font-bold shadow-sm">
-                    1
+                <div className="p-2 rounded-2xl bg-red-50 border border-red-100 flex flex-col items-center">
+                  <div className="w-10 h-10 rounded-full bg-white border-2 border-brand-red shadow-xs p-1 flex items-center justify-center">
+                    <div className="relative w-full h-full">
+                      <Image
+                        src="/branding/lalbindu-emblem.png"
+                        alt={lang === 'bn' ? 'প্রথম বিন্দু' : 'First Drop'}
+                        fill
+                        className="object-contain"
+                      />
+                    </div>
                   </div>
                   <p className="text-[10px] font-bold text-gray-800 mt-1.5">{lang === 'bn' ? 'প্রথম বিন্দু' : 'First Drop'}</p>
                   <p className="text-[9px] text-gray-500">{lang === 'bn' ? '১ বার' : '1 Unit'}</p>
                 </div>
 
-                <div className="p-2 rounded-2xl bg-blue-50 border border-blue-100">
-                  <div className="w-8 h-8 mx-auto rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold shadow-sm">
-                    5
+                <div className="p-2 rounded-2xl bg-blue-50 border border-blue-100 flex flex-col items-center">
+                  <div className="w-10 h-10 rounded-full bg-white border-2 border-blue-600 shadow-xs p-1 flex items-center justify-center">
+                    <div className="relative w-full h-full">
+                      <Image
+                        src="/branding/lalbindu-emblem.png"
+                        alt={lang === 'bn' ? 'জীবন রক্ষক' : 'Life Saver'}
+                        fill
+                        className="object-contain"
+                      />
+                    </div>
                   </div>
                   <p className="text-[10px] font-bold text-gray-800 mt-1.5">{lang === 'bn' ? 'জীবন রক্ষক' : 'Life Saver'}</p>
                   <p className="text-[9px] text-gray-500">{lang === 'bn' ? '৫ বার' : '5 Units'}</p>
                 </div>
 
-                <div className="p-2 rounded-2xl bg-amber-50 border border-amber-100">
-                  <div className="w-8 h-8 mx-auto rounded-full bg-amber-500 text-white flex items-center justify-center text-xs font-bold shadow-sm">
-                    10
+                <div className="p-2 rounded-2xl bg-amber-50 border border-amber-100 flex flex-col items-center">
+                  <div className="w-10 h-10 rounded-full bg-white border-2 border-amber-500 shadow-xs p-1 flex items-center justify-center">
+                    <div className="relative w-full h-full">
+                      <Image
+                        src="/branding/lalbindu-emblem.png"
+                        alt={lang === 'bn' ? 'বীর দাতা' : 'Hero'}
+                        fill
+                        className="object-contain"
+                      />
+                    </div>
                   </div>
                   <p className="text-[10px] font-bold text-gray-800 mt-1.5">{lang === 'bn' ? 'বীর দাতা' : 'Hero'}</p>
                   <p className="text-[9px] text-gray-500">{lang === 'bn' ? '১০ বার' : '10 Units'}</p>
                 </div>
 
-                <div className="p-2 rounded-2xl bg-purple-50 border border-purple-100">
-                  <div className="w-8 h-8 mx-auto rounded-full bg-purple-700 text-white flex items-center justify-center text-xs font-bold shadow-sm">
-                    25
+                <div className="p-2 rounded-2xl bg-purple-50 border border-purple-100 flex flex-col items-center">
+                  <div className="w-10 h-10 rounded-full bg-white border-2 border-purple-700 shadow-xs p-1 flex items-center justify-center">
+                    <div className="relative w-full h-full">
+                      <Image
+                        src="/branding/lalbindu-emblem.png"
+                        alt={lang === 'bn' ? 'অভিভাবক' : 'Guardian'}
+                        fill
+                        className="object-contain"
+                      />
+                    </div>
                   </div>
                   <p className="text-[10px] font-bold text-gray-800 mt-1.5">{lang === 'bn' ? 'অভিভাবক' : 'Guardian'}</p>
                   <p className="text-[9px] text-gray-500">{lang === 'bn' ? '২৫ বার' : '25 Units'}</p>
